@@ -21,7 +21,7 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const PORT = Number(process.env.PORT || 4777);
 const HOST = process.env.HOST || '127.0.0.1';
 const store = createStore(path.join(ROOT, 'data', 'runs'), [path.join(ROOT, 'demo', 'runs')]);
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.jsonl': 'application/x-ndjson; charset=utf-8', '.svg': 'image/svg+xml' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.jsonl': 'application/x-ndjson; charset=utf-8', '.svg': 'image/svg+xml', '.ttf': 'font/ttf' };
 
 const viewers = new Set();
 function broadcast(ev) {

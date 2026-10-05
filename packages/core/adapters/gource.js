@@ -1,44 +1,14 @@
-// Neural Workflow events -> Gource custom log (one line per change):
-//   timestamp|username|type|file|colour      (type: A = added, M = modified, D = deleted; timestamp in seconds)
-// Paths mirror the workflow: /<run>/hermes/<agent>/<tool>/<resource>, so `gource --log-format custom`
-// (or `--realtime` with stdin) can be used as a quick prototype of the dynamics.
-const COL = { agent: 'F2C14E', tool: '4FF0D8', file: '9FE3FF', resource: 'B7A6FF', test: '8CFFB4', memory: 'FF9FD8', gateway: 'FFAE5C', result: 'FFF1C2' };
+// Neural Workflow events -> a log for the real Gource (`gource --log-format custom`):
+//   timestamp|username|A/M/D|path
+// Built from the same action stream as our viewer (see gource/actions.js), so both show the same history.
+// Gource timestamps are whole seconds: time is multiplied by `scale` (default 100); play it with
+// `--seconds-per-day <86400/scale>` to see 1 s of the run as 1 s on screen.
+import { createActionStream, toGourceLog } from '../gource/actions.js';
 
-const clean = (s) => String(s).replace(/[|\n\r]/g, ' ').replace(/^\/+/, '');
-
-export function toGourceLines(events) {
-  const seen = new Set();
-  const out = [];
-  const add = (ts, user, path, colour, kind) => {
-    const t = Math.floor(ts / 1000);
-    const type = kind || (seen.has(path) ? 'M' : 'A');
-    seen.add(path);
-    out.push(t + '|' + clean(user || 'hermes') + '|' + type + '|' + path + '|' + colour);
-  };
-  for (const ev of events) {
-    const root = '/' + clean(ev.run) + '/hermes';
-    const a = ev.agent ? root + '/' + clean(ev.agent) : root;
-    const who = ev.agent || 'hermes';
-    switch (ev.type) {
-      case 'agent.spawned': add(ev.ts, who, a + '/.agent', COL.agent); break;
-      case 'tool.started': case 'tool.completed': case 'tool.failed': add(ev.ts, who, a + '/' + clean(ev.tool) + '/.tool', COL.tool); break;
-      case 'file.created': case 'file.modified': case 'file.read': case 'resource.read': case 'resource.written': {
-        const base = (ev.tool ? a + '/' + clean(ev.tool) : a) + '/' + clean(ev.resource);
-        if (ev.type.endsWith('read') && seen.has(base)) break;
-        add(ev.ts, who, base, ev.type.startsWith('file') ? COL.file : COL.resource);
-        break;
-      }
-      case 'file.deleted': {
-        const base = (ev.tool ? a + '/' + clean(ev.tool) : a) + '/' + clean(ev.resource);
-        if (seen.has(base)) add(ev.ts, who, base, COL.file, 'D');
-        break;
-      }
-      case 'test.started': case 'test.passed': case 'test.failed': add(ev.ts, who, a + '/tests/' + clean(ev.name), COL.test); break;
-      case 'memory.read': case 'memory.write': add(ev.ts, who, root + '/memory/' + clean(ev.resource || 'context'), COL.memory); break;
-      case 'gateway.call': add(ev.ts, who, root + '/gateways/' + clean(ev.name), COL.gateway); break;
-      case 'task.completed': case 'task.failed': add(ev.ts, 'hermes', root + '/result', COL.result); break;
-      default: break;
-    }
-  }
-  return out;
+export function toGourceLines(events, scale = 100) {
+  if (!events.length) return [];
+  const S = createActionStream();
+  const t0 = events[0].ts;
+  events.forEach((ev, i) => S.push(ev, (ev.ts - t0) / 1000, i));
+  return toGourceLog(S, Math.floor(t0 / 1000), scale);
 }

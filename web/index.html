@@ -6,12 +6,13 @@
 <title>Hermes · Neural Workflow</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" href="/web/fonts/FreeSans.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="/web/style.css">
 </head>
 <body>
 <div id="stage">
   <canvas id="gl" aria-hidden="true"></canvas>
-  <canvas id="ov" aria-label="Przestrzeń workflow: przeciągnij, aby obrócić, kółkiem przybliż, kliknij węzeł, aby zobaczyć szczegóły" role="img"></canvas>
+  <canvas id="ov" aria-label="Przestrzeń robocza przebiegu jak w Gource: przeciągnij, aby przesunąć, kółkiem przybliż, kliknij plik lub agenta, aby zobaczyć, co robił" role="img"></canvas>
 </div>
 
 <header class="bar top">
@@ -19,10 +20,6 @@
   <label class="field">Przebieg
     <select id="run"></select>
   </label>
-  <div class="seg" role="group" aria-label="Pierwszy kadr">
-    <button id="op-orb" aria-pressed="true">Orb → graf</button>
-    <button id="op-graph" aria-pressed="false">Od razu graf</button>
-  </div>
   <span id="live" class="badge" hidden>● LIVE</span>
   <span id="status" class="muted"></span>
   <label class="file">Wczytaj log (.jsonl)<input id="file" type="file" accept=".jsonl,.json,.ndjson,.txt"></label>

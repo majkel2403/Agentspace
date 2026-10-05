@@ -6,6 +6,7 @@
 // These are RECORDED DEMO RUNS, not live output: a real producer sends the same event shapes (see README).
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 const DIR = path.dirname(new URL(import.meta.url).pathname);
 const T0 = Date.parse('2026-10-06T10:00:00Z');
 
@@ -22,60 +23,98 @@ function writer(run) {
 }
 
 // ---------------------------------------------------------------- repo-fix
+// The example "przeanalizuj repo, znajdź problem i go napraw" on a REAL repository tree (file list of
+// socketio/socket.io, demo/workspaces/socket.io.txt — or your own: --workspace <dir> uses `git ls-files`).
+// The tree is real; the bug and the fix in the story are a demonstration.
+function workspace() {
+  const i = process.argv.indexOf('--workspace');
+  if (i >= 0) {
+    const dir = process.argv[i + 1];
+    const files = execFileSync('git', ['-C', dir, 'ls-files'], { encoding: 'utf8' }).split('\n').filter(Boolean).slice(0, 5000);
+    return { name: path.basename(path.resolve(dir)), files };
+  }
+  const lines = fs.readFileSync(path.join(DIR, 'workspaces', 'socket.io.txt'), 'utf8').split('\n').filter((l) => l && !l.startsWith('#'));
+  return { name: 'socket.io', files: lines };
+}
 function repoFix() {
   const w = writer('repo-fix');
+  const ws = workspace();
+  const has = (f) => ws.files.includes(f);
+  // pick real paths by pattern (falls back to any file so a custom workspace works too)
+  const pickAll = (re, n) => ws.files.filter((f) => re.test(f)).slice(0, n);
+  const pick = (re, i = 0) => pickAll(re, i + 1)[i] || ws.files[(i * 7919) % ws.files.length];
+  const readme = has('README.md') ? 'README.md' : pick(/readme/i);
+  const docs = pickAll(/^docs\/.*\.md$/, 6);
+  const core = pick(/engine\.io-client\/lib\/socket\.ts$/);
+  const transport = pick(/engine\.io-client\/lib\/transport\.ts$/);
+  const ws1 = pick(/engine\.io-client\/lib\/transports\/websocket\.ts$/);
+  const server = pick(/packages\/engine\.io\/lib\/socket\.ts$/);
+  const srcReads = pickAll(/engine\.io-client\/lib\/.*\.ts$/, 12);
+  const serverReads = pickAll(/packages\/engine\.io\/lib\/.*\.ts$/, 8);
+  const tests = pickAll(/engine\.io-client\/test\/[^/]+\.js$/, 6);
+  const testDir = core.split('/').slice(0, -2).join('/') + '/test/';
+  const newTest = testDir + 'heartbeat-reconnect.js';
+
   w.at(0, 'task.started', { text: 'Przeanalizuj repo, znajdź problem i go napraw.', user: 'Michał' });
-  w.at(0.8, 'hermes.reasoning', { text: 'Cel: znaleźć przyczynę błędu i dostarczyć poprawkę z testem.', tokens: 820 });
-  w.at(1.6, 'memory.read', { agent: 'hermes', resource: 'kontekst/ostatnie_zgloszenia', text: 'Przypomnienie: zgłoszenie o zrywaniu połączenia mostu.' });
-  w.at(2.4, 'planner.step', { text: 'Plan: 1) rozpoznanie repo i zgłoszeń, 2) diagnoza w kodzie, 3) poprawka, 4) testy, 5) raport.', tokens: 640 });
-  w.at(3.2, 'agent.spawned', { agent: 'research', label: 'Research', text: 'Zbiera kontekst: README, zgłoszenia, dokumentacja.' });
-  w.at(3.6, 'message.sent', { agent: 'hermes', to: 'research', tone: 'assign', text: 'Zbierz kontekst: co robi most i co mówią zgłoszenia.' });
-  w.at(4.3, 'tool.started', { agent: 'research', tool: 'repo_search', text: 'Przeszukanie repozytorium.' });
-  ['README.md', 'docs/architecture.md', 'docs/events.md', 'docs/deploy.md', 'package.json', 'CHANGELOG.md', '.env.example', 'src/index.js', 'src/bridge.js', 'src/server.js', 'src/events/bus.js', 'src/transport/ws.js', 'scripts/start.sh', 'docker-compose.yml'].forEach((f, i) => w.at(4.6 + i * 0.12, 'file.read', { agent: 'research', tool: 'repo_search', resource: f }));
-  w.at(6.4, 'tool.completed', { agent: 'research', tool: 'repo_search', latencyMs: 2100 });
-  w.at(6.8, 'gateway.call', { agent: 'research', name: 'GitHub MCP', text: 'Pobranie otwartych zgłoszeń.', latencyMs: 640 });
-  w.at(7.4, 'resource.read', { agent: 'research', resource: 'github/issues/41', text: 'Most zrywa połączenie po 30 s bezczynności.' });
-  w.at(7.9, 'resource.read', { agent: 'research', resource: 'github/issues/44' });
-  w.at(8.5, 'tool.started', { agent: 'research', tool: 'web_search', text: 'Dokumentacja keep-alive dla WebSocket.' });
-  w.at(9.4, 'resource.read', { agent: 'research', tool: 'web_search', resource: 'https://developer.mozilla.org/WebSocket' });
-  w.at(10.0, 'resource.read', { agent: 'research', tool: 'web_search', resource: 'https://github.com/websockets/ws#ping' });
-  w.at(10.6, 'tool.completed', { agent: 'research', tool: 'web_search', latencyMs: 2100, tokens: 1900 });
-  w.at(11.2, 'agent.spawned', { agent: 'coder', label: 'Coding', text: 'Diagnozuje i poprawia kod.' });
-  w.at(11.5, 'message.sent', { agent: 'research', to: 'coder', tone: 'handoff', text: 'Podejrzenie: brak ping/pong w bridge.js, timeout proxy 30 s.' });
-  w.at(12.3, 'tool.started', { agent: 'coder', tool: 'read' });
-  ['src/bridge.js', 'src/server.js', 'src/events/bus.js', 'src/config.js', 'src/transport/ws.js', 'src/transport/http.js', 'src/events/schema.js', 'src/util/timer.js', 'src/util/log.js', 'test/bridge.test.js', 'test/server.test.js'].forEach((f, i) => w.at(12.6 + i * 0.27, 'file.read', { agent: 'coder', tool: 'read', resource: f }));
-  w.at(15.6, 'tool.completed', { agent: 'coder', tool: 'read', latencyMs: 3300 });
-  w.at(16.1, 'hermes.reasoning', { text: 'Diagnoza potwierdzona: połączenie bez heartbeat, proxy zamyka je po 30 s.', tokens: 540, confidence: 0.82 });
-  w.at(16.8, 'memory.write', { agent: 'coder', resource: 'kontekst/diagnoza', text: 'Przyczyna: brak heartbeat w bridge.js.' });
-  w.at(17.4, 'tool.started', { agent: 'coder', tool: 'edit' });
-  w.at(18.2, 'file.modified', { agent: 'coder', tool: 'edit', resource: 'src/bridge.js', text: 'Dodano ping co 15 s i obsługę pong.', tokens: 1200 });
-  w.at(19.0, 'file.modified', { agent: 'coder', tool: 'edit', resource: 'src/config.js', text: 'Nowa opcja heartbeatMs.' });
-  w.at(19.6, 'file.created', { agent: 'coder', tool: 'edit', resource: 'test/bridge.heartbeat.test.js', text: 'Test regresyjny.' });
-  w.at(20.2, 'tool.completed', { agent: 'coder', tool: 'edit', latencyMs: 2800 });
-  w.at(20.8, 'agent.spawned', { agent: 'tester', label: 'Tester', text: 'Uruchamia testy i sprawdza regresje.' });
-  w.at(21.0, 'message.sent', { agent: 'coder', to: 'tester', tone: 'handoff', text: 'Poprawka gotowa, uruchom testy mostu.' });
-  w.at(21.6, 'tool.started', { agent: 'tester', tool: 'terminal', text: 'npm test' });
-  w.at(22.1, 'test.started', { agent: 'tester', name: 'bridge.heartbeat' });
-  w.at(22.3, 'test.started', { agent: 'tester', name: 'bridge.reconnect' });
-  w.at(23.6, 'test.passed', { agent: 'tester', name: 'bridge.heartbeat', latencyMs: 1500 });
-  w.at(24.4, 'test.failed', { agent: 'tester', name: 'bridge.reconnect', text: 'Po ponownym połączeniu timer ping nie jest czyszczony.' });
-  w.at(24.6, 'error', { agent: 'tester', text: '1 test nie przechodzi.' });
-  w.at(25.0, 'tool.completed', { agent: 'tester', tool: 'terminal', latencyMs: 3400 });
-  w.at(25.4, 'message.sent', { agent: 'tester', to: 'coder', tone: 'critique', text: 'reconnect: wyciek timera po zerwaniu połączenia.' });
-  w.at(26.2, 'tool.started', { agent: 'coder', tool: 'edit' });
-  w.at(27.0, 'file.modified', { agent: 'coder', tool: 'edit', resource: 'src/bridge.js', text: 'Czyszczenie timera w on("close").' });
-  w.at(27.6, 'tool.completed', { agent: 'coder', tool: 'edit', latencyMs: 1400 });
-  w.at(28.0, 'message.sent', { agent: 'coder', to: 'tester', tone: 'revision', text: 'Poprawione, proszę o powtórkę.' });
-  w.at(28.6, 'tool.started', { agent: 'tester', tool: 'terminal', text: 'npm test' });
-  ['bridge.heartbeat', 'bridge.reconnect', 'bus.dispatch', 'server.health'].forEach((n, i) => { w.at(29 + i * 0.3, 'test.started', { agent: 'tester', name: n }); w.at(30.4 + i * 0.5, 'test.passed', { agent: 'tester', name: n }); });
-  w.at(32.6, 'tool.completed', { agent: 'tester', tool: 'terminal', latencyMs: 4000 });
-  w.at(33.0, 'agent.completed', { agent: 'tester' });
-  w.at(33.4, 'result.returned', { agent: 'tester', text: 'Wszystkie testy przechodzą (4/4).' });
-  w.at(33.9, 'result.returned', { agent: 'coder', text: 'Poprawka: heartbeat + czyszczenie timera.' });
-  w.at(34.2, 'agent.completed', { agent: 'coder' });
-  w.at(34.4, 'agent.completed', { agent: 'research' });
-  w.at(35.0, 'hermes.reasoning', { text: 'Składam raport: przyczyna, zmiana, dowód z testów.', tokens: 700, confidence: 0.93 });
-  w.at(36.0, 'task.completed', { text: 'Naprawiono zrywanie połączenia mostu; testy 4/4.' });
+  w.at(0.6, 'hermes.reasoning', { text: 'Cel: znaleźć przyczynę zgłoszonego błędu i dostarczyć poprawkę z testem.', tokens: 820 });
+  w.at(1.2, 'memory.read', { agent: 'hermes', resource: 'kontekst/ostatnie_zgloszenia', text: 'Zgłoszenie: po ponownym połączeniu klient rozłącza się po ~25 s.' });
+  w.at(1.8, 'planner.step', { text: 'Plan: 1) rozpoznanie repo, 2) diagnoza w kodzie, 3) poprawka, 4) testy, 5) raport.', tokens: 640 });
+  w.at(2.4, 'agent.spawned', { agent: 'research', label: 'Research', text: 'Rozpoznaje repozytorium i zgłoszenia.' });
+  w.at(2.7, 'message.sent', { agent: 'hermes', to: 'research', tone: 'assign', text: 'Zrób mapę repo i znajdź kod odpowiedzialny za heartbeat.' });
+  w.at(3.0, 'tool.started', { agent: 'research', tool: 'git ls-files', text: 'Lista plików repozytorium.' });
+  // the whole tree arrives through real listing events, one per top-level directory
+  const groups = new Map();
+  for (const f of ws.files) { const top = f.includes('/') ? f.split('/')[0] : '.'; if (!groups.has(top)) groups.set(top, []); groups.get(top).push(f); }
+  const order = [...groups.keys()].sort((a, b) => (a === 'packages' ? -1 : b === 'packages' ? 1 : groups.get(b).length - groups.get(a).length));
+  order.forEach((g, i) => w.at(3.3 + i * (5.5 / Math.max(1, order.length)), 'workspace.scanned', { agent: 'research', tool: 'git ls-files', resource: ws.name, paths: groups.get(g), text: g + ': ' + groups.get(g).length + ' plików' }));
+  w.at(9.0, 'tool.completed', { agent: 'research', tool: 'git ls-files', latencyMs: 5900, text: ws.files.length + ' plików' });
+  w.at(9.3, 'tool.started', { agent: 'research', tool: 'read' });
+  [readme, ...docs].forEach((f, i) => w.at(9.5 + i * 0.35, 'file.read', { agent: 'research', tool: 'read', resource: f }));
+  w.at(12.2, 'tool.completed', { agent: 'research', tool: 'read', latencyMs: 2700 });
+  w.at(12.5, 'gateway.call', { agent: 'research', name: 'GitHub MCP', resource: 'issues', text: 'Pobranie otwartych zgłoszeń o rozłączeniach.', latencyMs: 640 });
+  w.at(13.1, 'tool.started', { agent: 'research', tool: 'web_search', text: 'Specyfikacja ping/pong protokołu Engine.IO.' });
+  w.at(13.9, 'resource.read', { agent: 'research', tool: 'web_search', resource: 'https://socket.io/docs/v4/engine-io-protocol/' });
+  w.at(14.5, 'resource.read', { agent: 'research', tool: 'web_search', resource: 'https://developer.mozilla.org/docs/Web/API/WebSocket' });
+  w.at(15.0, 'tool.completed', { agent: 'research', tool: 'web_search', latencyMs: 1900, tokens: 1900 });
+  w.at(15.4, 'agent.spawned', { agent: 'coder', label: 'Coder', text: 'Diagnozuje i poprawia kod.' });
+  w.at(15.7, 'message.sent', { agent: 'research', to: 'coder', tone: 'handoff', text: 'Podejrzenie: timer pingTimeout nie jest czyszczony przy ponownym połączeniu (' + core + ').' });
+  w.at(16.2, 'tool.started', { agent: 'coder', tool: 'read' });
+  [...srcReads, ...serverReads].forEach((f, i) => w.at(16.5 + i * 0.22, 'file.read', { agent: 'coder', tool: 'read', resource: f }));
+  w.at(21.2, 'tool.completed', { agent: 'coder', tool: 'read', latencyMs: 4700 });
+  w.at(21.6, 'hermes.reasoning', { text: 'Diagnoza: przy ponownym połączeniu stary timer pingTimeout zamyka nowe połączenie.', tokens: 540, confidence: 0.82 });
+  w.at(22.1, 'memory.write', { agent: 'coder', resource: 'kontekst/diagnoza', text: 'Przyczyna: niewyczyszczony pingTimeoutTimer.' });
+  w.at(22.6, 'tool.started', { agent: 'coder', tool: 'edit' });
+  w.at(23.3, 'file.modified', { agent: 'coder', tool: 'edit', resource: core, text: 'clearTimeout(pingTimeoutTimer) przy zamknięciu i ponownym otwarciu.', tokens: 1200 });
+  w.at(24.0, 'file.modified', { agent: 'coder', tool: 'edit', resource: transport, text: 'Zdarzenie close przekazuje powód.' });
+  w.at(24.6, 'file.created', { agent: 'coder', tool: 'edit', resource: newTest, text: 'Test regresyjny: ponowne połączenie nie dziedziczy timera.' });
+  w.at(25.1, 'tool.completed', { agent: 'coder', tool: 'edit', latencyMs: 2500 });
+  w.at(25.4, 'agent.spawned', { agent: 'tester', label: 'Tester', text: 'Uruchamia testy i sprawdza regresje.' });
+  w.at(25.6, 'message.sent', { agent: 'coder', to: 'tester', tone: 'handoff', text: 'Poprawka gotowa, uruchom testy klienta.' });
+  w.at(26.1, 'tool.started', { agent: 'tester', tool: 'terminal', text: 'npm test' });
+  const names = [newTest, ...tests.slice(0, 4)];
+  names.forEach((f, i) => w.at(26.5 + i * 0.25, 'file.read', { agent: 'tester', tool: 'terminal', resource: f }));
+  w.at(27.9, 'test.started', { agent: 'tester', name: 'heartbeat-reconnect' });
+  w.at(28.1, 'test.started', { agent: 'tester', name: 'socket' });
+  w.at(29.3, 'test.passed', { agent: 'tester', name: 'socket', latencyMs: 1500 });
+  w.at(30.0, 'test.failed', { agent: 'tester', name: 'heartbeat-reconnect', text: 'Po zamknięciu transportu timer nadal działa (transport websocket).' });
+  w.at(30.2, 'error', { agent: 'tester', text: '1 test nie przechodzi.' });
+  w.at(30.5, 'tool.completed', { agent: 'tester', tool: 'terminal', latencyMs: 4400 });
+  w.at(30.9, 'message.sent', { agent: 'tester', to: 'coder', tone: 'critique', text: 'heartbeat-reconnect: transport websocket nie czyści timera.' });
+  w.at(31.5, 'tool.started', { agent: 'coder', tool: 'edit' });
+  w.at(32.1, 'file.read', { agent: 'coder', tool: 'edit', resource: ws1 });
+  w.at(32.8, 'file.modified', { agent: 'coder', tool: 'edit', resource: ws1, text: 'onClose czyści timer także dla websocket.' });
+  w.at(33.3, 'tool.completed', { agent: 'coder', tool: 'edit', latencyMs: 1800 });
+  w.at(33.6, 'message.sent', { agent: 'coder', to: 'tester', tone: 'revision', text: 'Poprawione, proszę o powtórkę.' });
+  w.at(34.1, 'tool.started', { agent: 'tester', tool: 'terminal', text: 'npm test' });
+  ['heartbeat-reconnect', 'socket', 'connection', 'transport'].forEach((n, i) => { w.at(34.5 + i * 0.3, 'test.started', { agent: 'tester', name: n }); w.at(35.8 + i * 0.45, 'test.passed', { agent: 'tester', name: n }); });
+  w.at(37.8, 'tool.completed', { agent: 'tester', tool: 'terminal', latencyMs: 3700 });
+  w.at(38.1, 'agent.completed', { agent: 'tester' });
+  w.at(38.4, 'result.returned', { agent: 'tester', text: 'Wszystkie testy przechodzą (4/4).' });
+  w.at(38.8, 'result.returned', { agent: 'coder', text: 'Poprawka: czyszczenie timera pingTimeout w ' + core.split('/').pop() + ' i ' + ws1.split('/').pop() + '.' });
+  w.at(39.1, 'agent.completed', { agent: 'coder' });
+  w.at(39.3, 'agent.completed', { agent: 'research' });
+  w.at(39.8, 'hermes.reasoning', { text: 'Składam raport: przyczyna, zmiana, dowód z testów.', tokens: 700, confidence: 0.93 });
+  w.at(40.6, 'task.completed', { text: 'Naprawiono rozłączanie po ponownym połączeniu; testy 4/4.' });
   return w.save();
 }
 

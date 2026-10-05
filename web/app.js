@@ -1,24 +1,18 @@
 // Viewer page: REPLAY of recorded runs (from the Event Store) and LIVE following of a running task.
-import { parseJsonl, validateEvent, createTimeline, KINDS } from '/packages/core/index.js';
+import { parseJsonl, validateEvent, createTimeline } from '/packages/core/index.js';
 import { createViewer } from '/packages/core/render/viewer.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const wide = () => window.innerWidth > 900;
-const viewer = createViewer({ gl: $('gl'), overlay: $('ov'), opening: params.get('opening') || 'orb', title: 'Hermes · Neural Workflow', hideTitle: true, insetLeft: wide() ? 300 : 0, legendX: wide() ? 310 : 14, legendY: 132, clockY: 128 });
+// ?compat=1: draw exactly what the real Gource can show (for side-by-side comparison); ?chrome=0: no panels
+const compat = params.get('compat') === '1';
+const viewer = createViewer({ gl: $('gl'), overlay: $('ov'), compat, caption: !compat, legendX: wide() ? 310 : 14, legendY: 132, clockY: 128 });
+if (params.get('chrome') === '0') document.body.classList.add('bare');
 window.__NW = viewer;
 let T = null;
 let ws = null;
 let logShown = -1;
-
-function setOpening(o) {
-  viewer.setOpening(o);
-  $('op-orb').setAttribute('aria-pressed', String(o === 'orb'));
-  $('op-graph').setAttribute('aria-pressed', String(o === 'graph'));
-}
-$('op-orb').onclick = () => { setOpening('orb'); viewer.setTime(0); viewer.play(); };
-$('op-graph').onclick = () => { setOpening('graph'); viewer.setTime(0); viewer.play(); };
-setOpening(viewer.opening);
 
 function load(events, opts) {
   T = createTimeline(events);
@@ -87,7 +81,7 @@ $('t').oninput = (e) => { if (!T) return; viewer.setLive(false); viewer.pause();
 $('zi').onclick = () => viewer.zoom(1.2);
 $('zo').onclick = () => viewer.zoom(1 / 1.2);
 $('reset').onclick = () => viewer.reset();
-$('close-ins').onclick = () => { $('inspector').hidden = true; viewer.sel = null; };
+$('close-ins').onclick = () => { $('inspector').hidden = true; viewer.select(null); };
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   if (e.code === 'Space') { e.preventDefault(); $('play').click(); }
@@ -111,22 +105,22 @@ function drawTicks() {
 function fitChrome() {
   const top = document.querySelector('.bar.top').getBoundingClientRect().bottom;
   const w = wide();
-  viewer.setInsets({ insetLeft: w ? 300 : 0, legendX: w ? 310 : 14, legendY: w ? Math.max(132, top + 40) : top + 42, clockY: w ? Math.max(128, top + 36) : top + 22, captionBottom: (window.innerHeight - document.querySelector('.bar.bottom').getBoundingClientRect().top) + 40 });
+  if (document.body.classList.contains('bare')) { viewer.setInsets({ insetLeft: 0, insetTop: 0, insetBottom: 0, legendX: 20, legendY: 22, clockY: 20, captionBottom: 34 }); return; }
+  const bottom = window.innerHeight - document.querySelector('.bar.bottom').getBoundingClientRect().top;
+  viewer.setInsets({ insetLeft: w ? 300 : 0, insetTop: top + 8, insetBottom: bottom + 8, legendX: w ? 320 : 14, legendY: top + 28, clockY: top + 24, captionBottom: bottom + 30 });
 }
 fitChrome();
 window.addEventListener('resize', () => { drawTicks(); fitChrome(); });
 
 // ---- inspector + process log
-viewer.onSelect = (id, n) => {
-  if (!id || !n || !T) { $('inspector').hidden = true; return; }
-  const evs = T.events.map((e, i) => ({ e, i })).filter(({ e }) => {
-    const ids = [e.agent && 'agent:' + e.agent, e.tool && 'tool:' + e.agent + ':' + e.tool, e.resource && ('file:' + e.resource), e.resource && ('res:' + e.resource), e.name && ('test:' + e.agent + ':' + e.name)];
-    return ids.includes(id) || (id === 'hermes' && (e.type.startsWith('hermes') || e.type.startsWith('task') || e.agent === 'hermes'));
-  }).slice(-12);
-  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  $('ins').innerHTML = '<div class="kind">' + esc((KINDS[n.kind] || {}).label || n.kind) + ' · ' + esc(n.status) + '</div><h3>' + esc(n.label) + '</h3>' +
-    '<dl><dt>zdarzenia</dt><dd>' + n.hits + '</dd><dt>tokeny</dt><dd>' + n.tokens + '</dd><dt>latencja</dt><dd>' + (n.latencyMs ? n.latencyMs + ' ms' : '—') + '</dd><dt>pewność</dt><dd>' + (n.confidence != null ? Math.round(n.confidence * 100) + '%' : '—') + '</dd></dl>' +
-    (n.text ? '<p>' + esc(n.text) + '</p>' : '') + evs.map(({ e, i }) => '<div class="ev"><span class="k">' + (T.rel[i] / 1000).toFixed(1) + ' s · ' + esc(e.type) + '</span><br>' + esc(e.text || e.resource || e.tool || '') + '</div>').join('');
+viewer.onSelect = (id, info) => {
+  if (!id || !info || !T) { $('inspector').hidden = true; return; }
+  const esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  $('ins').innerHTML = '<div class="kind">' + (info.kind === 'file' ? 'plik' : info.sub) + ' · ' + esc(info.status) + '</div><h3>' + esc(info.label) + '</h3>' +
+    (info.kind === 'file' ? '<p class="path">' + esc(info.sub) + '</p>' : '') +
+    '<dl>' + info.stats.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join('') + '</dl>' +
+    '<div class="kind" style="margin-top:8px">co robił · ostatnie zdarzenia</div>' +
+    info.events.map((e) => '<div class="ev"><span class="k">' + (e.rel / 1000).toFixed(1) + ' s · ' + esc(e.type) + (e.who ? ' · ' + esc(e.who) : '') + '</span><br>' + esc(e.text) + '</div>').join('');
   $('inspector').hidden = false;
 };
 

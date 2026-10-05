@@ -1,63 +1,146 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { parseJsonl, validateEvent, createTimeline, layout, toGourceLines } from '../packages/core/index.js';
+import {
+  parseJsonl, validateEvent, createTimeline, toGourceLines, createPlayer, createActionStream, resourcePath,
+  gStringHash, gColourHash, gFileColour, gUserColour, inspect,
+} from '../packages/core/index.js';
+import { STEP } from '../packages/core/gource/sim.js';
 
 const runs = fs.readdirSync(new URL('../demo/runs/', import.meta.url)).filter((f) => f.endsWith('.jsonl'));
 const load = (f) => parseJsonl(fs.readFileSync(new URL('../demo/runs/' + f, import.meta.url), 'utf8'));
+const dur = (events) => (events[events.length - 1].ts - events[0].ts) / 1000;
+// positions of everything on screen, to compare two simulation states
+const snap = (s) => JSON.stringify({
+  t: s.tick,
+  d: s.dirs.filter((d) => !d.dead).map((d) => [d.path, d.x, d.y, d.r]),
+  f: s.files.filter((f) => !f.dead && !f.hidden).map((f) => [f.path, f.x, f.y, f.elapsed]),
+  u: s.users.filter((u) => !u.dead).map((u) => [u.id, u.x, u.y, u.pending.length, u.active.length]),
+  c: [s.cam.x, s.cam.y, s.cam.z],
+});
 
 test('schema rejects malformed events', () => {
   assert.equal(validateEvent({ type: 'nope', run: 'r', ts: 1 }).ok, false);
   assert.equal(validateEvent({ type: 'tool.started', run: 'r', ts: 1, agent: 'a' }).ok, false);
   assert.equal(validateEvent({ type: 'task.started', run: 'r', ts: 'not a date' }).ok, false);
   assert.equal(validateEvent({ type: 'task.started', run: 'r', ts: '2026-10-06T10:00:00Z' }).ok, true);
+  assert.equal(validateEvent({ type: 'workspace.scanned', run: 'r', ts: 1, agent: 'a', resource: 'repo' }).ok, false);
+  assert.equal(validateEvent({ type: 'workspace.scanned', run: 'r', ts: 1, agent: 'a', resource: 'repo', paths: ['a.js', 'src/b.js'] }).ok, true);
   const { events, errors } = parseJsonl('{"type":"task.started","run":"r","ts":2}\nnot json\n{"type":"task.completed","run":"r","ts":1}\n');
   assert.equal(errors.length, 1);
   assert.deepEqual(events.map((e) => e.ts), [1, 2]);
 });
 
+test('colour hash follows Gource (seed 31, XOR multiplier, normalised)', () => {
+  // by hand: 'js' -> 'j'(106)*(31^2=29) + 's'(115)*(31^1=30) = 3074 + 3450 = 6524
+  assert.equal(gStringHash('js'), 6524);
+  const c = gColourHash('js'); // (6524/7 % 255, 6524/3 % 255, 6524 % 255) = (167, 134, 149) normalised
+  const l = Math.hypot(167, 134, 149);
+  assert.deepEqual(c.map((v) => v.toFixed(6)), [167 / l, 134 / l, 149 / l].map((v) => v.toFixed(6)));
+  assert.deepEqual(gFileColour('src/Makefile'), [1, 1, 1]);
+  assert.deepEqual(gFileColour('a/b.js'), c);
+  gUserColour('Coder').forEach((v) => assert.ok(v >= 0.36 && v <= 0.9));
+});
+
+test('events map to Gource actions on workspace paths', () => {
+  assert.equal(resourcePath('https://socket.io/docs/v4/x?y#z', 'ws'), 'web/socket.io/docs/v4/x_z');
+  assert.equal(resourcePath('src/a.js', 'socket.io'), 'socket.io/src/a.js');
+  const S = createActionStream();
+  const ev = (o) => Object.assign({ run: 'r', ts: 0 }, o);
+  S.push(ev({ type: 'task.started', user: 'Ola' }), 0, 0);
+  S.push(ev({ type: 'workspace.scanned', agent: 'research', resource: 'repo', paths: ['a.js', 'lib/b.ts'] }), 1, 1);
+  S.push(ev({ type: 'file.modified', agent: 'coder', resource: 'lib/b.ts' }), 2, 2);
+  S.push(ev({ type: 'file.created', agent: 'coder', resource: 'lib/c.ts' }), 3, 3);
+  S.push(ev({ type: 'file.deleted', agent: 'coder', resource: 'a.js' }), 4, 4);
+  S.push(ev({ type: 'test.failed', agent: 'tester', name: 'x' }), 5, 5);
+  S.push(ev({ type: 'tool.started', agent: 'coder', tool: 'edit' }), 6, 6);
+  assert.deepEqual(S.actions.map((a) => [a.user, a.path, a.kind]), [
+    ['user', '/r/zadanie/opis.md', 'A'],
+    ['research', '/r/repo/a.js', 'R'], ['research', '/r/repo/lib/b.ts', 'R'],
+    ['coder', '/r/repo/lib/b.ts', 'M'], ['coder', '/r/repo/lib/c.ts', 'A'], ['coder', '/r/repo/a.js', 'D'],
+    ['tester', '/r/testy/x', 'F'],
+  ]);
+  assert.equal(S.label('user'), 'Ola');
+  assert.deepEqual(S.notes.map((n) => [n.kind, n.user, n.text]), [['tool', 'coder', 'edit']]);
+});
+
+test('files sit on Gource rings: centre, then 6, 9, 12 … per ring', () => {
+  const P = createPlayer();
+  const paths = Array.from({ length: 1 + 6 + 9 + 12 }, (_, i) => 'f' + i + '.txt');
+  P.load([{ run: 'r', ts: 0, type: 'workspace.scanned', agent: 'a', resource: 'w', paths }]);
+  const { s } = P.at(30);
+  const d = s.dirs.find((x) => x.path === '/r/w/');
+  const dist = d.files.map((fi) => Math.round(s.files[fi].dist));
+  const ring = (r) => dist.filter((x) => x === r).length;
+  assert.deepEqual([ring(0), ring(8), ring(16), ring(24)], [1, 6, 9, 12]);
+  // radius from the area of visible files: sqrt(n · π·4²) · 1.5
+  assert.ok(Math.abs(d.r - Math.sqrt(paths.length * 16 * Math.PI) * 1.5) < 1e-9);
+});
+
+test('directory tree only branches where paths diverge (Gource radix tree)', () => {
+  const P = createPlayer();
+  P.load([{ run: 'r', ts: 0, type: 'workspace.scanned', agent: 'a', resource: 'w', paths: ['a/b/c/x.js', 'a/b/d/y.js', 'z.md'] }]);
+  const { s } = P.at(20);
+  const live = s.dirs.filter((d) => !d.dead).map((d) => d.path).sort();
+  assert.deepEqual(live, ['/r/w/', '/r/w/a/b/', '/r/w/a/b/c/', '/r/w/a/b/d/']);
+  assert.equal(s.dirs[s.dirByPath['/r/w/a/b/']].token, 'a/b');
+});
+
 for (const f of runs) {
-  test('demo run ' + f + ' parses cleanly and ends completed', () => {
+  test('demo run ' + f + ' parses cleanly, ends completed, simulates without NaN', () => {
     const { events, errors } = load(f);
     assert.equal(errors.length, 0);
-    const T = createTimeline(events);
-    const s = T.stateAt(T.duration);
-    assert.equal(s.task.status, 'done');
-    assert.ok(s.nodes.hermes && s.nodes.result);
+    assert.equal(events[events.length - 1].type, 'task.completed');
+    const P = createPlayer();
+    P.load(events);
+    const { s } = P.at(dur(events) + 2);
+    assert.ok(s.files.some((x) => !x.hidden));
+    for (const d of s.dirs) assert.ok(Number.isFinite(d.x + d.y + d.r), d.path);
+    for (const u of s.users) assert.ok(Number.isFinite(u.x + u.y), u.id);
   });
 
-  test('stateAt is exact when scrubbing backwards (' + f + ')', () => {
+  test('scrubbing is exact: any order of seeks gives the same state as one pass (' + f + ')', () => {
     const { events } = load(f);
-    const T = createTimeline(events);
-    for (const t of [T.duration, T.duration * 0.7, 1200, T.duration * 0.33, 0, T.duration * 0.9]) {
-      const scrubbed = JSON.stringify(T.stateAt(t));
-      const fresh = createTimeline(events.filter((e) => e.ts - events[0].ts <= t));
-      assert.equal(scrubbed, JSON.stringify(fresh.stateAt(t)), 'state differs at t=' + t);
-    }
-  });
-
-  test('layout is stable as the graph grows and finite (' + f + ')', () => {
-    const { events } = load(f);
-    const T = createTimeline(events);
-    const early = layout(T.stateAt(T.duration * 0.4));
-    const late = layout(T.stateAt(T.duration));
-    for (const id of Object.keys(early)) assert.deepEqual(early[id], late[id], id + ' moved');
-    for (const p of Object.values(late)) p.forEach((v) => assert.ok(Number.isFinite(v)));
+    const D = dur(events);
+    const A = createPlayer(); A.load(events);
+    const ts = [D, D * 0.7, 1.2, D * 0.33, 0.05, D * 0.9];
+    const seeks = ts.map((t) => snap(A.at(t).s));
+    ts.forEach((t, i) => {
+      const B = createPlayer(); B.load(events);
+      assert.equal(seeks[i], snap(B.at(t).s), 'state differs at t=' + t);
+    });
   });
 
   test('gource adapter writes valid custom-log lines (' + f + ')', () => {
     const { events } = load(f);
     const lines = toGourceLines(events);
     assert.ok(lines.length > 5);
-    for (const l of lines) assert.match(l, /^\d+\|[^|]+\|[AMD]\|\/[^|]+\|[0-9A-F]{6}$/);
+    for (const l of lines) assert.match(l, /^\d+\|[^|]+\|[AMD]\|\/[^|]+$/);
   });
 }
 
-test('impulses only come from events (every pulse references existing nodes)', () => {
+test('LIVE: appending events one by one equals loading them at once', () => {
+  const { events } = load('repo-fix.jsonl');
+  const part = events.slice(0, 60);
+  const t = (part[part.length - 1].ts - part[0].ts) / 1000 + 1;
+  const A = createPlayer(); A.load(part);
+  const B = createPlayer(); B.load([]);
+  for (const ev of part) { B.append(ev); B.at(Math.max(0, (ev.ts - part[0].ts) / 1000 - 0.3)); }
+  assert.equal(snap(A.at(t).s), snap(B.at(t).s));
+});
+
+test('inspector tells what a file and an agent did', () => {
   const { events } = load('repo-fix.jsonl');
   const T = createTimeline(events);
-  for (let i = 0; i < events.length; i++) {
-    const s = T.stateAt(T.rel[i]);
-    for (const p of T.fxAt(i).pulses) { assert.ok(s.nodes[p.from], p.from); assert.ok(s.nodes[p.to], p.to); }
-  }
+  const P = createPlayer(); P.load(events);
+  const D = dur(events);
+  const mod = events.find((e) => e.type === 'file.modified');
+  const file = P.actions().find((a) => a.ev === events.indexOf(mod)).path;
+  const fi = inspect(P, T, 'file:' + file, D);
+  assert.equal(fi.kind, 'file');
+  assert.ok(fi.events.some((e) => e.type === 'file.modified'));
+  const ui = inspect(P, T, 'user:coder', D);
+  assert.equal(ui.label, 'Coder');
+  assert.ok(ui.events.length > 3);
+  assert.ok(STEP > 0);
 });

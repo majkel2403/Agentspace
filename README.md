@@ -1,14 +1,32 @@
 # Agentspace — Hermes · Neural Workflow
 
-Przestrzeń 3D, w której widać, jak Hermes (orchestrator) prowadzi agentów przez zadanie.
-Zasada: **zero fałszywej animacji** — każdy węzeł, linia, impuls, fala i rozbłysk pochodzi z prawdziwego zdarzenia
-w logu przebiegu. „5D” = 3D + czas (LIVE / REPLAY z przewijaniem) + stan (rozmiar, światło, ruch wynikają z liczby
-zdarzeń, opóźnień, tokenów i pewności).
+Przebieg pracy Hermesa i jego agentów pokazany tak, jak [Gource](https://github.com/acaudwell/Gource) pokazuje historię
+repozytorium: **drzewo to przestrzeń robocza** (pliki repo, strony WWW, pamięć, wywołania MCP, testy, wyniki), a **Hermes i
+agenci to awatary**, które podlatują do tego, co czytają lub zmieniają, i strzelają w to promieniami.
+Zasada: **zero fałszywej animacji** — każdy plik, promień i błysk pochodzi z prawdziwego zdarzenia w logu przebiegu;
+ruch układu to fizyka Gource (gałęzie odpychają się, pliki układają w pierścienie), a nie dekoracja.
+
+Renderer jest napisany od zera (JS + WebGL, bez bibliotek) według zachowania Gource 0.54: drzewo katalogów, które rozgałęzia
+się tylko tam, gdzie ścieżki się rozchodzą; pliki w pierścieniach (6, 9, 12 … na pierścień) kolorowane hashem rozszerzenia;
+krawędzie jako krzywe z opóźnionym punktem kontrolnym; poświata (bloom) wokół katalogów; awatary z siłami przyciągania do plików;
+promienie akcji; kamera, która sama obejmuje całe drzewo; klucz rozszerzeń i data jak w Gource. Kod Gource nie jest
+kopiowany ani dołączany — prawdziwy Gource służy tylko jako wzorzec do porównania (`tools/compare-gource.mjs`).
+
+| Promień | Znaczenie |
+| --- | --- |
+| zielony | utworzenie pliku (jak w Gource) |
+| pomarańczowy | zmiana pliku (jak w Gource) |
+| czerwony | usunięcie (jak w Gource) |
+| niebieski | odczyt (dodatek: agenci dużo czytają) |
+| jasnozielony / czerwony błysk | test zaliczony / nieudany |
+| cienki promień między awatarami | wiadomość między agentami (kolor = ton) |
+
+Pod awatarem widać narzędzie, którego agent właśnie używa (np. `edit`, `terminal`).
 
 ```
 Hermes / Jarvis ──► Event Bus ──► server (Workflow Recorder) ──► Event Store (data/runs/<run>.jsonl)
                                         │
-                                        └─► WebSocket /live ──► viewer 3D (Graph State → WebGL)
+                                        └─► WebSocket /live ──► viewer (akcje → symulacja Gource → WebGL)
 ```
 
 ## Uruchomienie
@@ -20,10 +38,10 @@ npm install
 npm start                 # http://127.0.0.1:4777  (PORT, HOST w zmiennych środowiskowych)
 ```
 
-W przeglądarce: wybór przebiegu, przełącznik pierwszego kadru **„Orb → graf”** (z daleka kula cząstek Hermesa,
-zbliżenie odsłania workflow) albo **„Od razu graf”**, oś czasu (0.25× / 1× / 4× / 10×, przewijanie w obie strony),
-Process Log, inspektor po kliknięciu w węzeł, „Wczytaj log (.jsonl)” do odtworzenia własnego przebiegu.
-Kadr można też wybrać w adresie: `/?opening=graph`.
+W przeglądarce: wybór przebiegu, oś czasu (0.25× / 1× / 4× / 10×, dokładne przewijanie w obie strony — symulacja ma
+punkty kontrolne co sekundę), Process Log, inspektor po kliknięciu w plik lub awatar (co dokładnie robił), przeciąganie
+przesuwa widok, kółko przybliża, „Wczytaj log (.jsonl)” odtwarza własny przebieg. `/?chrome=0` pokazuje samą scenę,
+`/?compat=1` rysuje tylko to, co umie pokazać prawdziwy Gource (do porównań).
 
 Przebieg na żywo z zapisanego logu (symulacja producenta):
 
@@ -68,36 +86,51 @@ Jedna linia JSONL = jedno zdarzenie (walidacja: `packages/core/events.js`).
 | `parent` | agent-rodzic (`agent.spawned`) |
 | `name` | nazwa testu / bramki MCP-API |
 | `text` | opis dla człowieka (log, inspektor) |
-| `latencyMs`, `tokens`, `confidence` | metryki, sterują rozmiarem, światłem i energią |
+| `paths` | lista ścieżek (`workspace.scanned`, np. wynik `git ls-files`) |
+| `latencyMs`, `tokens`, `confidence` | metryki (inspektor) |
 
 Typy: `task.started|completed|failed`, `hermes.reasoning`, `planner.step`,
 `agent.spawned|waiting|completed|failed`, `tool.started|completed|failed`, `resource.read|written`,
 `file.read|created|modified|deleted`, `memory.read|write`, `gateway.call`, `test.started|passed|failed`,
-`message.sent`, `result.returned`, `error`.
+`message.sent`, `result.returned`, `error`, `workspace.scanned`.
 
-Słownik wizualny: Hermes = duży Orb cząstek (rozumowanie = cząstki w środku), agent = mniejszy orb z własną orbitą,
-narzędzie = węzeł geometryczny, plik = liść, MCP/API = portal, zdarzenie = foton biegnący po krawędzi,
-błąd = czerwona fala uderzeniowa, sukces = fala wracająca przez graf.
+Jak zdarzenia stają się drzewem: zasób bez schematu → `<przestrzeń>/<ścieżka>` (nazwa przestrzeni z ostatniego
+`workspace.scanned`, domyślnie `projekt`), URL → `web/<host>/…`, pamięć → `pamięć/…`, MCP → `mcp/<nazwa>/…`,
+testy → `testy/<nazwa>`, zadanie → `zadanie/opis.md`, plan i rozumowanie Hermesa → `hermes/…`, zespół → `zespol/<agent>.md`,
+wynik → `wynik/raport.md`. `workspace.scanned` pokazuje całe prawdziwe drzewo repozytorium przez jedno zdarzenie.
 
-## Gource
+## Prawdziwy Gource (wzorzec i prototyp)
 
-Adapter zamienia log zdarzeń na custom log Gource (`timestamp|user|A/M/D|/run/hermes/agent/tool/zasób|kolor`):
+Adapter zapisuje ten sam strumień akcji co viewer jako log Gource (`timestamp|user|A/M/D|ścieżka`, odczyty i testy jako M):
 
 ```bash
-node adapters/to-gource.mjs demo/runs/repo-fix.jsonl > repo-fix.gource.log
-gource --log-format custom repo-fix.gource.log
+node adapters/to-gource.mjs demo/runs/repo-fix.jsonl > repo-fix.gource.log      # czas ×100
+gource --log-format custom --seconds-per-day 864 --key repo-fix.gource.log
 # na żywo:
-tail -f data/runs/<run>.jsonl | node adapters/to-gource.mjs --stream | gource --log-format custom --realtime -
+tail -n +1 -f data/runs/<run>.jsonl | node adapters/to-gource.mjs --stream | gource --log-format custom --realtime -
 ```
+
+Porównanie klatka w klatkę (wymaga `gource`, `xvfb-run`, `ffmpeg`, Playwright i `npm start`):
+
+```bash
+node tools/compare-gource.mjs repo-fix 6,12,20,30,44 /tmp/porownanie
+```
+
+Zapisuje pary obrazów (Gource po lewej, nasz renderer po prawej) i miarę SSIM rozmytych klatek.
 
 ## Struktura
 
-- `packages/core/` — schemat zdarzeń, reduktor i oś czasu (`stateAt`, migawki do przewijania wstecz),
-  deterministyczny układ 3D, adapter Gource, renderer (WebGL bez bibliotek + awaryjny Canvas 2D, nakładka 2D).
+- `packages/core/` — schemat zdarzeń, oś czasu, `gource/` (kolory, zdarzenia → akcje, deterministyczna symulacja,
+  odtwarzacz z punktami kontrolnymi, opis klatki, WebGL + awaryjny Canvas 2D, napisy, inspektor), `render/viewer.js`.
+  `manifest.json` podaje kolejność plików do budowy bez modułów (artefakt).
 - `server/` — ingest (HTTP / WS / STDIN), Event Store, LIVE fan-out, REPLAY.
 - `web/` — viewer.
-- `demo/` — zapisane przebiegi (`runs/*.jsonl`, generowane przez `npm run demo:build`) i emiter na żywo.
+- `demo/` — zapisane przebiegi (`runs/*.jsonl`, generowane przez `npm run demo:build`), lista plików prawdziwego
+  repozytorium socket.io (`workspaces/socket.io.txt`) i emiter na żywo. `npm run demo:build -- --workspace <katalog>`
+  buduje przebieg „napraw repo” na drzewie dowolnego repozytorium git (np. własnego).
+- `web/fonts/` — FreeSans (GNU FreeFont, GPL z wyjątkiem dla czcionek), ta sama czcionka co w Gource.
 - `test/` — `npm test` (schemat, przewijanie, układ, adapter Gource, serwer).
 
-Przebiegi w `demo/runs` są wygenerowanymi scenariuszami, nie zapisem prawdziwego Jarvisa — po podłączeniu producenta
-jego przebiegi trafiają do `data/runs/`.
+Przebiegi w `demo/runs` są wygenerowanymi scenariuszami, nie zapisem prawdziwego Jarvisa. W „napraw repo” drzewo plików
+jest prawdziwe (socket.io), ale błąd i poprawka w historii są demonstracyjne. Po podłączeniu producenta jego przebiegi
+trafiają do `data/runs/`.

@@ -13,7 +13,8 @@
 //   parent      string — explicit parent agent id (agent.spawned)
 //   name        string — test / gateway name
 //   text        string — human-readable description (shown in the log and the inspector)
-//   latencyMs, tokens, confidence (0..1) — optional metrics, drive the "5th dimension" (size, light, energy)
+//   paths       string[] — workspace.scanned: paths listed in the workspace (e.g. `git ls-files`), max 5000
+//   latencyMs, tokens, confidence (0..1) — optional metrics (shown in the inspector)
 
 export const EVENT_TYPES = {
   'task.started': { need: [] },
@@ -43,28 +44,9 @@ export const EVENT_TYPES = {
   'message.sent': { need: ['agent', 'to'] },
   'result.returned': { need: ['agent'] },
   'error': { need: [] },
+  'workspace.scanned': { need: ['agent', 'resource'] },
 };
 
-// Visual vocabulary per node kind (also used by the legend).
-export const KINDS = {
-  user: { label: 'Użytkownik', color: '#C9D3F2' },
-  hermes: { label: 'Hermes Core', color: '#F2C14E' },
-  planner: { label: 'Planner', color: '#FFD98A' },
-  agent: { label: 'Agent', color: '#6DB6FF' },
-  tool: { label: 'Narzędzie', color: '#4FF0D8' },
-  file: { label: 'Plik', color: '#9FE3FF' },
-  resource: { label: 'Zasób', color: '#B7A6FF' },
-  memory: { label: 'Pamięć', color: '#FF9FD8' },
-  gateway: { label: 'MCP / API', color: '#FFAE5C' },
-  test: { label: 'Test', color: '#8CFFB4' },
-  result: { label: 'Wynik', color: '#FFF1C2' },
-};
-
-// Colour of an impulse by event type (photon colour).
-export const PULSE = {
-  read: '#9FE3FF', write: '#FFAE5C', create: '#7CFF9A', delete: '#FF6B6B', message: '#D6BEFF',
-  tool: '#4FF0D8', result: '#FFE9A8', error: '#FF4D5E', success: '#B8FFD0', reasoning: '#F2C14E',
-};
 
 /** Normalise one raw event; returns { ok, event, error }. */
 export function validateEvent(raw) {
@@ -77,6 +59,9 @@ export function validateEvent(raw) {
   for (const k of spec.need) if (raw[k] == null || raw[k] === '') return { ok: false, error: raw.type + ' needs ' + k };
   const ev = Object.assign({}, raw, { ts, run: String(raw.run) });
   for (const k of ['latencyMs', 'tokens', 'confidence']) if (ev[k] != null && !Number.isFinite(Number(ev[k]))) delete ev[k];
+  if (ev.type === 'workspace.scanned') {
+    if (!Array.isArray(ev.paths) || ev.paths.length > 5000 || ev.paths.some((p) => typeof p !== 'string' || !p)) return { ok: false, error: 'workspace.scanned needs paths: string[] (max 5000)' };
+  }
   return { ok: true, event: ev };
 }
 

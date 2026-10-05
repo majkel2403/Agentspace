@@ -37,12 +37,31 @@ function hashVec(str) {
   const l = len(x, y);
   return l > 0 ? [x / l, y / l] : [x, y];
 }
-// deterministic replacement for Gource's rand() nudge when two things sit on the same spot
-function nudge(a, b, tick) {
-  const h = gStringHash(a + '|' + b + '|' + tick);
-  const x = (h % 100) - 50; const y = (Math.floor(h / 100) % 100) - 50;
-  const l = len(x, y) || 1;
-  return [x / l, y / l];
+// Gource breaks ties (two things on the same spot) with rand(), never seeded, i.e. glibc's generator with seed 1.
+// The same sequence here reproduces which way the first branches grow. State lives in the sim (cloned with it).
+function rngSeed1() {
+  const r = [1];
+  for (let i = 1; i < 31; i++) {
+    const hi = Math.floor(r[i - 1] / 127773); const lo = r[i - 1] % 127773;
+    let w = 16807 * lo - 2836 * hi;
+    if (w < 0) w += 2147483647;
+    r.push(w);
+  }
+  for (let i = 31; i < 34; i++) r.push(r[i - 31]);
+  for (let i = 34; i < 344; i++) r.push((r[i - 31] + r[i - 3]) >>> 0);
+  return { r: r.slice(-34), i: 0 };
+}
+export function gRand(s) {
+  const g = s.rng; const r = g.r; const n = r.length;
+  const v = (r[(g.i + n - 31) % n] + r[(g.i + n - 3) % n]) >>> 0;
+  r[g.i] = v; g.i = (g.i + 1) % n;
+  return v >>> 1;
+}
+// normalise(vec2((rand() % 100) - 50, (rand() % 100) - 50)); GCC evaluates the second argument first
+function nudge(s) {
+  const y = (gRand(s) % 100) - 50; const x = (gRand(s) % 100) - 50;
+  const l = len(x, y);
+  return l > 0 ? [x / l, y / l] : [x, y];
 }
 
 export function createSim(opts) {
@@ -54,7 +73,7 @@ export function createSim(opts) {
     acts: [], msgs: [],
     key: {},
     cam: { x: 0, y: 0, z: -300, dx: 0, dy: 0, dz: -300, px: 0, py: 0, pz: -300 },
-    rot: 0, rotLeft: 0, idle: 0,
+    rot: 0, rotLeft: 0, idle: 0, rng: rngSeed1(), keyT: 1, keyEnt: {},
     dirBounds: null, userBounds: null,
   };
 }
@@ -324,20 +343,48 @@ function forceToFile(s, u, f) {
   const fx = f.x + d.x; const fy = f.y + d.y;
   const dx = fx - u.x; const dy = fy - u.y;
   const dist = len(dx, dy);
-  if (dist < 0.001) { const n = nudge(u.id, f.path, s.tick); u.ax += n[0]; u.ay += n[1]; return; }
+  if (dist < 0.001) { const n = nudge(s); u.ax += n[0]; u.ay += n[1]; return; }
   if (dist < ACTION_DIST) { u.ax -= (ACTION_DIST - dist) * dx / dist; u.ay -= (ACTION_DIST - dist) * dy / dist; return; }
   if (dist > BEAM_DIST) { u.ax += (dist - BEAM_DIST) * dx / dist; u.ay += (dist - BEAM_DIST) * dy / dist; }
 }
-function userForces(s, u) {
-  // repel other users whose avatar overlaps this one (Gource looks them up in a quadtree of avatar bounds)
+// Gource finds users to push away with a quadtree of avatar bounds (one item per leaf, depth 1 while the tree is
+// small, 6 later) and pushes every user found in the leaves that touch this avatar, so busy users keep space.
+function userTree(s, list) {
   const hw = USER_SIZE * 0.5; const hh = hw * USER_RATIO;
+  const b = s.userBounds;
+  const db = s.dirBounds;
+  const maxDepth = db && (db.x1 - db.x0) * (db.y1 - db.y0) > 10000 ? 6 : 1;
+  const root = { x0: b.x0 - 1, y0: b.y0 - 1, x1: b.x1 + 1, y1: b.y1 + 1, depth: 0, items: [], kids: null };
+  const over = (n, u) => !(u.x - hw > n.x1 || u.x + hw < n.x0 || u.y - hh > n.y1 || u.y + hh < n.y0);
+  const add = (n, u) => {
+    if (!n.kids && (n.depth >= maxDepth || n.items.length < 1)) { n.items.push(u); return; }
+    if (!n.kids) {
+      const mx = (n.x0 + n.x1) / 2; const my = (n.y0 + n.y1) / 2; const d = n.depth + 1;
+      n.kids = [{ x0: n.x0, y0: n.y0, x1: mx, y1: my }, { x0: mx, y0: n.y0, x1: n.x1, y1: my }, { x0: n.x0, y0: my, x1: mx, y1: n.y1 }, { x0: mx, y0: my, x1: n.x1, y1: n.y1 }]
+        .map((k) => Object.assign(k, { depth: d, items: [], kids: null }));
+      const old = n.items; n.items = [];
+      for (const o of old) for (const k of n.kids) if (over(k, o)) add(k, o);
+    }
+    for (const k of n.kids) if (over(k, u)) add(k, u);
+  };
+  for (const u of list) add(root, u);
+  return (u) => {
+    const out = new Set();
+    const visit = (n) => {
+      if (n.items.length) { for (const o of n.items) out.add(o); return; }
+      if (n.kids) for (const k of n.kids) if ((k.items.length || k.kids) && over(k, u)) visit(k);
+    };
+    visit(root);
+    return out;
+  };
+}
+function userForces(s, u, near) {
   const count = u.pending.length + u.active.length;
   const want = count === 0 ? PERSONAL : (u.pending.length && !u.active.length) ? PERSONAL * 0.1 : PERSONAL * 0.5;
-  for (const v of s.users) {
-    if (v === u || v.dead) continue;
-    if (Math.abs(v.x - u.x) > 2 * hw || Math.abs(v.y - u.y) > 2 * hh) continue;
+  for (const v of near(u)) {
+    if (v === u) continue;
     const dx = v.x - u.x; const dy = v.y - u.y; const dist = len(dx, dy);
-    if (dist < 0.001) { const n = nudge(u.id, v.id, s.tick); u.ax += n[0]; u.ay += n[1]; continue; }
+    if (dist < 0.001) { const n = nudge(s); u.ax += n[0]; u.ay += n[1]; continue; }
     if (dist < want) { u.ax -= (want - dist) * dx / dist; u.ay -= (want - dist) * dy / dist; }
   }
   if (!u.active.length && !u.pending.length) return;
@@ -389,7 +436,7 @@ function applyDirForce(s, d, o, tick) {
   const d2 = dx * dx + dy * dy; const sum = d.r + o.r;
   if (d2 - sum * sum > 0) return;
   const pd = Math.sqrt(d2);
-  if (pd < 0.00001) { const n = nudge(d.path, o.path, tick); d.ax += n[0]; d.ay += n[1]; return; }
+  if (pd < 0.00001) { const n = nudge(s); d.ax += n[0]; d.ay += n[1]; return; }
   const dist = pd - d.r - o.r;
   d.ax += dist * dx / pd; d.ay += dist * dy / pd;
 }
@@ -518,10 +565,18 @@ function grow(b, x0, y0, x1, y1) {
   return b;
 }
 function processAction(s, ctx, a) {
+  // a path ending in '/' is a directory: Gource only deletes everything under it, other actions are ignored
+  if (a.path.endsWith('/')) {
+    if (a.kind !== 'D') return;
+    const under = s.files.filter((f) => !f.dead && f.dirPath.indexOf(a.path) === 0);
+    for (const f of under) processAction(s, ctx, { t: a.t, user: a.user, path: f.path, kind: 'D', ev: a.ev });
+    return;
+  }
   let fi = s.fileByPath[a.path];
   if (fi === undefined) {
     if (a.kind === 'D') return;
-    if (s.dirByPath[a.path + '/'] !== undefined) return;
+    const asDir = a.path + '/';
+    if (s.dirs.some((d) => !d.dead && d.path.indexOf(asDir) === 0)) return;
     fi = addFile(s, a.path).i;
   }
   let ui = s.userById[a.user];
@@ -562,9 +617,13 @@ export function step(s, ctx) {
   while (s.nextNote < N.length && N[s.nextNote].t <= s.t + 1e-9) processNote(s, ctx, N[s.nextNote++]);
   s.msgs = s.msgs.filter((m) => s.t - m.t0 < 1.5);
   updateBounds(s);
-  for (const u of s.users) if (!u.dead) userForces(s, u);
-  for (const u of s.users) {
-    if (u.dead) continue;
+  // Gource keeps users in a map ordered by name
+  const live = s.users.filter((u) => !u.dead).sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : a.i - b.i));
+  if (live.length) {
+    const near = userTree(s, live);
+    for (const u of live) userForces(s, u, near);
+  }
+  for (const u of live) {
     userLogic(s, u, dt);
     if (userIdle(u) && u.elapsed - u.last > USER_GONE) { u.dead = true; s.userById[u.id] = undefined; }
   }
@@ -575,8 +634,37 @@ export function step(s, ctx) {
     dirLogic(s, s.dirs[s.root], dt);
   }
   camera(s, dt);
+  keyLogic(s, dt);
   const idle = s.users.every((u) => u.dead || userIdle(u));
   s.idle = idle ? s.idle + dt : 0;
+}
+
+// file extension key: Gource re-sorts it once a second; entries fade and slide in, move to their new row over 1 s
+function keyLogic(s, dt) {
+  const E = s.keyEnt;
+  for (const ext in s.key) if (s.key[ext] > 0 && !E[ext]) E[ext] = { ext, alpha: 0, y: -1, src: -1, dest: -1, move: 1 };
+  s.keyT -= dt;
+  if (s.keyT <= 0) {
+    const list = Object.values(E).filter((e) => !((s.key[e.ext] || 0) <= 0 && e.alpha <= 0));
+    for (const ext in E) if (list.indexOf(E[ext]) < 0) delete E[ext];
+    list.sort((a, b) => (s.key[b.ext] || 0) - (s.key[a.ext] || 0) || (a.ext < b.ext ? -1 : a.ext > b.ext ? 1 : 0));
+    let row = 0;
+    for (const e of list) {
+      if ((s.key[e.ext] || 0) <= 0) continue;
+      row++;
+      if (e.dest !== row) { e.dest = row; e.src = e.y; e.move = 0; }
+    }
+    s.keyT = 1;
+  }
+  for (const ext in E) {
+    const e = E[ext];
+    const n = s.key[ext] || 0;
+    e.alpha = n <= 0 ? Math.max(0, e.alpha - dt) : Math.min(1, e.alpha + dt);
+    if (e.y !== e.dest) {
+      if (e.y < 0) e.y = e.dest;
+      else { e.move += dt; e.y = e.move >= 1 ? e.dest : e.src + (e.dest - e.src) * e.move; }
+    }
+  }
 }
 
 function camera(s, dt) {

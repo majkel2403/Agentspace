@@ -1,31 +1,36 @@
 // Canvas 2D fallback for a Gource frame (same order as the WebGL backend; bloom with 'lighter').
-import { makeAtlas, REG, ATLAS } from './gl.js';
+import { makeTextures } from './gl.js';
 
 export function createC2D(canvas) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
-  let atlas = null;
+  let tex = null;
   try {
     if (typeof OffscreenCanvas === 'function') {
-      atlas = new OffscreenCanvas(ATLAS, ATLAS);
-      atlas.getContext('2d').putImageData(new ImageData(makeAtlas(), ATLAS, ATLAS), 0, 0);
+      const T = makeTextures();
+      tex = {};
+      for (const k of ['file', 'user']) {
+        const c = new OffscreenCanvas(T[k].w, T[k].h);
+        c.getContext('2d').putImageData(new ImageData(T[k].px, T[k].w, T[k].h), 0, 0);
+        tex[k] = c;
+      }
     }
-  } catch (e) { atlas = null; }
+  } catch (e) { tex = null; }
   // tinted sprites are cached per colour (rounded) so files and users keep Gource's shading
   const tints = new Map();
   const tinted = (reg, r, g, b) => {
     const key = reg + ':' + Math.round(r * 20) + ',' + Math.round(g * 20) + ',' + Math.round(b * 20);
     let c = tints.get(key);
-    if (c || !atlas) return c || null;
-    const [x, y, w, h] = REG[reg];
-    c = new OffscreenCanvas(w, h);
+    if (c || !tex) return c || null;
+    const src = tex[reg];
+    c = new OffscreenCanvas(src.width, src.height);
     const t = c.getContext('2d');
-    t.drawImage(atlas, x, y, w, h, 0, 0, w, h);
+    t.drawImage(src, 0, 0);
     t.globalCompositeOperation = 'multiply';
     t.fillStyle = 'rgb(' + Math.round(r * 255) + ',' + Math.round(g * 255) + ',' + Math.round(b * 255) + ')';
-    t.fillRect(0, 0, w, h);
+    t.fillRect(0, 0, src.width, src.height);
     t.globalCompositeOperation = 'destination-in';
-    t.drawImage(atlas, x, y, w, h, 0, 0, w, h);
+    t.drawImage(src, 0, 0);
     if (tints.size > 400) tints.clear();
     tints.set(key, c);
     return c;
@@ -43,6 +48,8 @@ export function createC2D(canvas) {
     const cw = Math.round(W * dpr); const ch = Math.round(H * dpr);
     if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    try { ctx.imageSmoothingQuality = 'high'; } catch (e) { /* optional */ }
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = rgba(bg, 1);
     ctx.fillRect(0, 0, W, H);

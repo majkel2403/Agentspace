@@ -108,9 +108,9 @@ export function buildFrame(s, k, W, H, o) {
     }
   }
 
-  // file extension key
-  const exts = Object.keys(s.key).filter((e) => s.key[e] > 0).sort((a, b) => s.key[b] - s.key[a] || (a < b ? -1 : 1));
-  F.key = exts.map((e) => ({ ext: e, n: s.key[e], col: e ? colourOf(e, s) : [1, 1, 1] }));
+  // file extension key (animated in the simulation like Gource's: rows slide, entries fade)
+  F.key = Object.values(s.keyEnt).filter((e) => e.dest > 0 && e.alpha > 0)
+    .map((e) => ({ ext: e.ext, n: Math.max(0, s.key[e.ext] || 0), col: e.ext ? colourOf(e.ext, s) : [1, 1, 1], alpha: e.alpha, row: e.y }));
   return F;
 }
 

@@ -96,7 +96,7 @@ export function createViewer(opts) {
       caption = (ev.agent ? ev.agent + ' · ' : '') + ev.type + (ev.text ? ' — ' + ev.text : ev.resource ? ' — ' + ev.resource : ev.tool ? ' — ' + ev.tool : '');
       captionColor = ev.type.includes('fail') || ev.type === 'error' ? '#FF8F9A' : ev.type.includes('passed') || ev.type.includes('completed') ? '#B8FFD0' : '#E8ECF8';
     }
-    drawOverlay(octx, W, H, dpr, F, { legendX: opts.legendX, legendY: opts.legendY, clockY: opts.clockY, chrome: v.chrome, clock: v.T.t0 != null ? formatClock(v.T.t0 + Math.min(t, v.T.duration)) : '', title: opts.hideTitle ? '' : v.title, caption: v.chrome ? caption : '', captionColor });
+    drawOverlay(octx, W, H, dpr, F, { legendX: opts.legendX, legendY: opts.legendY, clockY: opts.clockY, captionBottom: opts.captionBottom, legend: opts.legend, chrome: v.chrome, clock: v.T.t0 != null ? formatClock(v.T.t0 + Math.min(t, v.T.duration)) : '', title: opts.hideTitle ? '' : v.title, caption: v.chrome ? caption : '', captionColor });
     ft = ft * 0.92 + (performance.now() - t0) * 0.08;
     n++;
     if (n % 60 === 0) {

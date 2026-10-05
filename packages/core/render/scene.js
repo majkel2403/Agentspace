@@ -39,6 +39,9 @@ export function createScene() {
     const fx = o.rm ? 0 : o.fx;
     const q = o.q == null ? 2 : o.q;
     prims.reset();
+    const us = clamp(Math.min(W, H) / 760, 0.45, 1);
+    prims.glow = us;
+    prims.glowA = 0.5 + 0.5 * us;
     const labels = [];
     const picks = [];
     if (cacheFor !== T) { cacheFor = T; posCache = {}; }

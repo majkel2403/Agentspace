@@ -111,7 +111,7 @@ function drawTicks() {
 function fitChrome() {
   const top = document.querySelector('.bar.top').getBoundingClientRect().bottom;
   const w = wide();
-  viewer.setInsets({ insetLeft: w ? 300 : 0, legendX: w ? 310 : 14, legendY: w ? Math.max(132, top + 40) : top + 42, clockY: w ? Math.max(128, top + 36) : top + 22 });
+  viewer.setInsets({ insetLeft: w ? 300 : 0, legendX: w ? 310 : 14, legendY: w ? Math.max(132, top + 40) : top + 42, clockY: w ? Math.max(128, top + 36) : top + 22, captionBottom: (window.innerHeight - document.querySelector('.bar.bottom').getBoundingClientRect().top) + 40 });
 }
 fitChrome();
 window.addEventListener('resize', () => { drawTicks(); fitChrome(); });

@@ -23,11 +23,13 @@ export function mix(a, b, k) {
 export function createPrims() {
   let S = new Float32Array(8 * 4096);
   let L = new Float32Array(13 * 4096);
-  const P = { ns: 0, nl: 0 };
+  // glow / glowA: scale of soft-light sprites, set per frame from the screen size (small screens = smaller, dimmer bloom)
+  const P = { ns: 0, nl: 0, glow: 1, glowA: 1 };
   P.sprites = () => S;
   P.lines = () => L;
   P.reset = () => { P.ns = 0; P.nl = 0; };
   P.sprite = (x, y, r, hex, a, shape) => {
+    if (shape === 0) { r *= P.glow; a *= P.glowA; }
     if (!(r > 0.2) || !(a > 0.003) || !Number.isFinite(x) || !Number.isFinite(y)) return;
     if (P.ns * 8 + 8 > S.length) { const n = new Float32Array(S.length * 2); n.set(S); S = n; }
     const c = rgb(hex);

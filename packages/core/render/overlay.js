@@ -60,7 +60,7 @@ export function drawOverlay(ctx, W, H, dpr, F, o) {
   let y = o.legendY || 16;
   const lx = o.legendX || 14;
   const order = ['hermes', 'planner', 'agent', 'tool', 'file', 'resource', 'test', 'memory', 'gateway', 'result'];
-  for (const k of order) {
+  for (const k of o.legend === false ? [] : order) {
     const n = F.counts[k];
     if (!n) continue;
     ctx.fillStyle = KINDS[k].color;
@@ -77,14 +77,15 @@ export function drawOverlay(ctx, W, H, dpr, F, o) {
   if (o.caption) {
     ctx.font = '500 13px ' + SANS;
     const tw = Math.min(W - 40, ctx.measureText(o.caption).width + 24);
-    pill(ctx, W / 2 - tw / 2, H - 42, tw, 26, 13);
+    const cb = o.captionBottom || 42;
+    pill(ctx, W / 2 - tw / 2, H - cb, tw, 26, 13);
     ctx.fillStyle = 'rgba(8,10,16,0.7)'; ctx.fill();
     ctx.fillStyle = o.captionColor || '#E8ECF8';
     ctx.textAlign = 'center';
     let text = o.caption;
     while (ctx.measureText(text).width > tw - 24 && text.length > 4) text = text.slice(0, -2);
     if (text !== o.caption) text = text.slice(0, -1) + '…';
-    ctx.fillText(text, W / 2, H - 28.5);
+    ctx.fillText(text, W / 2, H - cb + 13.5);
     ctx.textAlign = 'left';
   }
 }

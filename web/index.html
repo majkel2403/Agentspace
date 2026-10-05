@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hermes · Neural Workflow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/web/style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <canvas id="ov" aria-label="Przestrzeń workflow: przeciągnij, aby obrócić, kółkiem przybliż, kliknij węzeł, aby zobaczyć szczegóły" role="img"></canvas>
+</div>
+
+<header class="bar top">
+  <div class="brand">◆ HERMES <span>// Neural Workflow</span></div>
+  <label class="field">Przebieg
+    <select id="run"></select>
+  </label>
+  <div class="seg" role="group" aria-label="Pierwszy kadr">
+    <button id="op-orb" aria-pressed="true">Orb → graf</button>
+    <button id="op-graph" aria-pressed="false">Od razu graf</button>
+  </div>
+  <span id="live" class="badge" hidden>● LIVE</span>
+  <span id="status" class="muted"></span>
+  <label class="file">Wczytaj log (.jsonl)<input id="file" type="file" accept=".jsonl,.json,.ndjson,.txt"></label>
+</header>
+
+<aside id="log" class="panel left" aria-label="Process Log">
+  <h2>Process Log</h2>
+  <ol id="log-list"></ol>
+</aside>
+
+<aside id="inspector" class="panel right" aria-live="polite" hidden>
+  <button id="close-ins" class="x" aria-label="Zamknij">×</button>
+  <div id="ins"></div>
+</aside>
+
+<footer class="bar bottom">
+  <button id="play" class="pri" aria-label="Odtwórz">▶</button>
+  <button id="restart" aria-label="Od początku">⟲</button>
+  <div class="seg" role="group" aria-label="Prędkość">
+    <button data-speed="0.25">0.25×</button><button data-speed="1" aria-pressed="true">1×</button><button data-speed="4">4×</button><button data-speed="10">10×</button>
+  </div>
+  <div class="scrub"><canvas id="ticks" aria-hidden="true"></canvas><input id="t" type="range" min="0" max="1000" value="0" step="1" aria-label="Oś czasu"></div>
+  <span id="clock" class="mono"></span>
+  <div class="seg" role="group" aria-label="Kamera"><button id="zo" aria-label="Oddal">−</button><button id="zi" aria-label="Przybliż">+</button><button id="reset">Wyzeruj</button></div>
+</footer>
+<script type="module" src="/web/app.js"></script>
+</body>
+</html>

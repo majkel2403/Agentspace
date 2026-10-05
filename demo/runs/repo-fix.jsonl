@@ -1,0 +1,82 @@
+{"ts":1791280800000,"run":"repo-fix","type":"task.started","text":"Przeanalizuj repo, znajdź problem i go napraw.","user":"Michał"}
+{"ts":1791280800800,"run":"repo-fix","type":"hermes.reasoning","text":"Cel: znaleźć przyczynę błędu i dostarczyć poprawkę z testem.","tokens":820}
+{"ts":1791280801600,"run":"repo-fix","type":"memory.read","agent":"hermes","resource":"kontekst/ostatnie_zgloszenia","text":"Przypomnienie: zgłoszenie o zrywaniu połączenia mostu."}
+{"ts":1791280802400,"run":"repo-fix","type":"planner.step","text":"Plan: 1) rozpoznanie repo i zgłoszeń, 2) diagnoza w kodzie, 3) poprawka, 4) testy, 5) raport.","tokens":640}
+{"ts":1791280803200,"run":"repo-fix","type":"agent.spawned","agent":"research","label":"Research","text":"Zbiera kontekst: README, zgłoszenia, dokumentacja."}
+{"ts":1791280803600,"run":"repo-fix","type":"message.sent","agent":"hermes","to":"research","tone":"assign","text":"Zbierz kontekst: co robi most i co mówią zgłoszenia."}
+{"ts":1791280804300,"run":"repo-fix","type":"tool.started","agent":"research","tool":"repo_search","text":"Przeszukanie repozytorium."}
+{"ts":1791280804600,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"README.md"}
+{"ts":1791280804720,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"docs/architecture.md"}
+{"ts":1791280804840,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"docs/events.md"}
+{"ts":1791280804960,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"docs/deploy.md"}
+{"ts":1791280805080,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"package.json"}
+{"ts":1791280805200,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"CHANGELOG.md"}
+{"ts":1791280805320,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":".env.example"}
+{"ts":1791280805440,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"src/index.js"}
+{"ts":1791280805560,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"src/bridge.js"}
+{"ts":1791280805680,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"src/server.js"}
+{"ts":1791280805800,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"src/events/bus.js"}
+{"ts":1791280805920,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"src/transport/ws.js"}
+{"ts":1791280806040,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"scripts/start.sh"}
+{"ts":1791280806160,"run":"repo-fix","type":"file.read","agent":"research","tool":"repo_search","resource":"docker-compose.yml"}
+{"ts":1791280806400,"run":"repo-fix","type":"tool.completed","agent":"research","tool":"repo_search","latencyMs":2100}
+{"ts":1791280806800,"run":"repo-fix","type":"gateway.call","agent":"research","name":"GitHub MCP","text":"Pobranie otwartych zgłoszeń.","latencyMs":640}
+{"ts":1791280807400,"run":"repo-fix","type":"resource.read","agent":"research","resource":"github/issues/41","text":"Most zrywa połączenie po 30 s bezczynności."}
+{"ts":1791280807900,"run":"repo-fix","type":"resource.read","agent":"research","resource":"github/issues/44"}
+{"ts":1791280808500,"run":"repo-fix","type":"tool.started","agent":"research","tool":"web_search","text":"Dokumentacja keep-alive dla WebSocket."}
+{"ts":1791280809400,"run":"repo-fix","type":"resource.read","agent":"research","tool":"web_search","resource":"https://developer.mozilla.org/WebSocket"}
+{"ts":1791280810000,"run":"repo-fix","type":"resource.read","agent":"research","tool":"web_search","resource":"https://github.com/websockets/ws#ping"}
+{"ts":1791280810600,"run":"repo-fix","type":"tool.completed","agent":"research","tool":"web_search","latencyMs":2100,"tokens":1900}
+{"ts":1791280811200,"run":"repo-fix","type":"agent.spawned","agent":"coder","label":"Coding","text":"Diagnozuje i poprawia kod."}
+{"ts":1791280811500,"run":"repo-fix","type":"message.sent","agent":"research","to":"coder","tone":"handoff","text":"Podejrzenie: brak ping/pong w bridge.js, timeout proxy 30 s."}
+{"ts":1791280812300,"run":"repo-fix","type":"tool.started","agent":"coder","tool":"read"}
+{"ts":1791280812600,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"src/bridge.js"}
+{"ts":1791280812870,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"src/server.js"}
+{"ts":1791280813140,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"src/events/bus.js"}
+{"ts":1791280813410,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"src/config.js"}
+{"ts":1791280813680,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"src/transport/ws.js"}
+{"ts":1791280813950,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"src/transport/http.js"}
+{"ts":1791280814220,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"src/events/schema.js"}
+{"ts":1791280814490,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"src/util/timer.js"}
+{"ts":1791280814760,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"src/util/log.js"}
+{"ts":1791280815030,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"test/bridge.test.js"}
+{"ts":1791280815300,"run":"repo-fix","type":"file.read","agent":"coder","tool":"read","resource":"test/server.test.js"}
+{"ts":1791280815600,"run":"repo-fix","type":"tool.completed","agent":"coder","tool":"read","latencyMs":3300}
+{"ts":1791280816100,"run":"repo-fix","type":"hermes.reasoning","text":"Diagnoza potwierdzona: połączenie bez heartbeat, proxy zamyka je po 30 s.","tokens":540,"confidence":0.82}
+{"ts":1791280816800,"run":"repo-fix","type":"memory.write","agent":"coder","resource":"kontekst/diagnoza","text":"Przyczyna: brak heartbeat w bridge.js."}
+{"ts":1791280817400,"run":"repo-fix","type":"tool.started","agent":"coder","tool":"edit"}
+{"ts":1791280818200,"run":"repo-fix","type":"file.modified","agent":"coder","tool":"edit","resource":"src/bridge.js","text":"Dodano ping co 15 s i obsługę pong.","tokens":1200}
+{"ts":1791280819000,"run":"repo-fix","type":"file.modified","agent":"coder","tool":"edit","resource":"src/config.js","text":"Nowa opcja heartbeatMs."}
+{"ts":1791280819600,"run":"repo-fix","type":"file.created","agent":"coder","tool":"edit","resource":"test/bridge.heartbeat.test.js","text":"Test regresyjny."}
+{"ts":1791280820200,"run":"repo-fix","type":"tool.completed","agent":"coder","tool":"edit","latencyMs":2800}
+{"ts":1791280820800,"run":"repo-fix","type":"agent.spawned","agent":"tester","label":"Tester","text":"Uruchamia testy i sprawdza regresje."}
+{"ts":1791280821000,"run":"repo-fix","type":"message.sent","agent":"coder","to":"tester","tone":"handoff","text":"Poprawka gotowa, uruchom testy mostu."}
+{"ts":1791280821600,"run":"repo-fix","type":"tool.started","agent":"tester","tool":"terminal","text":"npm test"}
+{"ts":1791280822100,"run":"repo-fix","type":"test.started","agent":"tester","name":"bridge.heartbeat"}
+{"ts":1791280822300,"run":"repo-fix","type":"test.started","agent":"tester","name":"bridge.reconnect"}
+{"ts":1791280823600,"run":"repo-fix","type":"test.passed","agent":"tester","name":"bridge.heartbeat","latencyMs":1500}
+{"ts":1791280824400,"run":"repo-fix","type":"test.failed","agent":"tester","name":"bridge.reconnect","text":"Po ponownym połączeniu timer ping nie jest czyszczony."}
+{"ts":1791280824600,"run":"repo-fix","type":"error","agent":"tester","text":"1 test nie przechodzi."}
+{"ts":1791280825000,"run":"repo-fix","type":"tool.completed","agent":"tester","tool":"terminal","latencyMs":3400}
+{"ts":1791280825400,"run":"repo-fix","type":"message.sent","agent":"tester","to":"coder","tone":"critique","text":"reconnect: wyciek timera po zerwaniu połączenia."}
+{"ts":1791280826200,"run":"repo-fix","type":"tool.started","agent":"coder","tool":"edit"}
+{"ts":1791280827000,"run":"repo-fix","type":"file.modified","agent":"coder","tool":"edit","resource":"src/bridge.js","text":"Czyszczenie timera w on(\"close\")."}
+{"ts":1791280827600,"run":"repo-fix","type":"tool.completed","agent":"coder","tool":"edit","latencyMs":1400}
+{"ts":1791280828000,"run":"repo-fix","type":"message.sent","agent":"coder","to":"tester","tone":"revision","text":"Poprawione, proszę o powtórkę."}
+{"ts":1791280828600,"run":"repo-fix","type":"tool.started","agent":"tester","tool":"terminal","text":"npm test"}
+{"ts":1791280829000,"run":"repo-fix","type":"test.started","agent":"tester","name":"bridge.heartbeat"}
+{"ts":1791280829300,"run":"repo-fix","type":"test.started","agent":"tester","name":"bridge.reconnect"}
+{"ts":1791280829600,"run":"repo-fix","type":"test.started","agent":"tester","name":"bus.dispatch"}
+{"ts":1791280829900,"run":"repo-fix","type":"test.started","agent":"tester","name":"server.health"}
+{"ts":1791280830400,"run":"repo-fix","type":"test.passed","agent":"tester","name":"bridge.heartbeat"}
+{"ts":1791280830900,"run":"repo-fix","type":"test.passed","agent":"tester","name":"bridge.reconnect"}
+{"ts":1791280831400,"run":"repo-fix","type":"test.passed","agent":"tester","name":"bus.dispatch"}
+{"ts":1791280831900,"run":"repo-fix","type":"test.passed","agent":"tester","name":"server.health"}
+{"ts":1791280832600,"run":"repo-fix","type":"tool.completed","agent":"tester","tool":"terminal","latencyMs":4000}
+{"ts":1791280833000,"run":"repo-fix","type":"agent.completed","agent":"tester"}
+{"ts":1791280833400,"run":"repo-fix","type":"result.returned","agent":"tester","text":"Wszystkie testy przechodzą (4/4)."}
+{"ts":1791280833900,"run":"repo-fix","type":"result.returned","agent":"coder","text":"Poprawka: heartbeat + czyszczenie timera."}
+{"ts":1791280834200,"run":"repo-fix","type":"agent.completed","agent":"coder"}
+{"ts":1791280834400,"run":"repo-fix","type":"agent.completed","agent":"research"}
+{"ts":1791280835000,"run":"repo-fix","type":"hermes.reasoning","text":"Składam raport: przyczyna, zmiana, dowód z testów.","tokens":700,"confidence":0.93}
+{"ts":1791280836000,"run":"repo-fix","type":"task.completed","text":"Naprawiono zrywanie połączenia mostu; testy 4/4."}

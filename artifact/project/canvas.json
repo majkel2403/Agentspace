@@ -2,6 +2,23 @@
   "v": 3,
   "attachments": {},
   "boards": {
+    "Hermes.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Hermes · Centrum dowodzenia (jedna aplikacja)",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "HermesMobile.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "Hermes · telefon",
+      "w": 390,
+      "x": 1520,
+      "y": 0
+    },
     "Main.dc.html": {
       "expand": "fill",
       "h": 1760,
@@ -26,23 +43,6 @@
       "w": 1440,
       "x": 0,
       "y": 2920
-    },
-    "Hermes.dc.html": {
-      "expand": "fill",
-      "h": 900,
-      "is_interactive": true,
-      "title": "Hermes · Centrum dowodzenia (jedna aplikacja)",
-      "w": 1440,
-      "x": 0,
-      "y": 0
-    },
-    "HermesMobile.dc.html": {
-      "h": 844,
-      "is_interactive": true,
-      "title": "Hermes · telefon",
-      "w": 390,
-      "x": 1520,
-      "y": 0
     }
   },
   "createdOnFiles": {
@@ -72,14 +72,6 @@
       "x": 1520,
       "y": 1040
     },
-    "shape-xrpsqy": {
-      "d": "M303.3 170.3 C233.1 170.3 107.3 172.4 45.6 210.5 C24.1 223.8 17.6 245 17.6 269.1 C17.6 275.3 18.1 281.8 18.8 288.4 C25.4 347.8 77 426.5 115.4 468.2 C176.5 534.6 300.4 620.4 381.2 650.8 C412.6 662.6 461.7 675.1 508 675.1 C537.6 675.1 566.1 669.9 587.9 656.1 C632.2 628.1 663.4 516 673.8 484.3 C688 441 699.8 396.9 711.4 352.8 C725.4 299.4 740.2 244.4 740.2 192.9 C740.2 133 720 77.9 655 36 C612.8 8.9 565.5 0 517.2 0 C468.8 0 419.5 8.9 373.1 17.3 C302.1 30.1 234.4 57.3 166.4 81.7 C150.5 87.4 133 90 118.1 97.8 C75.1 120.3 39.4 156.8 0 186.4",
-      "h": 675.1,
-      "kind": "pen",
-      "w": 740.2,
-      "x": 2123.4,
-      "y": 853.6
-    },
     "title": {
       "kind": "title1",
       "maxW": 1440,
@@ -92,7 +84,7 @@
       "fill": "blue",
       "maxH": 420,
       "size": 24,
-      "text": "Hermes to teraz jedna aplikacja: po lewej zlecenie dla Hermesa i lista przebiegów, na środku scena jak Gource (drzewo to przestrzeń robocza, awatary to agenci, promienie: zielony utworzenie, pomarańczowy zmiana, niebieski odczyt), z prawej studio — zespół, plan, rozmowy, edytor i terminal. U góry fazy przebiegu i odczyty, na dole oś czasu z fazami i kamera „Śledź pracę”. Zakładki Dziennik / Rozmowy / Pliki, kliknij plik lub agenta, aby zobaczyć, co robił; po zakończeniu otwórz Raport.",
+      "text": "Hermes to jedna aplikacja o jednym systemie wyglądu. Po lewej zlecenie dla Hermesa, lista przebiegów i dziennik; na środku scena jak Gource (drzewo to przestrzeń robocza, awatary to agenci, promienie: zielony utworzenie, pomarańczowy zmiana, niebieski odczyt); po prawej jedna kolumna z zakładkami: Zespół i plan, Kod i terminal, Rozmowy, Pliki, Inspektor, Raport — nic na nic nie nachodzi. Najedź na agenta lub plik w panelu, a zaświeci się na scenie. Układ sam zmienia się z szerokością: trzy kolumny, jedna kolumna boczna i wersja na telefon.",
       "w": 390,
       "x": 1990,
       "y": 0

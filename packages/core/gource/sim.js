@@ -20,11 +20,10 @@ const ACTION_DIST = 50;
 const PERSONAL = 100;
 const MAX_FILE_LAG = 5;
 const USER_IDLE = 3;
-const USER_GONE = 10;
 const FILENAME_TIME = 4;
 const NAME_TIME = 5;
-const MAX_USER_SPEED = 500;
-const PADDING = 1.1;
+const MAX_USER_SPEED = 300;
+const PADDING = 1.2;
 const ZOOM_MIN = 100;
 const ZOOM_MAX = 10000;
 export const SIM = { FILE_SIZE, USER_SIZE, USER_RATIO, FILENAME_TIME, NAME_TIME, USER_IDLE };
@@ -72,8 +71,10 @@ export function createSim(opts) {
     users: [], userById: {},
     acts: [], msgs: [],
     key: {},
-    cam: { x: 0, y: 0, z: -300, dx: 0, dy: 0, dz: -300, px: 0, py: 0, pz: -300 },
-    rot: 0, rotLeft: 0, idle: 0, rng: rngSeed1(), keyT: 1, keyEnt: {},
+    cam: { x: 0, y: 0, z: -ZOOM_MIN, dx: 0, dy: 0, dz: -ZOOM_MIN, px: 0, py: 0, pz: -ZOOM_MIN, vx: 0, vy: 0, vz: 0, tz: ZOOM_MIN, zinT: 0 },
+    rot: 0, rotLeft: 0, rotT: -1, rotDone: false, autoRotate: !(opts && opts.autoRotate === false),
+    revealQ: [], revealAcc: 0, scanBeamT: -1,
+    idle: 0, rng: rngSeed1(), keyT: 1, keyEnt: {},
     dirBounds: null, userBounds: null,
   };
 }
@@ -137,6 +138,13 @@ function nodeUpdated(s, d, user) {
   updateFilePositions(s, d);
   if (d.visible && !d.children.length && !d.files.length) d.visible = false;
   if (d.parent >= 0) nodeUpdated(s, s.dirs[d.parent], true);
+}
+// layout update for a quietly listed file: sizes and rings change, but no directory is marked as just changed
+// (no name labels or brightening up the whole branch)
+function quietUpdate(s, d) {
+  calcRadius(s, d);
+  updateFilePositions(s, d);
+  if (d.parent >= 0) quietUpdate(s, s.dirs[d.parent]);
 }
 function fileUpdated(s, d, user) {
   calcRadius(s, d);
@@ -251,8 +259,13 @@ function addFile(s, path) {
   if (s.root < 0) s.root = newDir(s, '/').i;
   dirAddFile(s, s.dirs[s.root], f);
   while (s.dirs[s.root].parent >= 0) s.root = s.dirs[s.root].parent;
-  s.key[f.ext] = (s.key[f.ext] || 0) + 1;
   return f;
+}
+// the extension key counts files on screen, so it grows with the tree
+function countKey(s, f) {
+  if (f.counted) return;
+  f.counted = true;
+  s.key[f.ext] = (s.key[f.ext] || 0) + 1;
 }
 function touchFile(s, f, t, kind) {
   if (f.forced || (f.removing && t < f.removedT)) return;
@@ -266,6 +279,7 @@ function touchFile(s, f, t, kind) {
     const d = s.dirs[f.dir];
     d.vis++; d.visible = true;
   }
+  countKey(s, f);
   fileUpdated(s, s.dirs[f.dir], true);
 }
 function removeFileLater(s, f, t) {
@@ -280,7 +294,7 @@ function deleteFile(s, f) {
     u.active = u.active.filter((ai) => s.acts[ai].f !== f.i);
   }
   delete s.fileByPath[f.path];
-  s.key[f.ext] = (s.key[f.ext] || 1) - 1;
+  if (f.counted) s.key[f.ext] = (s.key[f.ext] || 1) - 1;
   f.dead = true;
 }
 function fileLogic(s, f, dt) {
@@ -316,22 +330,32 @@ export function nameAlpha(interval, total) {
 }
 
 // ------------------------------------------------------------------------------------------- users
-function addUser(s, id, label) {
+function addUser(s, id, label, parentId) {
   const b = s.dirBounds;
-  const x = b && (b.x1 - b.x0) * (b.y1 - b.y0) > 0 ? (b.x0 + b.x1) / 2 : 0;
-  const y = b && (b.x1 - b.x0) * (b.y1 - b.y0) > 0 ? (b.y0 + b.y1) / 2 : 0;
+  let x = b && (b.x1 - b.x0) * (b.y1 - b.y0) > 0 ? (b.x0 + b.x1) / 2 : 0;
+  let y = b && (b.x1 - b.x0) * (b.y1 - b.y0) > 0 ? (b.y0 + b.y1) / 2 : 0;
+  // a new agent appears beside the one that spawned it instead of in the middle of the tree
+  const pi = parentId != null ? s.userById[parentId] : undefined;
+  if (pi !== undefined && !s.users[pi].dead) {
+    const hv = hashVec(id);
+    x = s.users[pi].x + hv[0] * USER_SIZE * 1.5; y = s.users[pi].y + hv[1] * USER_SIZE * 1.5;
+  }
   const u = {
-    i: s.users.length, id, label, col: gUserColour(label), x, y, px: x, py: y, ax: 0, ay: 0, elapsed: 0, last: 0,
+    i: s.users.length, id, label, col: gUserColour(label), x, y, px: x, py: y, ax: 0, ay: 0, vx0: 0, vy0: 0, elapsed: 0, last: 0,
     actInt: 0.2, nameInt: NAME_TIME, pending: [], active: [], tool: '', toolT: -1, toolState: '', flagT: -1, flag: '', dead: false,
+    want: PERSONAL, doneT: -1,
   };
   s.users.push(u);
   s.userById[id] = u.i;
   return u;
 }
 const userIdle = (u) => !u.active.length && !u.pending.length;
+// an idle agent dims to a quarter instead of vanishing, so it does not later re-enter from the middle of the tree
+const IDLE_ALPHA = 0.25;
 export function userAlpha(u) {
   let a = Math.min(u.elapsed / 1, 1);
-  if (u.elapsed - u.last > USER_IDLE) a = 1 - Math.min(u.elapsed - u.last - USER_IDLE, 1);
+  const idle = u.elapsed - u.last;
+  if (idle > USER_IDLE) a = Math.max(u.doneT >= 0 ? 0 : IDLE_ALPHA, 1 - Math.min(idle - USER_IDLE, 1));
   return a;
 }
 function userAddAction(s, u, ai) {
@@ -380,7 +404,10 @@ function userTree(s, list) {
 }
 function userForces(s, u, near) {
   const count = u.pending.length + u.active.length;
-  const want = count === 0 ? PERSONAL : (u.pending.length && !u.active.length) ? PERSONAL * 0.1 : PERSONAL * 0.5;
+  const target = count === 0 ? PERSONAL : (u.pending.length && !u.active.length) ? PERSONAL * 0.1 : PERSONAL * 0.5;
+  // personal space changes over ~0.5 s rather than jumping between 100 / 50 / 10
+  u.want += (target - u.want) * Math.min(1, STEP * 4);
+  const want = u.want;
   for (const v of near(u)) {
     if (v === u) continue;
     const dx = v.x - u.x; const dy = v.y - u.y; const dist = len(dx, dy);
@@ -401,30 +428,43 @@ function userLogic(s, u, dt) {
   const find = u.pending.length > 0 && u.actInt <= 0;
   for (let k = 0; k < u.pending.length;) {
     const a = s.acts[u.pending[k]];
-    if (a.t < s.t - MAX_FILE_LAG) { u.pending.splice(k, 1); a.rate = 2; u.active.push(a.i); continue; }
+    // overdue actions start one per step, not all at once
+    if (find && a.t < s.t - MAX_FILE_LAG) { u.pending.splice(k, 1); a.rate = 2; u.active.push(a.i); break; }
     if (!find) break;
     const f = s.files[a.f]; const d = s.dirs[f.dir];
     if (len(f.x + d.x - u.x, f.y + d.y - u.y) < BEAM_DIST) { u.pending.splice(k, 1); u.active.push(a.i); break; }
     k++;
   }
-  if (u.actInt <= 0) { const tot = u.pending.length + u.active.length; u.actInt = tot ? 1 / tot : 1; }
+  // beams start at an even pace (0.12–0.5 s apart) whatever the backlog
+  if (u.actInt <= 0) { const tot = u.pending.length + u.active.length; u.actInt = tot ? Math.max(ACT_GAP_MIN, Math.min(ACT_GAP_MAX, 1 / tot)) : 1; }
   for (let k = 0; k < u.active.length;) {
     const a = s.acts[u.active[k]];
     actionLogic(s, u, a, dt);
-    if (a.progress >= 1) { u.active.splice(k, 1); continue; }
+    if (a.progress >= 1) { u.active.splice(k, 1); s.acts[a.i] = DONE; continue; }
     k++;
   }
+  // limited acceleration and stronger friction: avatars glide between files instead of shooting off and overshooting
+  let dvx = u.ax - u.vx0; let dvy = u.ay - u.vy0;
+  const dv = len(dvx, dvy); const maxDv = USER_ACCEL * dt;
+  if (dv > maxDv) { dvx = dvx / dv * maxDv; dvy = dvy / dv * maxDv; }
+  u.ax = u.vx0 + dvx; u.ay = u.vy0 + dvy;
   const l2 = u.ax * u.ax + u.ay * u.ay;
   if (l2 > MAX_USER_SPEED * MAX_USER_SPEED) { const l = Math.sqrt(l2); u.ax = u.ax / l * MAX_USER_SPEED; u.ay = u.ay / l * MAX_USER_SPEED; }
   u.x += u.ax * dt; u.y += u.ay * dt;
-  const fr = Math.max(0, 1 - dt);
+  const fr = Math.exp(-USER_FRICTION * dt);
   u.ax *= fr; u.ay *= fr;
 }
+const DONE = { done: true, progress: 1, f: -1 };
+const ACT_GAP_MIN = 0.12;
+const ACT_GAP_MAX = 0.5;
+const USER_ACCEL = 700;
+const USER_FRICTION = 3;
 function actionLogic(s, u, a, dt) {
   if (a.progress >= 1) return;
   const f = s.files[a.f];
   if (a.progress === 0) touchFile(s, f, a.t, a.kind);
-  const rate = Math.min(10, a.rate * Math.max(1, u.pending.length));
+  // beam lasts 0.25–0.8 s; a long backlog speeds it up only moderately
+  const rate = Math.max(1.25, Math.min(4, a.rate * Math.max(1, u.pending.length)));
   const old = a.progress;
   a.progress = Math.min(a.progress + rate * dt, 1);
   if (a.kind === 'D' && old < 1 && a.progress >= 1) removeFileLater(s, f, a.t);
@@ -580,21 +620,58 @@ function processAction(s, ctx, a) {
     fi = addFile(s, a.path).i;
   }
   // 'S' (scan) silently reveals the file in the tree without a beam — workspace.scanned uses this
+  // the tree then grows from a queue at a steady rate (revealLogic), branch by branch in listing order
   if (a.kind === 'S') {
-    const f = s.files[fi];
-    if (f.hidden) {
-      f.hidden = false;
-      const d = s.dirs[f.dir];
-      d.vis++; d.visible = true;
-      fileUpdated(s, d, false);
-    }
+    if (s.files[fi].hidden) s.revealQ.push([fi, a.user, a.ev]);
     return;
   }
-  let ui = s.userById[a.user];
-  if (ui === undefined || s.users[ui].dead) ui = addUser(s, a.user, ctx.label(a.user)).i;
-  const act = { i: s.acts.length, u: ui, f: fi, t: s.t, kind: a.kind, progress: 0, rate: 0.5, ev: a.ev };
+  queueAction(s, ctx, a.user, fi, a.kind, a.ev);
+}
+function userFor(s, ctx, id) {
+  let ui = s.userById[id];
+  if (ui === undefined || s.users[ui].dead) ui = addUser(s, id, ctx.label(id), ctx.parent ? ctx.parent(id) : null).i;
+  return s.users[ui];
+}
+function queueAction(s, ctx, user, fi, kind, ev) {
+  const u = userFor(s, ctx, user);
+  const act = { i: s.acts.length, u: u.i, f: fi, t: s.t, kind, progress: 0, rate: 0.5, ev };
   s.acts.push(act);
-  userAddAction(s, s.users[ui], act.i);
+  userAddAction(s, u, act.i);
+}
+// steady growth: 20–90 files per second (≤ 2 per step), so a big listing builds up
+// over seconds instead of appearing at once; the scanning agent sweeps through it with one beam every 0.35 s
+const REVEAL_MIN = 20;
+const REVEAL_MAX = 90;
+const SCAN_BEAM = 0.35;
+// files per second: faster for a long backlog, but a small tree grows by at most ~60 % a second so the camera
+// can follow it smoothly
+function revealRate(s) {
+  const shown = s.root >= 0 ? s.dirs[s.root].area / FILE_AREA : 0;
+  return Math.max(REVEAL_MIN, Math.min(REVEAL_MAX, s.revealQ.length / 4, shown * 0.6));
+}
+function revealLogic(s, ctx, dt) {
+  const q = s.revealQ;
+  if (!q.length) { s.revealAcc = 0; return; }
+  const rate = revealRate(s);
+  s.revealAcc += rate * dt;
+  while (s.revealAcc >= 1 && q.length) {
+    s.revealAcc -= 1;
+    const [fi, user, ev] = q.shift();
+    const f = s.files[fi];
+    if (f.dead || !f.hidden) continue;
+    // a listed file appears quietly: no name label (only files an agent touches are named, as in Gource)
+    f.hidden = false; f.elapsed = 0; f.last = 0; f.nameInt = 0;
+    countKey(s, f);
+    const d = s.dirs[f.dir];
+    d.vis++; d.visible = true;
+    quietUpdate(s, d);
+    // a sample of the sweep, skipped while the agent is still busy, so it never builds a backlog
+    if (s.t - s.scanBeamT >= SCAN_BEAM) {
+      const ui = s.userById[user];
+      const busy = ui !== undefined && !s.users[ui].dead && s.users[ui].pending.length > 1;
+      if (!busy) { s.scanBeamT = s.t; queueAction(s, ctx, user, fi, 'R', ev); }
+    }
+  }
 }
 function processNote(s, ctx, n) {
   const ui = s.userById[n.user];
@@ -608,7 +685,7 @@ function processNote(s, ctx, n) {
   if (n.kind === 'tool') { u.tool = n.text || ''; u.toolT = s.t; u.toolState = 'run'; }
   else if (n.kind === 'tool-end') { u.toolState = 'done'; u.toolT = s.t; }
   else if (n.kind === 'tool-fail') { u.toolState = 'fail'; u.toolT = s.t; }
-  else { u.flag = n.kind; u.flagT = s.t; }
+  else { u.flag = n.kind; u.flagT = s.t; if (n.kind === 'done' || n.kind === 'fail') u.doneT = s.t; }
 }
 
 export function step(s, ctx) {
@@ -626,17 +703,20 @@ export function step(s, ctx) {
   while (s.next < A.length && A[s.next].t <= s.t + 1e-9) processAction(s, ctx, A[s.next++]);
   const N = ctx.notes;
   while (s.nextNote < N.length && N[s.nextNote].t <= s.t + 1e-9) processNote(s, ctx, N[s.nextNote++]);
+  revealLogic(s, ctx, dt);
   s.msgs = s.msgs.filter((m) => s.t - m.t0 < 1.5);
   updateBounds(s);
   // Gource keeps users in a map ordered by name
   const live = s.users.filter((u) => !u.dead).sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : a.i - b.i));
+  for (const u of live) { u.vx0 = u.ax; u.vy0 = u.ay; }
   if (live.length) {
     const near = userTree(s, live);
     for (const u of live) userForces(s, u, near);
   }
   for (const u of live) {
     userLogic(s, u, dt);
-    if (userIdle(u) && u.elapsed - u.last > USER_GONE) { u.dead = true; s.userById[u.id] = undefined; }
+    // only a finished agent leaves (after fading out); others stay dimmed where they last worked
+    if (userIdle(u) && u.doneT >= 0 && s.t - u.doneT > USER_IDLE && u.elapsed - u.last > USER_IDLE + 1) { u.dead = true; s.userById[u.id] = undefined; }
   }
   if (s.root >= 0) {
     const cand = [];
@@ -678,31 +758,69 @@ function keyLogic(s, dt) {
   }
 }
 
+// Overview camera that scales with the tree: it frames the directories plus the working avatars, looks ~1.5 s
+// ahead at files still queued to appear, zooms out at once but smoothly (critically damped, ≤ 30 % of the
+// distance per second) and zooms back in only after the tree has stayed clearly smaller for a while.
+const CAM_OMEGA = 4;
+const CAM_OMEGA_POS = 5;
+const ZOOM_RATE = 0.3;
+const ZOOM_IN_SHARE = 0.8;
+const ZOOM_IN_DELAY = 1.5;
+const ROT_TIME = 3;
+function cameraBounds(s) {
+  const db = s.dirBounds;
+  let b = db ? { ...db } : null;
+  // working avatars widen the frame, but only within a band around the tree: one flying in from afar must
+  // not swing the camera
+  const hw = USER_SIZE; const hh = hw * USER_RATIO; const band = USER_SIZE * 2;
+  const cl = (v, lo, hi) => (db ? Math.max(lo, Math.min(hi, v)) : v);
+  for (const u of s.users) {
+    if (u.dead || u.elapsed - u.last > USER_IDLE) continue;
+    const x = cl(u.x, db && db.x0 - band, db && db.x1 + band); const y = cl(u.y, db && db.y0 - band, db && db.y1 + band);
+    b = grow(b, x - hw, y - hh, x + hw, y + hh);
+  }
+  if (b && s.revealQ.length && s.root >= 0) {
+    const A = Math.max(FILE_AREA, s.dirs[s.root].area);
+    const soon = Math.min(s.revealQ.length, revealRate(s) * 1.5);
+    const k = Math.sqrt((A + soon * FILE_AREA) / A);
+    const cx = (b.x0 + b.x1) / 2; const cy = (b.y0 + b.y1) / 2;
+    const w = (b.x1 - b.x0) / 2 * k; const h = (b.y1 - b.y0) / 2 * k;
+    b = { x0: cx - w, y0: cy - h, x1: cx + w, y1: cy + h };
+  }
+  return b;
+}
 function camera(s, dt) {
   const c = s.cam;
-  const b = s.dirBounds;
+  const b = cameraBounds(s);
+  let want = ZOOM_MIN;
   if (b) {
     c.dx = (b.x0 + b.x1) / 2; c.dy = (b.y0 + b.y1) / 2;
     let w = (b.x1 - b.x0) * PADDING; let h = (b.y1 - b.y0) * PADDING;
-    if (s.aspect < 1) h /= s.aspect; else w /= s.aspect;
-    let dist = Math.max(w, h) / 2; // tan(45°) * 2 = 2
-    dist = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, dist));
-    c.dz = -dist;
-  } else { c.dx = 0; c.dy = 0; c.dz = -ZOOM_MIN; }
-  const ease = Math.min(1, dt * 3);
-  let ex = (c.dx - c.x) * ease; let ey = (c.dy - c.y) * ease; let ez = (c.dz - c.z) * ease;
-  const full2 = (c.dx - c.x) ** 2 + (c.dy - c.y) ** 2 + (c.dz - c.z) ** 2;
-  if (ex * ex + ey * ey + ez * ez > full2) { ex = c.dx - c.x; ey = c.dy - c.y; ez = c.dz - c.z; }
-  c.x += ex; c.y += ey; c.z += ez;
-  // automatic 90° turn when the tree grows long in the wrong direction for the screen
-  if (s.rotLeft > 0) {
-    const rate = Math.max(dt, 1 - Math.abs(s.rotLeft / 90 - 0.5) * 2) * dt;
-    const ang = Math.min(s.rotLeft, 90 * rate);
-    s.rotLeft -= ang;
+    w /= s.aspect; // visible height is 2·distance, visible width 2·distance·aspect (landscape and portrait)
+    want = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.max(w, h) / 2)); // tan(45°) * 2 = 2
+  } else { c.dx = 0; c.dy = 0; }
+  if (want >= c.tz) { c.tz = want; c.zinT = 0; }
+  else if (want < c.tz * ZOOM_IN_SHARE) { c.zinT += dt; if (c.zinT > ZOOM_IN_DELAY) { c.tz = want; c.zinT = 0; } }
+  else c.zinT = 0;
+  c.dz = -c.tz;
+  const spring = (x, v, target, w) => v + (w * w * (target - x) - 2 * w * v) * dt;
+  c.vx = spring(c.x, c.vx, c.dx, CAM_OMEGA_POS); c.vy = spring(c.y, c.vy, c.dy, CAM_OMEGA_POS); c.vz = spring(c.z, c.vz, c.dz, CAM_OMEGA);
+  const vmax = ZOOM_RATE * Math.abs(c.z);
+  if (Math.abs(c.vz) > vmax) c.vz = Math.sign(c.vz) * vmax;
+  const pmax = Math.abs(c.z) * 0.8;
+  const pv = len(c.vx, c.vy);
+  if (pv > pmax) { c.vx = c.vx / pv * pmax; c.vy = c.vy / pv * pmax; }
+  c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt;
+  // one slow automatic 90° turn when the tree grows long in the wrong direction for the screen, never mid-growth
+  if (s.rotT >= 0) {
+    const ease = (t) => t * t * (3 - 2 * t);
+    const t1 = Math.min(1, s.rotT / ROT_TIME + dt / ROT_TIME);
+    const ang = 90 * (ease(t1) - ease(s.rotT / ROT_TIME));
+    s.rotT = t1 >= 1 ? -1 : s.rotT + dt;
     rotateWorld(s, ang * PI / 180);
-  } else if (b && (b.x1 - b.x0) * (b.y1 - b.y0) > 10000) {
+  } else if (s.autoRotate && !s.rotDone && !s.revealQ.length && b && (b.x1 - b.x0) * (b.y1 - b.y0) > 10000) {
     const ratio = s.aspect > 1 ? (b.x1 - b.x0) / (b.y1 - b.y0) : (b.y1 - b.y0) / (b.x1 - b.x0);
-    if (ratio < 0.67) s.rotLeft = 90;
+    if (ratio < 0.67) { s.rotT = 0; s.rotDone = true; }
   }
 }
 function rotateWorld(s, a) {

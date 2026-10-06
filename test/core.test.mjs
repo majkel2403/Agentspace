@@ -86,6 +86,33 @@ test('directory tree only branches where paths diverge (Gource radix tree)', () 
   assert.equal(s.dirs[s.dirByPath['/r/w/a/b/']].token, 'a/b');
 });
 
+test('a large listing grows the tree gradually and the camera keeps it in frame', () => {
+  const paths = Array.from({ length: 600 }, (_, i) => 'pkg' + (i % 12) + '/src/m' + (i % 7) + '/f' + i + '.js');
+  const P = createPlayer({ aspect: 16 / 9 });
+  P.load([
+    { run: 'r', ts: 0, type: 'workspace.scanned', agent: 'research', resource: 'w', paths },
+    { run: 'r', ts: 40000, type: 'task.completed' },
+  ]);
+  let prev = 0; let maxStep = 0; const perSec = [];
+  for (let k = 1; k <= 30 * 60; k++) {
+    const { s } = P.at(k * STEP);
+    const vis = s.files.filter((f) => !f.hidden).length;
+    maxStep = Math.max(maxStep, vis - prev); prev = vis;
+    if (k % 60 === 0) perSec.push(vis);
+    // the camera frames the tree: its bounds never leave a 1280×720 view
+    if (s.dirBounds && k % 10 === 0) {
+      const K = 360 / -s.cam.z; const b = s.dirBounds;
+      assert.ok((b.x1 - b.x0) * K <= 1280 + 16 && (b.y1 - b.y0) * K <= 720 + 16, 'tree fits at ' + s.t.toFixed(2));
+    }
+  }
+  assert.ok(maxStep <= 2, 'at most 2 files appear per step, got ' + maxStep);
+  assert.equal(prev, 600);
+  assert.ok(perSec.findIndex((v) => v === 600) >= 6, 'growth takes several seconds: ' + perSec.join(' '));
+  // the scanning agent sweeps through the tree with a beam every ~0.35 s rather than one per file
+  const acts = P.at(30).s.acts.length;
+  assert.ok(acts > 10 && acts < 120, 'scan beams: ' + acts);
+});
+
 for (const f of runs) {
   test('demo run ' + f + ' parses cleanly, ends completed, simulates without NaN', () => {
     const { events, errors } = load(f);

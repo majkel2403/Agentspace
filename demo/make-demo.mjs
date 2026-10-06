@@ -64,9 +64,14 @@ function repoFix() {
   w.at(3.0, 'tool.started', { agent: 'research', tool: 'git ls-files', text: 'Lista plików repozytorium.' });
   // the whole tree arrives through real listing events, one per top-level directory, spread over ~20 s
   const groups = new Map();
-  for (const f of ws.files) { const top = f.includes('/') ? f.split('/')[0] : '.'; if (!groups.has(top)) groups.set(top, []); groups.get(top).push(f); }
-  const order = [...groups.keys()].sort((a, b) => (a === 'packages' ? -1 : b === 'packages' ? 1 : groups.get(b).length - groups.get(a).length));
-  order.forEach((g, i) => w.at(3.3 + i * (20 / Math.max(1, order.length)), 'workspace.scanned', { agent: 'research', tool: 'git ls-files', resource: ws.name, paths: groups.get(g), text: g + ': ' + groups.get(g).length + ' plików' }));
+  // one listing per package / top-level directory, so the tree grows part by part
+  const groupOf = (f) => { const p = f.split('/'); return p.length < 2 ? '.' : p[0] === 'packages' && p.length > 2 ? p[0] + '/' + p[1] : p[0]; };
+  for (const f of ws.files) { const g = groupOf(f); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(f); }
+  const order = [...groups.keys()].sort((a, b) => groups.get(b).length - groups.get(a).length || (a < b ? -1 : 1));
+  // listings arrive in proportion to their size (≈ 50 files/s overall), like a real recursive listing
+  let done = 0;
+  const startOf = order.map((g) => { const t = 3.3 + (done / ws.files.length) * 18; done += groups.get(g).length; return t; });
+  order.forEach((g, i) => w.at(startOf[i], 'workspace.scanned', { agent: 'research', tool: 'git ls-files', resource: ws.name, paths: groups.get(g), text: g + ': ' + groups.get(g).length + ' plików' }));
   w.at(24.0, 'tool.completed', { agent: 'research', tool: 'git ls-files', latencyMs: 20700, text: ws.files.length + ' plików' });
   // research reads key files while scan is still happening (interleaved)
   w.at(9.3, 'tool.started', { agent: 'research', tool: 'read' });

@@ -73,7 +73,7 @@ export function createActionStream() {
       case 'hermes.reasoning': act(t, 'hermes', 'hermes/rozumowanie.md', 'M', i); break;
       case 'planner.step': act(t, 'hermes', 'hermes/plan.md', 'M', i); break;
       case 'agent.spawned':
-        S.users[ev.agent] = { id: ev.agent, label: ev.label || label(ev.agent) };
+        S.users[ev.agent] = { id: ev.agent, label: ev.label || label(ev.agent), parent: ev.parent || 'hermes' };
         act(t, ev.parent || 'hermes', 'zespol/' + seg(ev.agent) + '.md', 'A', i);
         break;
       case 'agent.waiting': break;
@@ -112,6 +112,7 @@ export function createActionStream() {
     }
   };
   S.label = label;
+  S.parent = (id) => (S.users[id] ? S.users[id].parent || null : null);
   return S;
 }
 

@@ -8,13 +8,13 @@ const EVERY = 60; // ticks between checkpoints (1 s)
 const clone = typeof structuredClone === 'function' ? structuredClone : (o) => JSON.parse(JSON.stringify(o));
 
 export function createPlayer(opts) {
-  const P = { aspect: (opts && opts.aspect) || 16 / 9, events: [], t0: null, stream: null, cps: [], cur: null, bake: null };
-  const ctx = () => ({ actions: P.stream.actions, notes: P.stream.notes, label: P.stream.label });
+  const P = { aspect: (opts && opts.aspect) || 16 / 9, autoRotate: !(opts && opts.autoRotate === false), events: [], t0: null, stream: null, cps: [], cur: null, bake: null };
+  const ctx = () => ({ actions: P.stream.actions, notes: P.stream.notes, label: P.stream.label, parent: P.stream.parent });
   let C = null;
 
   function reset() {
     P.stream = createActionStream();
-    const s0 = createSim({ aspect: P.aspect });
+    const s0 = createSim({ aspect: P.aspect, autoRotate: P.autoRotate });
     P.cps = [clone(s0)];
     P.cur = s0;
     P.bake = null;

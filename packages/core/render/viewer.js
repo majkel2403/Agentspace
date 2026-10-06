@@ -25,11 +25,12 @@ export function createViewer(opts) {
   const v = {
     backend: backend ? backend.kind : 'none', T: null, t: 0, playing: false, speed: 1, live: false, sel: null, hover: null,
     onSelect: null, onTick: null, compat: !!opts.compat, rm, ft: 0, q: 2,
-    player: createPlayer({ aspect: aspectNow() }),
+    player: createPlayer({ aspect: aspectNow(), autoRotate: opts.autoRotate }),
   };
   const cam = { zoom: 1, panX: 0, panY: 0 };
   v.cam = cam;
   let last = null;
+  let dtS = 0;
   let raf = 0;
   let F = null;
   let caption = '';
@@ -63,7 +64,10 @@ export function createViewer(opts) {
   function step(now) {
     raf = requestAnimationFrame(step);
     if (last == null) last = now;
-    const dt = Math.min(0.1, (now - last) / 1000);
+    // smoothed frame time: a single slow frame does not make the animation lurch forward or stall
+    const raw = Math.min(0.1, (now - last) / 1000);
+    dtS = dtS ? dtS * 0.8 + raw * 0.2 : raw;
+    const dt = Math.min(0.05, dtS);
     last = now;
     if (!v.T) return;
     if (v.playing) {
@@ -106,7 +110,7 @@ export function createViewer(opts) {
       key: opts.legend !== false, keyBottom: H - (opts.insetBottom || 0) - 8, caption, captionColor, captionBottom: opts.captionBottom, fontScale: opts.fontScale,
     });
     // spend spare time computing checkpoints ahead, so scrubbing stays instant
-    if (!sync) v.player.bakeAhead(v.T.duration / 1000 + TAIL_MS / 1000, 3);
+    if (!sync) v.player.bakeAhead(v.T.duration / 1000 + TAIL_MS / 1000, v.ft < 10 ? 3 : 1);
     v.ft = v.ft * 0.9 + (performance.now() - t0) * 0.1;
   }
 

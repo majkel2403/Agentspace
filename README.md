@@ -97,7 +97,17 @@ Typy: `task.started|completed|failed`, `hermes.reasoning`, `planner.step`,
 Jak zdarzenia stają się drzewem: zasób bez schematu → `<przestrzeń>/<ścieżka>` (nazwa przestrzeni z ostatniego
 `workspace.scanned`, domyślnie `projekt`), URL → `web/<host>/…`, pamięć → `pamięć/…`, MCP → `mcp/<nazwa>/…`,
 testy → `testy/<nazwa>`, zadanie → `zadanie/opis.md`, plan i rozumowanie Hermesa → `hermes/…`, zespół → `zespol/<agent>.md`,
-wynik → `wynik/raport.md`. `workspace.scanned` pokazuje całe prawdziwe drzewo repozytorium przez jedno zdarzenie.
+wynik → `wynik/raport.md`. `workspace.scanned` pokazuje całe prawdziwe drzewo repozytorium przez jedno zdarzenie:
+pliki z listingu nie dostają promienia każdy z osobna, tylko wyrastają stopniowo z kolejki (20–90 plików/s, gałąź po
+gałęzi, mały zestaw rośnie najwyżej ~60%/s), a agent skanujący przelatuje przez drzewo z jednym promieniem co 0,35 s.
+
+Ruch i kadr (odstępstwa od Gource dla czytelności): kamera obejmuje drzewo i pracujące awatary, wyprzedza wzrost o ~1,5 s,
+oddala się płynnie (≤ 30% odległości/s), przybliża dopiero gdy drzewo wyraźnie zmalało, i działa tak samo w poziomie
+i w pionie (telefon). Promienie startują równo co 0,12–0,5 s i trwają 0,25–0,8 s; awatary mają ograniczone przyspieszenie
+i tarcie, bezczynny agent blednie zamiast znikać, nowy pojawia się obok rodzica. Automatyczny obrót o 90° (jak w Gource)
+najwyżej raz i nie w trakcie wzrostu; opcja `autoRotate: false` go wyłącza (artefakt).
+`node tools/motion-report.mjs [przebieg]` mierzy płynność (wzrost na sekundę, zoom, skoki prędkości, salwy promieni,
+kadr w poziomie i na telefonie) i kończy się błędem, gdy któreś kryterium nie jest spełnione.
 
 ## Prawdziwy Gource (wzorzec i prototyp)
 

@@ -65,7 +65,7 @@ export function buildFrame(s, k, W, H, o) {
       F.files.push({ x, y, size: Math.max(2, fs * K), col, a, shadow: 2 * K });
       F.counts.files++;
       F.picks.push({ id: 'file:' + f.path, x, y, r: Math.max(5, fs * K * 0.6) });
-      const na = sel ? 1 : f.nameInt > 0 ? nameAlpha(f.nameInt, SIM.FILENAME_TIME) : 0;
+      const na = sel ? 1 : f.nameInt > 0 && fs * K >= 4 ? nameAlpha(f.nameInt, SIM.FILENAME_TIME) : 0;
       if (na > 0.01 && !o.hideFileNames) F.labels.push({ kind: sel ? 'file-sel' : 'file', text: f.name, x: V.sx(wx + 5.5), y: V.sy(wy - (sel ? 2 : 1)), a: na });
     }
   }
@@ -81,12 +81,12 @@ export function buildFrame(s, k, W, H, o) {
       const f = s.files[ac.f]; const d = dirs[f.dir];
       const fx = lerp(d.px, d.x, k) + lerp(f.px, f.x, k); const fy = lerp(d.py, d.y, k) + lerp(f.py, f.y, k);
       const kind = o.compat && (ac.kind === 'R' || ac.kind === 'P' || ac.kind === 'F') ? 'M' : ac.kind;
-      F.beams.push(beam(V, ux, uy, fx, fy, fs * 0.5, ACTION_COLOUR[kind] || ACTION_COLOUR.M, 1 - ac.progress));
+      F.beams.push(beam(V, ux, uy, fx, fy, Math.max(fs * 0.5, 0.9 / K), ACTION_COLOUR[kind] || ACTION_COLOUR.M, 1 - ac.progress));
     }
     const a = userAlpha(u);
     const sel = o.selected === 'user:' + u.id;
     const x = V.sx(ux); const y = V.sy(uy);
-    F.users.push({ x, y, w: uw * K, h: uh * K, col: sel ? [1, 1, 1] : u.col, a, shadow: 2 * K });
+    F.users.push({ x, y, w: Math.max(14, uw * K), h: Math.max(14, uw * K) * SIM.USER_RATIO, col: sel ? [1, 1, 1] : u.col, a, shadow: 2 * K });
     F.counts.users++;
     F.picks.push({ id: 'user:' + u.id, x, y, r: Math.max(8, uw * K * 0.6) });
     const na = sel ? 1 : u.nameInt > 0 ? nameAlpha(u.nameInt, SIM.NAME_TIME) : 0;

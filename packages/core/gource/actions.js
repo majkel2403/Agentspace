@@ -84,7 +84,7 @@ export function createActionStream() {
       case 'tool.failed': note(t, 'tool-fail', a, { text: ev.tool }, i); break;
       case 'workspace.scanned': {
         S.ws = seg(ev.resource || ev.root || S.ws);
-        for (const p of ev.paths || []) act(t, a, S.ws + '/' + rel(p), 'R', i);
+        for (const p of ev.paths || []) act(t, a, S.ws + '/' + rel(p), 'S', i);
         break;
       }
       case 'resource.read':

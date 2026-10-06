@@ -56,7 +56,7 @@ test('events map to Gource actions on workspace paths', () => {
   S.push(ev({ type: 'tool.started', agent: 'coder', tool: 'edit' }), 6, 6);
   assert.deepEqual(S.actions.map((a) => [a.user, a.path, a.kind]), [
     ['user', '/r/zadanie/opis.md', 'A'],
-    ['research', '/r/repo/a.js', 'R'], ['research', '/r/repo/lib/b.ts', 'R'],
+    ['research', '/r/repo/a.js', 'S'], ['research', '/r/repo/lib/b.ts', 'S'],
     ['coder', '/r/repo/lib/b.ts', 'M'], ['coder', '/r/repo/lib/c.ts', 'A'], ['coder', '/r/repo/a.js', 'D'],
     ['tester', '/r/testy/x', 'F'],
   ]);

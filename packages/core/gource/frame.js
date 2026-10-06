@@ -62,7 +62,7 @@ export function buildFrame(s, k, W, H, o) {
       const sel = o.selected === 'file:' + f.path;
       const col = sel ? [1, 1, 1] : fileColour(f);
       const x = V.sx(wx); const y = V.sy(wy);
-      F.files.push({ x, y, size: fs * K, col, a, shadow: 2 * K });
+      F.files.push({ x, y, size: Math.max(2, fs * K), col, a, shadow: 2 * K });
       F.counts.files++;
       F.picks.push({ id: 'file:' + f.path, x, y, r: Math.max(5, fs * K * 0.6) });
       const na = sel ? 1 : f.nameInt > 0 ? nameAlpha(f.nameInt, SIM.FILENAME_TIME) : 0;

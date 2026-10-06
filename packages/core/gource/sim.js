@@ -579,6 +579,17 @@ function processAction(s, ctx, a) {
     if (s.dirs.some((d) => !d.dead && d.path.indexOf(asDir) === 0)) return;
     fi = addFile(s, a.path).i;
   }
+  // 'S' (scan) silently reveals the file in the tree without a beam — workspace.scanned uses this
+  if (a.kind === 'S') {
+    const f = s.files[fi];
+    if (f.hidden) {
+      f.hidden = false;
+      const d = s.dirs[f.dir];
+      d.vis++; d.visible = true;
+      fileUpdated(s, d, false);
+    }
+    return;
+  }
   let ui = s.userById[a.user];
   if (ui === undefined || s.users[ui].dead) ui = addUser(s, a.user, ctx.label(a.user)).i;
   const act = { i: s.acts.length, u: ui, f: fi, t: s.t, kind: a.kind, progress: 0, rate: 0.5, ev: a.ev };
@@ -678,7 +689,8 @@ function camera(s, dt) {
     dist = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, dist));
     c.dz = -dist;
   } else { c.dx = 0; c.dy = 0; c.dz = -ZOOM_MIN; }
-  let ex = (c.dx - c.x) * dt; let ey = (c.dy - c.y) * dt; let ez = (c.dz - c.z) * dt;
+  const ease = Math.min(1, dt * 3);
+  let ex = (c.dx - c.x) * ease; let ey = (c.dy - c.y) * ease; let ez = (c.dz - c.z) * ease;
   const full2 = (c.dx - c.x) ** 2 + (c.dy - c.y) ** 2 + (c.dz - c.z) ** 2;
   if (ex * ex + ey * ey + ez * ez > full2) { ex = c.dx - c.x; ey = c.dy - c.y; ez = c.dz - c.z; }
   c.x += ex; c.y += ey; c.z += ez;

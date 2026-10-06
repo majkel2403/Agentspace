@@ -1,6 +1,8 @@
 // Text over the scene, as Gource draws it: directory, file and user names with a drop shadow, the date at the
 // top centre (16 px), the file extension key on the left (gradient bars), plus our caption at the bottom.
-export const FONT = "FreeSans, 'Liberation Sans', 'Helvetica Neue', Helvetica, sans-serif";
+export const FONT_FACE = "FreeSans, 'Liberation Sans', 'Helvetica Neue', Helvetica, sans-serif";
+
+export const FONT = FONT_FACE;
 
 const DAYS = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
 const MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
@@ -15,6 +17,7 @@ const rgb = (c, a) => 'rgba(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] *
 
 export function drawText(ctx, F, W, H, dpr, o) {
   o = o || {};
+  const FONT = o.font || FONT_FACE;
   const fs = o.fontScale || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);

@@ -3,7 +3,7 @@
 // recorded events, LIVE following over WebSocket, and a few page options.
 //   ?run=<id>   open a run     ?compat=1  draw only what real Gource can show (comparison harness)
 //   ?chrome=0   scene only (no panels)
-import { parseJsonl, validateEvent, createTimeline, runFacts, appState, matchTask, mmss, studioState, legendOf, cssRgb } from '/packages/core/index.js';
+import { parseJsonl, validateEvent, createTimeline, runFacts, appState, matchTask, mmss, studioState, legendOf, cssRgb, narrate, lanesOf, runSummary } from '/packages/core/index.js';
 import { createViewer } from '/packages/core/render/viewer.js';
 import { markup } from '/packages/ui/hermes.markup.mjs';
 import { mount } from '/web/dc-lite.js';
@@ -32,7 +32,7 @@ await refresh();
 
 window.HX_HOST = {
   runs: () => list,
-  initial: () => params.get('run') || (list.find((r) => r.id === 'repo-fix') || list[0] || {}).id,
+  initial: () => ({ id: params.get('run') || (list.find((r) => r.id === 'repo-fix') || list[0] || {}).id, intro: !params.get('run') }),
   onRuns: (cb) => subs.push(cb),
   async load(id) {
     const txt = await (await fetch('/api/runs/' + encodeURIComponent(id))).text();
@@ -56,11 +56,11 @@ if (params.get('compat') === '1' || params.get('chrome') === '0') {
   document.getElementById('app').innerHTML = '<canvas id="gl" style="position:fixed;inset:0;width:100%;height:100%"></canvas><canvas id="ov" style="position:fixed;inset:0;width:100%;height:100%"></canvas>';
   const v = createViewer({ gl: document.getElementById('gl'), overlay: document.getElementById('ov'), compat: params.get('compat') === '1', studio: params.get('compat') === '1' ? false : undefined, autoRotate: true, caption: params.get('compat') !== '1' });
   window.__NW = v;
-  const id = HX_HOST.initial();
+  const id = HX_HOST.initial().id;
   const T = createTimeline(await HX_HOST.load(id));
   v.setTimeline(T); v.setTime(0); v.play();
 } else {
-  window.NW = { parseJsonl, createTimeline, createViewer, app: { runFacts, appState, matchTask, mmss, studioState, legendOf, cssRgb } };
+  window.NW = { parseJsonl, createTimeline, createViewer, app: { runFacts, appState, matchTask, mmss, studioState, legendOf, cssRgb, narrate, lanesOf, runSummary } };
   const src = await (await fetch('/packages/ui/hermes.logic.js')).text();
   const Logic = new Function('NW', 'HX_HOST', 'DCLogic', src + '\nreturn Component;');
   mount(document.getElementById('app'), markup('height:100%'), (Base) => Logic(window.NW, window.HX_HOST, Base));

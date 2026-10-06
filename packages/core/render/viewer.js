@@ -12,7 +12,7 @@ import { storyAt } from '../gource/story.js';
 import { drawStory } from '../gource/cards.js';
 import { gUserColour } from '../gource/colour.js';
 
-const BG = [0.1, 0.1, 0.1];
+const BG0 = [0.1, 0.1, 0.1];
 export const TAIL_MS = 6000;
 // The canvas shows the world only: the tree, the agents, and what happens between them (creation threads, messages,
 // bubbles). Panels are the app's (HTML) — the canvas sits in its own layout cell and is never covered by them;
@@ -124,7 +124,7 @@ export function createViewer(opts) {
     const { s, k } = v.player.at(v.t / 1000);
     const studio = studioOn();
     F = buildFrame(s, k, W, H, { camera: cam, selected: v.sel, highlight: v.hl || v.hover, compat: v.compat, hideDirNames: opts.hideDirNames, inset: inset(), agentNames: studio });
-    if (backend) backend.draw(F, W, H, dpr, BG);
+    if (backend) backend.draw(F, W, H, dpr, opts.bg || BG0);
     const i = v.T.indexAt(v.t);
     const hud = opts.hud !== false;
     if (i >= 0 && hud && opts.caption !== false && !v.compat) {
@@ -135,7 +135,7 @@ export function createViewer(opts) {
     drawText(octx, F, W, H, dpr, {
       date: !hud || v.compat || opts.date === false ? '' : v.T.t0 != null ? formatDate(v.T.t0 + Math.min(v.t, v.T.duration + TAIL_MS)) : '',
       dateY: opts.clockY, keyX: opts.legendX != null ? opts.legendX - 20 : 0, keyY: opts.legendY != null ? opts.legendY - 22 : 0,
-      key: hud && opts.legend !== false, keyMax: studio ? 6 : 0, keyBottom: H - (opts.insetBottom || 0) - 8, caption, captionColor, captionBottom: opts.captionBottom || 34, fontScale: opts.fontScale,
+      key: hud && opts.legend !== false, keyMax: studio ? 6 : 0, keyBottom: H - (opts.insetBottom || 0) - 8, caption, captionColor, captionBottom: opts.captionBottom || 34, fontScale: opts.fontScale, font: opts.font,
     });
     if (studio) {
       v.story = storyAt(v.T, storyInfo(), v.t);

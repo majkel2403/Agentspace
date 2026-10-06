@@ -166,11 +166,12 @@ Zapisuje pary obrazów (Gource po lewej, nasz renderer po prawej) i miarę SSIM 
   odtwarzacz z punktami kontrolnymi, opis klatki, WebGL + awaryjny Canvas 2D, napisy, inspektor), `render/viewer.js`.
   `manifest.json` podaje kolejność plików do budowy bez modułów (artefakt).
 - `server/` — ingest (HTTP / WS / STDIN), Event Store, LIVE fan-out, REPLAY.
-- `packages/ui/` — interfejs Hermes jako jeden system: `hermes.css` (tokeny i siatka, trzy układy `xl | m | s` wybierane
-  szerokością okna), `hermes.markup.mjs` (jeden szablon), `hermes.logic.js` (jedna logika). Panele: Zespół, Kod
-  i terminal, Rozmowy, Pliki, Inspektor, Raport (zakładki jednej kolumny, więc nic na nic nie nachodzi), po lewej
-  Zlecenie i Dziennik. Płótno rysuje tylko świat (drzewo, agenci, nitki, wiadomości, dymki); najechanie na agenta lub
-  plik w panelu podświetla go na scenie.
+- `packages/ui/` — interfejs Hermes („pokład dowodzenia”) jako jeden system: `hermes.css` (tokeny, siatka, trzy układy
+  `xl | m | s`), `hermes.markup.mjs` (jeden szablon), `hermes.logic.js` (jedna logika). Scena zajmuje cały ekran, a
+  interfejs jest szklaną warstwą nad nią: pasek poleceń z fazami, szyna zespołu (zlecenie, agenci, plan), szuflada
+  robocza (kod i terminal, rozmowy, pliki, dziennik, inspektor) i dok z narratorem („Coder zleca Tester …”) oraz osią
+  czasu z torem dla każdego agenta. Tryb Auto sam przełącza szufladę na to, co dzieje się teraz. Kamera kadruje drzewo
+  w wolnej komórce środkowej, więc nic go nie zasłania. Nowe zlecenie i raport to karty nad sceną.
 - `web/` — podłącza ten interfejs do serwera (`app.js`: lista przebiegów, odczyt, LIVE przez WebSocket) i renderuje
   szablon (`dc-lite.js`). Te same pliki z `packages/ui` osadza `artifact/build-app.mjs` w tablicach kanwy.
 - `tools/layout-check.mjs` — test układu: 6 rozmiarów okna × 5 stanów, bez nakładania paneli, bez wyjścia poza

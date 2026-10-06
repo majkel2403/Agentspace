@@ -6,7 +6,7 @@
       "expand": "fill",
       "h": 1760,
       "is_interactive": true,
-      "title": "Wcześniejsza wersja · centrum dowodzenia 3D",
+      "title": "Centrum dowodzenia · scena jak Gource",
       "w": 1440,
       "x": 0,
       "y": 1040
@@ -67,7 +67,7 @@
       "fill": "blue",
       "maxH": 300,
       "size": 24,
-      "text": "Wcześniejsza wersja (tablice poniżej, scena 3D): otwórz Centrum dowodzenia i naciśnij „Uruchom Hermesa”. Przeciągaj, aby obracać, kliknij agenta, plik lub decyzję, aby otworzyć inspektor. Aktualna wizualizacja to Neural Workflow na górze.",
+      "text": "Centrum dowodzenia (poniżej): naciśnij „Uruchom Hermesa” albo przewiń oś czasu. Scena w środku działa jak Gource: drzewo to pliki zespołu, awatary to agenci, promienie to tworzenie (zielony), zmiana (pomarańczowy) i odczyt (niebieski). Przeciągnij, by przesunąć, kółkiem przybliż, kliknij agenta, by otworzyć go w inspektorze.",
       "w": 390,
       "x": 1520,
       "y": 1040

@@ -201,3 +201,37 @@ test('a frame description is finite and the tree fits any window shape without r
     assert.ok(V.sx(b.x0) > -10 && V.sx(b.x1) < W + 10 && V.sy(b.y0) > -10 && V.sy(b.y1) < H + 10, W + 'x' + H);
   }
 });
+
+test('studio: who created whom, tasks, plan, typed code and terminal output come from the log', async () => {
+  const { storyAt, patchLines } = await import('../packages/core/gource/story.js');
+  const { events } = load('repo-fix.jsonl');
+  const T = createTimeline(events);
+  const P = createPlayer(); P.load(events);
+  const paths = new Map();
+  for (const a of P.actions()) { if (!paths.has(a.ev)) paths.set(a.ev, []); paths.get(a.ev).push(a.path); }
+  const info = { label: (id) => P.label(id), colour: () => [1, 1, 1], pathsOfEv: (i) => paths.get(i) || [] };
+  const at = (s) => storyAt(T, info, s * 1000);
+  // team tree: Hermes created Research and Coder, Coder created Tester
+  const team = at(80).agents.map((a) => a.id + ':' + a.depth);
+  assert.deepEqual(team, ['hermes:0', 'research:1', 'coder:1', 'tester:2']);
+  assert.equal(at(80).agents.find((a) => a.id === 'coder').task, 'Napraw timer pingTimeout');
+  assert.equal(at(80).plan.cur, 2);
+  assert.equal(at(170).plan.cur, at(170).plan.steps.length);
+  // the fix is typed into socket.ts: partly at first, completely a few seconds later
+  const w1 = at(78).windows.find((w) => w.kind === 'code');
+  const w2 = at(82).windows.find((w) => w.kind === 'code');
+  assert.ok(w1 && w1.typing && w1.typed > 0 && w1.typed < w1.chars, 'typing');
+  assert.ok(w2 && !w2.typing && w2.typed === w2.chars && w2.add === 3 && w2.del === 1);
+  // the first test run fails in the terminal, the second passes
+  const t1 = at(110).windows.find((w) => w.kind === 'term');
+  assert.ok(t1.fail && t1.lines.some((l) => /failing/.test(l.s)));
+  const t2 = at(140).windows.find((w) => w.kind === 'term');
+  assert.ok(!t2.fail && t2.lines.some((l) => /4 passing/.test(l.s)));
+  // a new folder is announced, messages fly and are said out loud
+  assert.ok(at(91).tags.some((g) => /regression\//.test(g.text)));
+  assert.ok(at(57.3).packets.some((m) => m.from === 'hermes' && m.to === 'coder' && m.task));
+  const b = at(57.5).bubbles.find((x) => x.who === 'hermes');
+  assert.ok(b && b.shown > 0 && b.shown < b.text.length);
+  // unified-style patch lines get new-file line numbers
+  assert.deepEqual(patchLines(' a\n-b\n+c\n d', 10).map((l) => [l.t, l.n]), [[' ', 10], ['-', null], ['+', 11], [' ', 12]]);
+});

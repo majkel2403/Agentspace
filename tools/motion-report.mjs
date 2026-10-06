@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Motion report: steps a run tick by tick and measures what a viewer perceives as jumps.
-//   node tools/motion-report.mjs [run ...]   (default: every demo run)
+//   node tools/motion-report.mjs [--focus] [run ...]   (default: every demo run; --focus: camera follows the work)
 // Prints growth per second, camera zoom speed, avatar speed jumps/teleports, beam spacing; exits 1 on a failed criterion.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,13 +9,15 @@ import { STEP } from '../packages/core/gource/sim.js';
 import { view } from '../packages/core/gource/frame.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const runs = process.argv.slice(2).length ? process.argv.slice(2) : fs.readdirSync(path.join(ROOT, 'demo/runs')).map((f) => f.replace(/\.jsonl$/, ''));
+const FOCUS = process.argv.includes('--focus');
+const args = process.argv.slice(2).filter((a) => a !== '--focus');
+const runs = args.length ? args : fs.readdirSync(path.join(ROOT, 'demo/runs')).map((f) => f.replace(/\.jsonl$/, ''));
 const LIMIT = { growthShare: 0.12, filesPerTick: 4, zoomPerSec: 0.35, speedJump: 150, teleport: 20, bursts: 0, clipped: 0, fill: 0.45 };
 
 let failed = false;
 for (const run of runs) {
   const events = fs.readFileSync(path.join(ROOT, 'demo/runs', run + '.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
-  const P = createPlayer({ aspect: 16 / 9 });
+  const P = createPlayer({ aspect: 16 / 9, focus: FOCUS });
   P.load(events);
   const dur = (events[events.length - 1].ts - events[0].ts) / 1000 + 4;
   const n = Math.ceil(dur / STEP);
@@ -70,7 +72,7 @@ for (const run of runs) {
     }
   }
   // the same run on a phone-shaped view (390×650): the tree must stay on screen there too
-  const PM = createPlayer({ aspect: 0.6 });
+  const PM = createPlayer({ aspect: 0.6, focus: FOCUS });
   PM.load(events);
   let clippedPortrait = 0;
   for (let k = 1; k <= n; k += 2) {
@@ -104,8 +106,9 @@ for (const run of runs) {
     ['kadr po zmianie rozmiaru: poza ekranem', clippedResized, LIMIT.clipped, (x) => String(x)],
     ['kadr: drzewo zajmuje na końcu', 1 - fill, 1 - LIMIT.fill, (x) => ((1 - x) * 100).toFixed(0) + '% kadru'],
   ];
-  console.log('\n== ' + run + ' (' + final + ' plików, ' + dur.toFixed(0) + ' s)');
-  for (const [name, v, lim, fmt] of rows) {
+  console.log('\n== ' + run + (FOCUS ? ' [kamera śledzi pracę]' : '') + ' (' + final + ' plików, ' + dur.toFixed(0) + ' s)');
+  // following the work frames a part of the tree on purpose: the whole-tree framing rows do not apply
+  for (const [name, v, lim, fmt] of FOCUS ? rows.filter((r) => !r[0].startsWith('kadr')) : rows) {
     const ok = v <= lim;
     if (!ok) failed = true;
     console.log((ok ? '  ok   ' : '  FAIL ') + name.padEnd(38) + fmt(v).padStart(8) + '  (limit ' + fmt(lim) + ')');

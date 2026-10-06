@@ -36,7 +36,9 @@ export function buildFrame(s, k, W, H, o) {
     if (vis) {
       F.counts.dirs++;
       const p = P(d);
-      F.blooms.push({ x: p[0], y: p[1], R: d.r * 2 * K, Rw: d.r * 2, col: [d.col[0] * 0.75, d.col[1] * 0.75, d.col[2] * 0.75] });
+      // with the studio on the camera comes close, where full-strength glow of big directories would wash out the scene
+      const bl = o.agentNames ? 0.32 : 0.75;
+      F.blooms.push({ x: p[0], y: p[1], R: d.r * 2 * K, Rw: d.r * 2, col: [d.col[0] * bl, d.col[1] * bl, d.col[2] * bl] });
       if (d.parent >= 0) {
         const par = dirs[d.parent];
         const p1 = P(par);
@@ -64,7 +66,7 @@ export function buildFrame(s, k, W, H, o) {
       const sel = o.selected === 'file:' + f.path;
       const col = sel ? [1, 1, 1] : fileColour(f);
       const x = V.sx(wx); const y = V.sy(wy);
-      F.files.push({ x, y, size: Math.max(2, fs * K), col, a, shadow: 2 * K });
+      F.files.push({ x, y, size: Math.max(2, fs * K), col, a, shadow: 2 * K, path: f.path });
       F.counts.files++;
       F.picks.push({ id: 'file:' + f.path, x, y, r: Math.max(5, fs * K * 0.6) });
       const na = sel ? 1 : f.nameInt > 0 && fs * K >= 4 ? nameAlpha(f.nameInt, SIM.FILENAME_TIME) : 0;
@@ -88,11 +90,13 @@ export function buildFrame(s, k, W, H, o) {
     const a = userAlpha(u);
     const sel = o.selected === 'user:' + u.id;
     const x = V.sx(ux); const y = V.sy(uy);
-    F.users.push({ x, y, w: Math.max(14, uw * K), h: Math.max(14, uw * K) * SIM.USER_RATIO, col: sel ? [1, 1, 1] : u.col, a, shadow: 2 * K });
+    const minW = o.agentNames ? 22 : 14;
+    F.users.push({ x, y, w: Math.max(minW, uw * K), h: Math.max(minW, uw * K) * SIM.USER_RATIO, col: sel ? [1, 1, 1] : u.col, a, shadow: 2 * K, id: u.id, label: u.label, ucol: u.col });
     F.counts.users++;
     F.picks.push({ id: 'user:' + u.id, x, y, r: Math.max(8, uw * K * 0.6) });
-    const na = sel ? 1 : u.nameInt > 0 ? nameAlpha(u.nameInt, SIM.NAME_TIME) : 0;
-    if (na > 0.01) F.labels.push({ kind: sel ? 'user-sel' : 'user', text: u.label, x, y: y - uh * K * 0.5, a: na });
+    // with the studio on, agents are always named (they are the story); otherwise names fade as in Gource
+    const na = sel ? 1 : o.agentNames ? a : u.nameInt > 0 ? nameAlpha(u.nameInt, SIM.NAME_TIME) : 0;
+    if (na > 0.01) F.labels.push({ kind: sel ? 'user-sel' : 'user', text: u.label, x, y: y - Math.max(minW, uw * K) * SIM.USER_RATIO * 0.5, a: na });
     // tool in use (our addition): a small tag under the avatar while the tool runs
     if (u.tool && u.toolT >= 0 && !o.compat) {
       const age = s.t - u.toolT;

@@ -61,7 +61,8 @@ export function drawText(ctx, F, W, H, dpr, o) {
   if (o.key !== false && F.key.length) {
     const rowH = 16 * fs + 6; const w = 90 * fs; const h = 16 * fs + 4; const margin = 16 * fs + 4;
     const kx = o.keyX != null ? o.keyX : 0; const ky = o.keyY != null ? o.keyY : 0;
-    const maxRow = Math.max(1, Math.min(Math.floor((H - 150) / 20), Math.floor(((o.keyBottom != null ? o.keyBottom : H) - ky) / rowH) - 1));
+    let maxRow = Math.max(1, Math.min(Math.floor((H - 150) / 20), Math.floor(((o.keyBottom != null ? o.keyBottom : H) - ky) / rowH) - 1));
+    if (o.keyMax) maxRow = Math.min(maxRow, o.keyMax);
     ctx.font = 16 * fs + 'px ' + FONT;
     ctx.textAlign = 'left';
     for (const k of F.key) {

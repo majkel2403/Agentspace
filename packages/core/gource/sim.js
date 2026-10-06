@@ -24,7 +24,7 @@ const FILENAME_TIME = 4;
 const NAME_TIME = 5;
 const MAX_USER_SPEED = 300;
 const PADDING = 1.2;
-const ZOOM_MIN = 100;
+const ZOOM_MIN = 150;
 const ZOOM_MAX = 10000;
 export const SIM = { FILE_SIZE, USER_SIZE, USER_RATIO, FILENAME_TIME, NAME_TIME, USER_IDLE };
 
@@ -71,8 +71,8 @@ export function createSim(opts) {
     users: [], userById: {},
     acts: [], msgs: [],
     key: {},
-    cam: { x: 0, y: 0, z: -ZOOM_MIN, dx: 0, dy: 0, px: 0, py: 0, pz: -ZOOM_MIN, vx: 0, vy: 0, ex: 0, ey: 0, pex: 0, pey: 0, vex: 0, vey: 0, tex: 0, tey: 0, zinX: 0, zinY: 0 },
-    rot: 0, rotLeft: 0, rotT: -1, rotDone: false, autoRotate: !(opts && opts.autoRotate === false),
+    cam: { x: 0, y: 0, z: -ZOOM_MIN, dx: 0, dy: 0, px: 0, py: 0, pz: -ZOOM_MIN, vx: 0, vy: 0, mvx: 0, mvy: 0, ex: 0, ey: 0, pex: 0, pey: 0, vex: 0, vey: 0, tex: 0, tey: 0, zinX: 0, zinY: 0 },
+    rot: 0, rotLeft: 0, rotT: -1, rotDone: false, autoRotate: !(opts && opts.autoRotate === false), focus: !!(opts && opts.focus),
     revealQ: [], revealAcc: 0, scanBeamT: -1,
     idle: 0, rng: rngSeed1(), keyT: 1, keyEnt: {},
     dirBounds: null, userBounds: null,
@@ -640,14 +640,14 @@ function queueAction(s, ctx, user, fi, kind, ev) {
 }
 // steady growth: 20–90 files per second (≤ 2 per step), so a big listing builds up
 // over seconds instead of appearing at once; the scanning agent sweeps through it with one beam every 0.35 s
-const REVEAL_MIN = 20;
+const REVEAL_MIN = 12;
 const REVEAL_MAX = 90;
 const SCAN_BEAM = 0.35;
 // files per second: faster for a long backlog, but a small tree grows by at most ~60 % a second so the camera
 // can follow it smoothly
 function revealRate(s) {
   const shown = s.root >= 0 ? s.dirs[s.root].area / FILE_AREA : 0;
-  return Math.max(REVEAL_MIN, Math.min(REVEAL_MAX, s.revealQ.length / 4, shown * 0.6));
+  return Math.max(REVEAL_MIN, Math.min(REVEAL_MAX, s.revealQ.length / 4, shown * 0.45));
 }
 function revealLogic(s, ctx, dt) {
   const q = s.revealQ;
@@ -674,6 +674,8 @@ function revealLogic(s, ctx, dt) {
   }
 }
 function processNote(s, ctx, n) {
+  // a new agent appears beside its creator at the moment it is created, not at its first action
+  if (n.kind === 'spawn') { const u = userFor(s, ctx, n.user); u.last = u.elapsed; if (u.nameInt <= 0) u.nameInt = NAME_TIME; return; }
   const ui = s.userById[n.user];
   const u = ui !== undefined && !s.users[ui].dead ? s.users[ui] : null;
   if (n.kind === 'msg') {
@@ -758,31 +760,60 @@ function keyLogic(s, dt) {
   }
 }
 
-// Overview camera that scales with the tree: it frames the directories plus the working avatars, looks ~1.5 s
+// Overview camera that scales with the tree: it frames the directories plus the working avatars, looks ~2.5 s
 // ahead at files still queued to appear, zooms out at once but smoothly (critically damped, ≤ 30 % of the
 // distance per second) and zooms back in only after the tree has stayed clearly smaller for a while.
 const CAM_OMEGA = 4;
-const CAM_OMEGA_POS = 5;
+const CAM_OMEGA_POS = 6;
 const ZOOM_RATE = 0.3;
 const ZOOM_IN_SHARE = 0.8;
 const ZOOM_IN_DELAY = 1.5;
 const ROT_TIME = 3;
+// follow the work (like Gource's --follow-user): frame the agents that are working, the files they act on and the
+// directories that just changed, at least FOCUS_MIN across; while the tree is still being listed, or nobody
+// works, frame everything
+const FOCUS_MIN = 170;
+function focusBounds(s) {
+  if (s.revealQ.length) return null;
+  let b = null;
+  const hw = USER_SIZE * 2;
+  for (const u of s.users) {
+    if (u.dead || u.elapsed - u.last > USER_IDLE) continue;
+    b = grow(b, u.x - hw, u.y - hw, u.x + hw, u.y + hw);
+    for (const ai of u.active.concat(u.pending.slice(0, 2))) {
+      const a = s.acts[ai];
+      if (!a || a.f < 0) continue;
+      const f = s.files[a.f]; const d = s.dirs[f.dir];
+      if (!d) continue;
+      const x = d.x + f.x; const y = d.y + f.y;
+      b = grow(b, x - 30, y - 30, x + 30, y + 30);
+    }
+  }
+  for (const d of s.dirs) if (!d.dead && d.qb && d.sinceFile < 2 && d.parent >= 0) b = grow(b, d.x - d.r, d.y - d.r, d.x + d.r, d.y + d.r);
+  if (!b) return null;
+  const cx = (b.x0 + b.x1) / 2; const cy = (b.y0 + b.y1) / 2;
+  const w = Math.max(FOCUS_MIN, (b.x1 - b.x0) / 2); const h = Math.max(FOCUS_MIN, (b.y1 - b.y0) / 2);
+  return { x0: cx - w, y0: cy - h, x1: cx + w, y1: cy + h };
+}
 function cameraBounds(s) {
+  if (s.focus) { const f = focusBounds(s); if (f) return f; }
   const db = s.dirBounds;
   let b = db ? { ...db } : null;
   // working avatars widen the frame, but only within a band around the tree: one flying in from afar must
   // not swing the camera
   const hw = USER_SIZE; const hh = hw * USER_RATIO; const band = USER_SIZE * 2;
   const cl = (v, lo, hi) => (db ? Math.max(lo, Math.min(hi, v)) : v);
-  for (const u of s.users) {
+  // while a listing still grows the tree, the tree alone is framed (an agent sweeping its edge would pull it aside)
+  for (const u of s.revealQ.length ? [] : s.users) {
     if (u.dead || u.elapsed - u.last > USER_IDLE) continue;
     const x = cl(u.x, db && db.x0 - band, db && db.x1 + band); const y = cl(u.y, db && db.y0 - band, db && db.y1 + band);
     b = grow(b, x - hw, y - hh, x + hw, y + hh);
   }
   if (b && s.revealQ.length && s.root >= 0) {
     const A = Math.max(FILE_AREA, s.dirs[s.root].area);
-    const soon = Math.min(s.revealQ.length, revealRate(s) * 1.5);
-    const k = Math.sqrt((A + soon * FILE_AREA) / A);
+    // new branches spread faster than the file area grows, so look 2.5 s ahead and keep a margin while growing
+    const soon = Math.min(s.revealQ.length, revealRate(s) * 2.5);
+    const k = Math.pow((A + soon * FILE_AREA) / A, 0.6) * 1.12;
     const cx = (b.x0 + b.x1) / 2; const cy = (b.y0 + b.y1) / 2;
     const w = (b.x1 - b.x0) / 2 * k; const h = (b.y1 - b.y0) / 2 * k;
     b = { x0: cx - w, y0: cy - h, x1: cx + w, y1: cy + h };
@@ -800,9 +831,13 @@ function camera(s, dt) {
   // and the screen's aspect ratio only when drawing (camDistance), so resizing the window needs no re-run
   let wx = 0; let wy = 0;
   if (b) {
-    c.dx = (b.x0 + b.x1) / 2; c.dy = (b.y0 + b.y1) / 2;
+    const nx = (b.x0 + b.x1) / 2; const ny = (b.y0 + b.y1) / 2;
+    // a critically damped follower trails a moving target by 2/ω times its speed: lead the target by that much
+    c.mvx = (c.mvx || 0) * 0.9 + ((nx - c.dx) / dt) * 0.1; c.mvy = (c.mvy || 0) * 0.9 + ((ny - c.dy) / dt) * 0.1;
+    c.dx = nx; c.dy = ny;
     wx = (b.x1 - b.x0) / 2 * PADDING; wy = (b.y1 - b.y0) / 2 * PADDING;
-  } else { c.dx = 0; c.dy = 0; }
+  } else { c.dx = 0; c.dy = 0; c.mvx = 0; c.mvy = 0; }
+  const lead = 1.25 / CAM_OMEGA_POS;
   // grow at once, shrink only after the tree has stayed clearly smaller for a while
   const hold = (want, t, timer) => {
     if (want >= c[t]) { c[t] = want; c[timer] = 0; }
@@ -811,11 +846,12 @@ function camera(s, dt) {
   };
   hold(wx, 'tex', 'zinX'); hold(wy, 'tey', 'zinY');
   const spring = (x, v, target, w) => v + (w * w * (target - x) - 2 * w * v) * dt;
-  c.vx = spring(c.x, c.vx, c.dx, CAM_OMEGA_POS); c.vy = spring(c.y, c.vy, c.dy, CAM_OMEGA_POS);
+  c.vx = spring(c.x, c.vx, c.dx + c.mvx * lead, CAM_OMEGA_POS); c.vy = spring(c.y, c.vy, c.dy + c.mvy * lead, CAM_OMEGA_POS);
   c.vex = spring(c.ex, c.vex, c.tex, CAM_OMEGA); c.vey = spring(c.ey, c.vey, c.tey, CAM_OMEGA);
   // zoom speed limit: each extent changes by at most 30 % a second
-  const lim = (v, e) => { const m = ZOOM_RATE * Math.max(e, ZOOM_MIN); return Math.max(-m, Math.min(m, v)); };
-  c.vex = lim(c.vex, c.ex); c.vey = lim(c.vey, c.ey);
+  // (measured against the target as well when the camera lags far behind it, so it catches up without a jump)
+  const lim = (v, e, tg) => { const m = ZOOM_RATE * Math.max(e, ZOOM_MIN, tg * 0.45); return Math.max(-m, Math.min(m, v)); };
+  c.vex = lim(c.vex, c.ex, c.tex); c.vey = lim(c.vey, c.ey, c.tey);
   const z = camDistance(c.ex, c.ey, s.aspect);
   const pmax = z * 0.8;
   const pv = len(c.vx, c.vy);

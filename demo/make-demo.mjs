@@ -44,83 +44,151 @@ function repoFix() {
   const pickAll = (re, n) => ws.files.filter((f) => re.test(f)).slice(0, n);
   const pick = (re, i = 0) => pickAll(re, i + 1)[i] || ws.files[(i * 7919) % ws.files.length];
   const readme = has('README.md') ? 'README.md' : pick(/readme/i);
-  const docs = pickAll(/^docs\/.*\.md$/, 6);
+  const docs = pickAll(/^docs\/.*\.md$/, 5);
   const core = pick(/engine\.io-client\/lib\/socket\.ts$/);
   const transport = pick(/engine\.io-client\/lib\/transport\.ts$/);
   const ws1 = pick(/engine\.io-client\/lib\/transports\/websocket\.ts$/);
-  const server = pick(/packages\/engine\.io\/lib\/socket\.ts$/);
-  const srcReads = pickAll(/engine\.io-client\/lib\/.*\.ts$/, 12);
-  const serverReads = pickAll(/packages\/engine\.io\/lib\/.*\.ts$/, 8);
-  const tests = pickAll(/engine\.io-client\/test\/[^/]+\.js$/, 6);
-  const testDir = core.split('/').slice(0, -2).join('/') + '/test/';
-  const newTest = testDir + 'heartbeat-reconnect.js';
+  const srcReads = pickAll(/engine\.io-client\/lib\/[^/]+\.ts$/, 6);
+  const tests = pickAll(/engine\.io-client\/test\/[^/]+\.js$/, 4);
+  const pkg = core.split('/').slice(0, -2).join('/');
+  const newTest = pkg + '/test/regression/heartbeat-reconnect.js';
+  const report = 'docs/heartbeat-reconnect-raport.md';
+  const STEPS = ['Rozpoznanie repozytorium', 'Diagnoza heartbeat', 'Poprawka i test regresyjny', 'Testy', 'Raport dla zlecającego'];
+  const msg = (t, from, to, tone, text, o) => w.at(t, 'message.sent', Object.assign({ agent: from, to, tone, text }, o || {}));
 
-  w.at(0, 'task.started', { text: 'Przeanalizuj repo, znajdź problem i go napraw.', user: 'Michał' });
-  w.at(0.6, 'hermes.reasoning', { text: 'Cel: znaleźć przyczynę zgłoszonego błędu i dostarczyć poprawkę z testem.', tokens: 820 });
-  w.at(1.2, 'memory.read', { agent: 'hermes', resource: 'kontekst/ostatnie_zgloszenia', text: 'Zgłoszenie: po ponownym połączeniu klient rozłącza się po ~25 s.' });
-  w.at(1.8, 'planner.step', { text: 'Plan: 1) rozpoznanie repo, 2) diagnoza w kodzie, 3) poprawka, 4) testy, 5) raport.', tokens: 640 });
-  w.at(2.4, 'agent.spawned', { agent: 'research', label: 'Research', text: 'Rozpoznaje repozytorium i zgłoszenia.' });
-  w.at(2.7, 'message.sent', { agent: 'hermes', to: 'research', tone: 'assign', text: 'Zrób mapę repo i znajdź kod odpowiedzialny za heartbeat.' });
-  w.at(3.0, 'tool.started', { agent: 'research', tool: 'git ls-files', text: 'Lista plików repozytorium.' });
-  // the whole tree arrives through real listing events, one per top-level directory, spread over ~20 s
+  // ---- 0. the order and the plan
+  w.at(0, 'task.started', { text: 'Przeanalizuj repo, znajdź problem i go napraw.', user: 'Michał', step: 0 });
+  w.at(1.0, 'hermes.reasoning', { text: 'Zgłoszenie: po ponownym połączeniu klient rozłącza się po ~25 s. Wygląda na timer heartbeat, który przeżywa stare połączenie.', tokens: 820, step: 0 });
+  w.at(5.5, 'memory.read', { agent: 'hermes', resource: 'kontekst/ostatnie_zgloszenia', text: 'Zgłoszenie #4821: rozłączenie ~25 s po reconnect.' });
+  w.at(7.0, 'planner.step', { text: 'Plan w pięciu krokach. Potrzebuję rozpoznania, programisty i testera.', steps: STEPS, tokens: 640, step: 0 });
+  // ---- 1. Hermes creates the first agent and gives it a task
+  w.at(11.0, 'agent.spawned', { agent: 'research', label: 'Research', parent: 'hermes', text: 'Rozpoznanie: mapa repozytorium, zgłoszenia, specyfikacja protokołu.' });
+  msg(13.0, 'hermes', 'research', 'assign', 'Zrób mapę repozytorium i znajdź kod odpowiedzialny za ping/pong po stronie klienta.', { task: 'Mapa repo + kod heartbeat', step: 0 });
+  msg(17.0, 'research', 'hermes', 'answer', 'Przyjąłem. Zaczynam od listy plików, potem zgłoszenia i specyfikacja.');
+  w.at(19.5, 'tool.started', { agent: 'research', tool: 'terminal', command: 'git ls-files', text: 'Lista plików repozytorium.' });
+  // the real tree arrives through listing events, one per package / top-level directory, in proportion to size
   const groups = new Map();
-  // one listing per package / top-level directory, so the tree grows part by part
   const groupOf = (f) => { const p = f.split('/'); return p.length < 2 ? '.' : p[0] === 'packages' && p.length > 2 ? p[0] + '/' + p[1] : p[0]; };
   for (const f of ws.files) { const g = groupOf(f); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(f); }
   const order = [...groups.keys()].sort((a, b) => groups.get(b).length - groups.get(a).length || (a < b ? -1 : 1));
-  // listings arrive in proportion to their size (≈ 50 files/s overall), like a real recursive listing
   let done = 0;
-  const startOf = order.map((g) => { const t = 3.3 + (done / ws.files.length) * 18; done += groups.get(g).length; return t; });
-  order.forEach((g, i) => w.at(startOf[i], 'workspace.scanned', { agent: 'research', tool: 'git ls-files', resource: ws.name, paths: groups.get(g), text: g + ': ' + groups.get(g).length + ' plików' }));
-  w.at(24.0, 'tool.completed', { agent: 'research', tool: 'git ls-files', latencyMs: 20700, text: ws.files.length + ' plików' });
-  // research reads key files while scan is still happening (interleaved)
-  w.at(9.3, 'tool.started', { agent: 'research', tool: 'read' });
-  [readme, ...docs].forEach((f, i) => w.at(9.5 + i * 0.8, 'file.read', { agent: 'research', tool: 'read', resource: f }));
-  w.at(16.2, 'tool.completed', { agent: 'research', tool: 'read', latencyMs: 6900 });
-  w.at(16.8, 'gateway.call', { agent: 'research', name: 'GitHub MCP', resource: 'issues', text: 'Pobranie otwartych zgłoszeń o rozłączeniach.', latencyMs: 640 });
-  w.at(17.5, 'tool.started', { agent: 'research', tool: 'web_search', text: 'Specyfikacja ping/pong protokołu Engine.IO.' });
-  w.at(18.3, 'resource.read', { agent: 'research', tool: 'web_search', resource: 'https://socket.io/docs/v4/engine-io-protocol/' });
-  w.at(18.9, 'resource.read', { agent: 'research', tool: 'web_search', resource: 'https://developer.mozilla.org/docs/Web/API/WebSocket' });
-  w.at(19.5, 'tool.completed', { agent: 'research', tool: 'web_search', latencyMs: 2000, tokens: 1900 });
-  w.at(25.2, 'agent.spawned', { agent: 'coder', label: 'Coder', text: 'Diagnozuje i poprawia kod.' });
-  w.at(25.5, 'message.sent', { agent: 'research', to: 'coder', tone: 'handoff', text: 'Podejrzenie: timer pingTimeout nie jest czyszczony przy ponownym połączeniu (' + core + ').' });
-  w.at(26.0, 'tool.started', { agent: 'coder', tool: 'read' });
-  [...srcReads, ...serverReads].forEach((f, i) => w.at(26.3 + i * 0.35, 'file.read', { agent: 'coder', tool: 'read', resource: f }));
-  w.at(34.5, 'tool.completed', { agent: 'coder', tool: 'read', latencyMs: 8500 });
-  w.at(35.0, 'hermes.reasoning', { text: 'Diagnoza: przy ponownym połączeniu stary timer pingTimeout zamyka nowe połączenie.', tokens: 540, confidence: 0.82 });
-  w.at(35.5, 'memory.write', { agent: 'coder', resource: 'kontekst/diagnoza', text: 'Przyczyna: niewyczyszczony pingTimeoutTimer.' });
-  w.at(36.0, 'tool.started', { agent: 'coder', tool: 'edit' });
-  w.at(36.7, 'file.modified', { agent: 'coder', tool: 'edit', resource: core, text: 'clearTimeout(pingTimeoutTimer) przy zamknięciu i ponownym otwarciu.', tokens: 1200 });
-  w.at(37.4, 'file.modified', { agent: 'coder', tool: 'edit', resource: transport, text: 'Zdarzenie close przekazuje powód.' });
-  w.at(38.0, 'file.created', { agent: 'coder', tool: 'edit', resource: newTest, text: 'Test regresyjny: ponowne połączenie nie dziedziczy timera.' });
-  w.at(38.5, 'tool.completed', { agent: 'coder', tool: 'edit', latencyMs: 2500 });
-  w.at(38.8, 'agent.spawned', { agent: 'tester', label: 'Tester', text: 'Uruchamia testy i sprawdza regresje.' });
-  w.at(39.0, 'message.sent', { agent: 'coder', to: 'tester', tone: 'handoff', text: 'Poprawka gotowa, uruchom testy klienta.' });
-  w.at(39.5, 'tool.started', { agent: 'tester', tool: 'terminal', text: 'npm test' });
-  const names = [newTest, ...tests.slice(0, 4)];
-  names.forEach((f, i) => w.at(39.9 + i * 0.3, 'file.read', { agent: 'tester', tool: 'terminal', resource: f }));
-  w.at(41.5, 'test.started', { agent: 'tester', name: 'heartbeat-reconnect' });
-  w.at(41.7, 'test.started', { agent: 'tester', name: 'socket' });
-  w.at(42.9, 'test.passed', { agent: 'tester', name: 'socket', latencyMs: 1500 });
-  w.at(43.6, 'test.failed', { agent: 'tester', name: 'heartbeat-reconnect', text: 'Po zamknięciu transportu timer nadal działa (transport websocket).' });
-  w.at(43.8, 'error', { agent: 'tester', text: '1 test nie przechodzi.' });
-  w.at(44.1, 'tool.completed', { agent: 'tester', tool: 'terminal', latencyMs: 4600 });
-  w.at(44.5, 'message.sent', { agent: 'tester', to: 'coder', tone: 'critique', text: 'heartbeat-reconnect: transport websocket nie czyści timera.' });
-  w.at(45.1, 'tool.started', { agent: 'coder', tool: 'edit' });
-  w.at(45.7, 'file.read', { agent: 'coder', tool: 'edit', resource: ws1 });
-  w.at(46.4, 'file.modified', { agent: 'coder', tool: 'edit', resource: ws1, text: 'onClose czyści timer także dla websocket.' });
-  w.at(46.9, 'tool.completed', { agent: 'coder', tool: 'edit', latencyMs: 1800 });
-  w.at(47.2, 'message.sent', { agent: 'coder', to: 'tester', tone: 'revision', text: 'Poprawione, proszę o powtórkę.' });
-  w.at(47.7, 'tool.started', { agent: 'tester', tool: 'terminal', text: 'npm test' });
-  ['heartbeat-reconnect', 'socket', 'connection', 'transport'].forEach((n, i) => { w.at(48.1 + i * 0.3, 'test.started', { agent: 'tester', name: n }); w.at(49.4 + i * 0.45, 'test.passed', { agent: 'tester', name: n }); });
-  w.at(51.4, 'tool.completed', { agent: 'tester', tool: 'terminal', latencyMs: 3700 });
-  w.at(51.7, 'agent.completed', { agent: 'tester' });
-  w.at(52.0, 'result.returned', { agent: 'tester', text: 'Wszystkie testy przechodzą (4/4).' });
-  w.at(52.4, 'result.returned', { agent: 'coder', text: 'Poprawka: czyszczenie timera pingTimeout w ' + core.split('/').pop() + ' i ' + ws1.split('/').pop() + '.' });
-  w.at(52.7, 'agent.completed', { agent: 'coder' });
-  w.at(52.9, 'agent.completed', { agent: 'research' });
-  w.at(53.4, 'hermes.reasoning', { text: 'Składam raport: przyczyna, zmiana, dowód z testów.', tokens: 700, confidence: 0.93 });
-  w.at(54.2, 'task.completed', { text: 'Naprawiono rozłączanie po ponownym połączeniu; testy 4/4.' });
+  const startOf = order.map((g) => { const t = 21 + (done / ws.files.length) * 16; done += groups.get(g).length; return t; });
+  order.forEach((g, i) => w.at(startOf[i], 'workspace.scanned', { agent: 'research', tool: 'terminal', resource: ws.name, paths: groups.get(g), text: g + ': ' + groups.get(g).length + ' plików' }));
+  w.at(37.5, 'tool.completed', { agent: 'research', tool: 'terminal', output: ws.files.length + ' plików w ' + order.length + ' pakietach / katalogach', latencyMs: 18000 });
+  w.at(24.0, 'tool.started', { agent: 'research', tool: 'read' });
+  [readme, ...docs].forEach((f, i) => w.at(24.5 + i * 1.6, 'file.read', { agent: 'research', tool: 'read', resource: f }));
+  w.at(34.0, 'tool.completed', { agent: 'research', tool: 'read' });
+  w.at(38.5, 'gateway.call', { agent: 'research', name: 'GitHub MCP', resource: 'issues', text: 'Otwarte zgłoszenia o rozłączeniach: 3 (#4821, #4790, #4655).', latencyMs: 640 });
+  w.at(40.0, 'resource.read', { agent: 'research', tool: 'web_search', resource: 'https://socket.io/docs/v4/engine-io-protocol/', text: 'Specyfikacja ping/pong: pingInterval 25 s, pingTimeout 20 s.' });
+  w.at(42.0, 'tool.started', { agent: 'research', tool: 'terminal', command: 'git grep -n "_pingTimeoutTimer" ' + pkg + '/lib', step: 1 });
+  w.at(44.5, 'tool.completed', { agent: 'research', tool: 'terminal', output: [
+    'lib/socket.ts:389:  private _pingTimeoutTimer: ReturnType<typeof setTimeout>;',
+    'lib/socket.ts:541:    this.clearTimeoutFn(this._pingTimeoutTimer);',
+    'lib/socket.ts:542:    this._pingTimeoutTimer = this.setTimeoutFn(() => {',
+    'lib/socket.ts:801:      this.clearTimeoutFn(this._reconnectTimer);',
+  ].join('\n') });
+  w.at(45.5, 'file.read', { agent: 'research', tool: 'read', resource: core });
+  msg(47.0, 'research', 'hermes', 'result', 'Mam podejrzenie: przy zamknięciu połączenia czyszczony jest tylko _reconnectTimer, a _pingTimeoutTimer zostaje (socket.ts:801).', { step: 1 });
+  w.at(49.5, 'agent.completed', { agent: 'research' });
+  // ---- 2. Hermes builds the rest of the team; the programmer creates its own tester
+  w.at(51.0, 'hermes.reasoning', { text: 'Diagnoza wiarygodna (0,82). Potrzebny programista do poprawki, a on dobierze sobie testera.', tokens: 540, confidence: 0.82, step: 1 });
+  w.at(55.0, 'agent.spawned', { agent: 'coder', label: 'Coder', parent: 'hermes', text: 'Programista: poprawka w engine.io-client i test regresyjny.' });
+  msg(57.0, 'hermes', 'coder', 'assign', 'Wyczyść timer pingTimeout przy każdym zamknięciu połączenia i dopisz test regresyjny.', { task: 'Napraw timer pingTimeout', step: 2 });
+  msg(61.0, 'coder', 'hermes', 'question', 'Czy poprawka ma objąć też transport websocket, czy tylko socket.ts?');
+  msg(64.5, 'hermes', 'coder', 'answer', 'Zacznij od socket.ts. Websocket niech sprawdzi tester na prawdziwym połączeniu.');
+  w.at(68.0, 'agent.spawned', { agent: 'tester', label: 'Tester', parent: 'coder', text: 'Tester: uruchamia testy klienta i pilnuje regresji.' });
+  msg(70.0, 'coder', 'tester', 'assign', 'Przygotuj testy klienta engine.io; dam znać, gdy poprawka będzie gotowa.', { task: 'Testy regresji reconnect' });
+  // ---- 3. writing the fix
+  w.at(73.0, 'tool.started', { agent: 'coder', tool: 'edit' });
+  srcReads.filter((f) => f !== core).slice(0, 2).forEach((f, i) => w.at(73.4 + i * 0.8, 'file.read', { agent: 'coder', tool: 'read', resource: f }));
+  w.at(75.5, 'memory.write', { agent: 'coder', resource: 'kontekst/diagnoza', text: 'Przyczyna: niewyczyszczony _pingTimeoutTimer.' });
+  w.at(77.0, 'file.modified', { agent: 'coder', tool: 'edit', resource: core, line: 795, step: 2, text: 'Czyszczenie timera pingTimeout przy zamknięciu.', patch: [
+    '   private _onClose(reason: string, description?: CloseDetails | Error) {',
+    '     if ("opening" === this.readyState || "open" === this.readyState) {',
+    '       debug(\'socket close with reason: "%s"\', reason);',
+    ' ',
+    '-      // clear timers',
+    '+      // clear timers: the heartbeat of this connection must not outlive it',
+    '       this.clearTimeoutFn(this._reconnectTimer);',
+    '+      this.clearTimeoutFn(this._pingTimeoutTimer);',
+    '+      this._pingTimeoutTimer = null;',
+    ' ',
+    '       // stop event from firing again for transport',
+    '       this.transport.removeAllListeners("close");',
+  ].join('\n') });
+  w.at(85.0, 'file.modified', { agent: 'coder', tool: 'edit', resource: transport, line: 148, text: 'Zdarzenie close przekazuje szczegóły.', patch: [
+    '   protected onClose(details?: CloseDetails) {',
+    '     this.readyState = "closed";',
+    '-    super.emitReserved("close");',
+    '+    super.emitReserved("close", details);',
+    '   }',
+  ].join('\n') });
+  w.at(90.0, 'file.created', { agent: 'coder', tool: 'edit', resource: newTest, text: 'Test regresyjny: ponowne połączenie nie dziedziczy timera.', content: [
+    'const expect = require("expect.js");',
+    'const { Socket } = require("../..");',
+    '',
+    'describe("heartbeat after reconnect", () => {',
+    '  it("does not inherit the old pingTimeout timer", (done) => {',
+    '    const socket = new Socket({ transports: ["websocket"] });',
+    '    socket.on("open", () => socket.transport.close());',
+    '    socket.on("close", () => {',
+    '      expect(socket._pingTimeoutTimer).to.be(null);',
+    '      done();',
+    '    });',
+    '  });',
+    '});',
+  ].join('\n') });
+  w.at(98.0, 'tool.completed', { agent: 'coder', tool: 'edit', latencyMs: 25000 });
+  msg(98.5, 'coder', 'tester', 'handoff', 'Gotowe: socket.ts, transport.ts i nowy test w test/regression/. Uruchom proszę.');
+  // ---- 4. tests: first run fails
+  w.at(102.0, 'tool.started', { agent: 'tester', tool: 'terminal', command: 'npm test -w engine.io-client -- --grep reconnect', step: 3 });
+  w.at(105.0, 'test.started', { agent: 'tester', name: 'heartbeat-reconnect', output: '  heartbeat after reconnect' });
+  w.at(106.5, 'test.passed', { agent: 'tester', name: 'socket', output: '    ✓ reconnects after transport close (412ms)' });
+  w.at(108.5, 'test.failed', { agent: 'tester', name: 'heartbeat-reconnect', text: 'Po zamknięciu websocketa timer nadal działa.', output: '    ✗ does not inherit the old pingTimeout timer\n      AssertionError: expected Timeout {} to be null\n      at Socket._onClose (lib/transports/websocket.ts:87)' });
+  w.at(109.5, 'tool.failed', { agent: 'tester', tool: 'terminal', output: '\n  1 passing (2s)\n  1 failing', latencyMs: 7500 });
+  msg(111.0, 'tester', 'coder', 'critique', 'heartbeat-reconnect nie przechodzi: przy zamknięciu websocketa timer zostaje (websocket.ts:87).');
+  msg(115.0, 'coder', 'tester', 'answer', 'Widzę: websocket woła onClose bez szczegółów, więc ta gałąź się nie wykonuje. Poprawiam.');
+  w.at(118.0, 'tool.started', { agent: 'coder', tool: 'edit' });
+  w.at(118.5, 'file.read', { agent: 'coder', tool: 'read', resource: ws1 });
+  w.at(120.0, 'file.modified', { agent: 'coder', tool: 'edit', resource: ws1, line: 84, text: 'onClose ze szczegółami także dla websocket.', patch: [
+    '     this.ws.onclose = (closeEvent) =>',
+    '-      this.onClose();',
+    '+      this.onClose({',
+    '+        description: "websocket connection closed",',
+    '+        context: closeEvent,',
+    '+      });',
+  ].join('\n') });
+  w.at(125.0, 'tool.completed', { agent: 'coder', tool: 'edit' });
+  msg(125.5, 'coder', 'tester', 'revision', 'Poprawione w websocket.ts, proszę o powtórkę całego zestawu.');
+  // ---- second run passes
+  w.at(129.0, 'tool.started', { agent: 'tester', tool: 'terminal', command: 'npm test -w engine.io-client', step: 3 });
+  tests.slice(0, 2).forEach((f, i) => w.at(131 + i * 0.6, 'file.read', { agent: 'tester', tool: 'terminal', resource: f }));
+  ['socket', 'connection', 'transport', 'heartbeat-reconnect'].forEach((n, i) => w.at(133 + i * 1.3, 'test.passed', { agent: 'tester', name: n, output: '    ✓ ' + { socket: 'reconnects after transport close (398ms)', connection: 'connects and upgrades (221ms)', transport: 'emits close with details (12ms)', 'heartbeat-reconnect': 'does not inherit the old pingTimeout timer (87ms)' }[n] }));
+  w.at(139.0, 'tool.completed', { agent: 'tester', tool: 'terminal', output: '\n  4 passing (3s)', latencyMs: 10000 });
+  msg(140.5, 'tester', 'hermes', 'result', 'Wszystkie testy przechodzą (4/4). Regresja zabezpieczona nowym testem.');
+  w.at(142.5, 'agent.completed', { agent: 'tester' });
+  w.at(143.0, 'result.returned', { agent: 'coder', text: 'Poprawka w 3 plikach + test regresyjny.' });
+  w.at(143.5, 'agent.completed', { agent: 'coder' });
+  // ---- 5. the report
+  w.at(145.0, 'hermes.reasoning', { text: 'Składam raport: przyczyna, zmiany, dowód z testów.', tokens: 700, confidence: 0.93, step: 4 });
+  w.at(148.5, 'file.created', { agent: 'hermes', tool: 'edit', resource: report, text: 'Raport dla zlecającego.', step: 4, content: [
+    '# Rozłączanie po ponownym połączeniu',
+    '',
+    '## Przyczyna',
+    'Timer pingTimeout starego połączenia nie był czyszczony,',
+    'gdy zamknięcie przychodziło z transportu websocket.',
+    '',
+    '## Zmiany',
+    '- lib/socket.ts: czyszczenie timera przy zamknięciu',
+    '- lib/transport.ts: close przekazuje szczegóły',
+    '- lib/transports/websocket.ts: onClose ze szczegółami',
+    '- test/regression/heartbeat-reconnect.js: nowy test',
+    '',
+    '## Dowód',
+    'npm test: 4 passing, 0 failing',
+  ].join('\n') });
+  msg(157.0, 'hermes', 'user', 'result', 'Gotowe: przyczyna znaleziona, poprawka w 3 plikach, nowy test, 4/4 przechodzą. Raport w docs/.');
+  w.at(161.0, 'task.completed', { text: 'Naprawiono rozłączanie po ponownym połączeniu; testy 4/4.' });
   return w.save();
 }
 

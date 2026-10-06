@@ -5,35 +5,17 @@
 //   node artifact/build-workflow.mjs [repo root] [output dir]      (defaults: this repo, artifact/project)
 import fs from 'node:fs';
 import path from 'node:path';
+import { coreBundle, runsScript } from './bundle-core.mjs';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const REPO = process.argv[2] || path.resolve(HERE, '..');
-const CORE = path.join(REPO, 'packages', 'core');
-const ORDER = JSON.parse(fs.readFileSync(path.join(CORE, 'manifest.json'), 'utf8')).files;
-
-const seen = new Map();
-let core = '';
-for (const f of ORDER) {
-  let src = fs.readFileSync(path.join(CORE, f), 'utf8');
-  src = src.replace(/^import [^\n]*\n/gm, '').replace(/^export (const|function|let|class) /gm, '$1 ').replace(/^export \{[^}]*\};?\n/gm, '');
-  if (/^\s*(import|export)\s/m.test(src)) throw new Error('unhandled import/export in ' + f);
-  for (const m of src.matchAll(/^(?:const|let|function|class) ([A-Za-z_$][\w$]*)/gm)) {
-    if (seen.has(m[1])) throw new Error(`top-level name clash: ${m[1]} in ${f} and ${seen.get(m[1])}`);
-    seen.set(m[1], f);
-  }
-  core += `// ---- ${f}\n` + src.trim() + '\n';
-}
-const NW = `const NW = (() => {\n${core}\nreturn { parseJsonl, createTimeline, createViewer };\n})();`;
-
-const RUNS = [
+const NW = coreBundle(REPO);
+const RUNS_JS = runsScript(REPO, [
   ['repo-fix', 'Naprawa repo'],
   ['panel', 'Panel sprzedaży'],
   ['medytacja', 'Premiera aplikacji'],
   ['niemcy', 'Wejście do Niemiec'],
-].map(([id, name]) => ({ id, name, jsonl: fs.readFileSync(path.join(REPO, 'demo', 'runs', id + '.jsonl'), 'utf8') }));
-// the canvas checker forbids literal URLs and network words in the page source: escape them inside the string
-// literal (\u002f is '/' at run time), so the data stays exactly as recorded
-const RUNS_JS = 'const NW_RUNS = ' + JSON.stringify(RUNS).replace(/:\/\//g, ':\\u002f\\u002f').replace(/WebSocket/g, 'Web\\u0053ocket').replace(/fetch\(/g, 'fetch\\u0028') + ';';
+]);
 
 const FONTS = '<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">';
 

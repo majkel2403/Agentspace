@@ -12,13 +12,13 @@ const MID = 600;
 const clone = typeof structuredClone === 'function' ? structuredClone : (o) => JSON.parse(JSON.stringify(o));
 
 export function createPlayer(opts) {
-  const P = { aspect: (opts && opts.aspect) || 16 / 9, autoRotate: !(opts && opts.autoRotate === false), events: [], t0: null, stream: null, cps: [], cur: null, bake: null };
+  const P = { aspect: (opts && opts.aspect) || 16 / 9, autoRotate: !(opts && opts.autoRotate === false), focus: !!(opts && opts.focus), events: [], t0: null, stream: null, cps: [], cur: null, bake: null };
   const ctx = () => ({ actions: P.stream.actions, notes: P.stream.notes, label: P.stream.label, parent: P.stream.parent });
   let C = null;
 
   function reset() {
     P.stream = createActionStream();
-    const s0 = createSim({ aspect: P.aspect, autoRotate: P.autoRotate });
+    const s0 = createSim({ aspect: P.aspect, autoRotate: P.autoRotate, focus: P.focus });
     P.cps = [clone(s0)];
     P.cur = s0;
     P.bake = null;

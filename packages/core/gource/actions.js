@@ -75,6 +75,7 @@ export function createActionStream() {
       case 'agent.spawned':
         S.users[ev.agent] = { id: ev.agent, label: ev.label || label(ev.agent), parent: ev.parent || 'hermes' };
         act(t, ev.parent || 'hermes', 'zespol/' + seg(ev.agent) + '.md', 'A', i);
+        note(t, 'spawn', ev.agent, { parent: ev.parent || 'hermes' }, i);
         break;
       case 'agent.waiting': break;
       case 'agent.completed': note(t, 'done', a, null, i); break;

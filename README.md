@@ -23,6 +23,27 @@ kopiowany ani dołączany — prawdziwy Gource służy tylko jako wzorzec do por
 
 Pod awatarem widać narzędzie, którego agent właśnie używa (np. `edit`, `terminal`).
 
+### Studio: co robi zespół
+
+Nad sceną działa warstwa „studia” (`packages/core/gource/story.js` + `cards.js`), liczona wyłącznie z logu, więc
+przewija się dokładnie tak jak scena:
+
+- **tablica zespołu** — Hermes i drzewko agentów, które powołał (kto kogo stworzył, np. Coder → Tester), rola,
+  bieżące zadanie i status (pracuje · narzędzie / czeka / gotowe / błąd), nad nią zlecenie, pod nią **plan** z
+  odhaczanymi krokami;
+- **powołanie agenta** — złota nić od twórcy, pierścień i podpis „NOWY AGENT” z rolą; awatar pojawia się obok twórcy;
+- **rozmowy i przydział zadań** — dymki z wpisywanym tekstem (myśli Hermesa przerywaną ramką), paczka lecąca od
+  nadawcy do odbiorcy, przy przydziale złota etykieta ZADANIE, a zadanie trafia na tablicę zespołu;
+- **pisanie kodu** — okno edytora połączone linią z plikiem: kod z `content` (nowy plik) albo `patch` (diff +/−)
+  jest wpisywany znak po znaku z kolorowaniem składni i numerami linii; nowy folder dostaje etykietę „+ folder”;
+- **terminal** — komenda z `command` wpisywana w oknie, a wynik (`output` zdarzeń testów i narzędzia) spływa
+  linia po linii, porażki na czerwono.
+
+Tempo pisania jest dobrane do czytania, tekst jest dokładnie tym, co zapisał producent. Na szerokim ekranie studio
+zajmuje prawą kolumnę, na telefonie pasek z zespołem u góry i jedno okno na dole. Kamera domyślnie **śledzi pracę**
+(agenci, ich pliki i świeżo zmienione katalogi), a gdy drzewo wyrasta ze skanu albo nikt nie pracuje — pokazuje całość.
+`createViewer({ studio: false })` / `{ focus: false }` wyłącza studio / śledzenie.
+
 ```
 Hermes / Jarvis ──► Event Bus ──► server (Workflow Recorder) ──► Event Store (data/runs/<run>.jsonl)
                                         │
@@ -92,6 +113,12 @@ Jedna linia JSONL = jedno zdarzenie (walidacja: `packages/core/events.js`).
 | `name` | nazwa testu / bramki MCP-API |
 | `text` | opis dla człowieka (log, inspektor) |
 | `paths` | lista ścieżek (`workspace.scanned`, np. wynik `git ls-files`) |
+| `content` | `file.created`: treść nowego pliku (wpisywana w edytorze studia) |
+| `patch`, `line` | `file.modified`: zmienione linie w stylu unified diff (`+` dodane, `-` usunięte, ` ` kontekst) i numer pierwszej linii |
+| `command` | `tool.started`: komenda wpisana w terminalu (np. `npm test`) |
+| `output` | `tool.completed` / `tool.failed` / `test.*`: linie wypisane w tym terminalu |
+| `tone`, `task` | `message.sent`: ton (`assign`, `question`, `answer`, `handoff`, `critique`, `revision`, `approve`, `result`) i krótki tytuł zadania przy `assign` |
+| `steps`, `step` | `planner.step`: plan jako lista kroków; dowolne zdarzenie: numer bieżącego kroku (od 0) |
 | `latencyMs`, `tokens`, `confidence` | metryki (inspektor) |
 
 Typy: `task.started|completed|failed`, `hermes.reasoning`, `planner.step`,

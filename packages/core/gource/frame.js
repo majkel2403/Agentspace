@@ -64,13 +64,14 @@ export function buildFrame(s, k, W, H, o) {
       const wx = dx + lerp(f.px, f.x, k); const wy = dy + lerp(f.py, f.y, k);
       const a = fileAlpha(f);
       const sel = o.selected === 'file:' + f.path;
+      const hl = sel || o.highlight === 'file:' + f.path;
       const col = sel ? [1, 1, 1] : fileColour(f);
       const x = V.sx(wx); const y = V.sy(wy);
       F.files.push({ x, y, size: Math.max(2, fs * K), col, a, shadow: 2 * K, path: f.path });
       F.counts.files++;
       F.picks.push({ id: 'file:' + f.path, x, y, r: Math.max(5, fs * K * 0.6) });
-      const na = sel ? 1 : f.nameInt > 0 && fs * K >= 4 ? nameAlpha(f.nameInt, SIM.FILENAME_TIME) : 0;
-      if (na > 0.01 && !o.hideFileNames) F.labels.push({ kind: sel ? 'file-sel' : 'file', text: f.name, x: V.sx(wx + 5.5), y: V.sy(wy - (sel ? 2 : 1)), a: na });
+      const na = hl ? 1 : f.nameInt > 0 && fs * K >= 4 ? nameAlpha(f.nameInt, SIM.FILENAME_TIME) : 0;
+      if (na > 0.01 && !o.hideFileNames) F.labels.push({ kind: hl ? 'file-sel' : 'file', text: f.name, x: V.sx(wx + 5.5), y: V.sy(wy - (hl ? 2 : 1)), a: na });
     }
   }
 
@@ -89,14 +90,15 @@ export function buildFrame(s, k, W, H, o) {
     }
     const a = userAlpha(u);
     const sel = o.selected === 'user:' + u.id;
+    const hl = sel || o.highlight === 'user:' + u.id;
     const x = V.sx(ux); const y = V.sy(uy);
     const minW = o.agentNames ? 22 : 14;
     F.users.push({ x, y, w: Math.max(minW, uw * K), h: Math.max(minW, uw * K) * SIM.USER_RATIO, col: sel ? [1, 1, 1] : u.col, a, shadow: 2 * K, id: u.id, label: u.label, ucol: u.col });
     F.counts.users++;
     F.picks.push({ id: 'user:' + u.id, x, y, r: Math.max(8, uw * K * 0.6) });
     // with the studio on, agents are always named (they are the story); otherwise names fade as in Gource
-    const na = sel ? 1 : o.agentNames ? a : u.nameInt > 0 ? nameAlpha(u.nameInt, SIM.NAME_TIME) : 0;
-    if (na > 0.01) F.labels.push({ kind: sel ? 'user-sel' : 'user', text: u.label, x, y: y - Math.max(minW, uw * K) * SIM.USER_RATIO * 0.5, a: na });
+    const na = hl ? 1 : o.agentNames ? a : u.nameInt > 0 ? nameAlpha(u.nameInt, SIM.NAME_TIME) : 0;
+    if (na > 0.01) F.labels.push({ kind: hl ? 'user-sel' : 'user', text: u.label, x, y: y - Math.max(minW, uw * K) * SIM.USER_RATIO * 0.5, a: na });
     // tool in use (our addition): a small tag under the avatar while the tool runs
     if (u.tool && u.toolT >= 0 && !o.compat) {
       const age = s.t - u.toolT;

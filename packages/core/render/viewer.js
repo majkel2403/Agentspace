@@ -14,28 +14,25 @@ import { gUserColour } from '../gource/colour.js';
 
 const BG = [0.1, 0.1, 0.1];
 export const TAIL_MS = 6000;
-// the studio (team board, editor and terminal windows) takes a right column on wide screens, a top strip and a
-// bottom window on narrow ones; the camera frames the tree in what is left
-const STUDIO_W = 380;
-const studioMode = (opts, W, compat) => (compat || opts.studio === false ? null : opts.studio || (W >= 900 ? 'column' : 'compact'));
-
+// The canvas shows the world only: the tree, the agents, and what happens between them (creation threads, messages,
+// bubbles). Panels are the app's (HTML) — the canvas sits in its own layout cell and is never covered by them;
+// insets are only for small overlays the app keeps inside the scene (legend, ticker).
+// opts.hud: false hides the Gource text overlay (extension key, date, caption) when the app shows its own.
 export function createViewer(opts) {
   const glc = opts.gl;
   const ovc = opts.overlay;
   const backend = (opts.forceCanvas2D ? null : createGL(glc)) || createC2D(glc);
   const octx = ovc.getContext('2d');
-  const inset = () => {
-    const m = studioMode(opts, glc.clientWidth || 0, !!opts.compat);
-    return { l: opts.insetLeft || 0, r: (opts.insetRight || 0) + (m === 'column' ? STUDIO_W + 24 : 0), t: (opts.insetTop || 0) + (m === 'compact' ? 50 : 0), b: (opts.insetBottom || 0) + (m === 'compact' ? 132 : 0) };
-  };
+  const inset = () => ({ l: opts.insetLeft || 0, r: opts.insetRight || 0, t: opts.insetTop || 0, b: opts.insetBottom || 0 });
+  const studioOn = () => !opts.compat && opts.studio !== false;
   // aspect ratio of the free area the camera frames
   const aspectOf = (W, H) => { const i = inset(); return Math.max(0.2, Math.max(40, W - i.l - i.r) / Math.max(40, H - i.t - i.b)); };
   const aspectNow = () => aspectOf(glc.clientWidth || 16, glc.clientHeight || 9);
   const v = {
     backend: backend ? backend.kind : 'none', T: null, t: 0, playing: false, speed: 1, live: false, sel: null, hover: null,
-    onSelect: null, onTick: null, compat: !!opts.compat, ft: 0,
-    // with the studio on, the camera follows the agents' work; ?focus=0 / focus: false keeps the whole tree in view
-    player: createPlayer({ aspect: aspectNow(), autoRotate: opts.autoRotate, focus: opts.focus != null ? !!opts.focus : !opts.compat && opts.studio !== false }),
+    onSelect: null, onTick: null, onHover: null, compat: !!opts.compat, ft: 0, hl: null, story: null,
+    // with the studio on, the camera follows the agents' work; focus: false keeps the whole tree in view
+    player: createPlayer({ aspect: aspectNow(), autoRotate: opts.autoRotate, focus: opts.focus != null ? !!opts.focus : studioOn() }),
   };
   const cam = { zoom: 1, panX: 0, panY: 0 };
   v.cam = cam;
@@ -79,7 +76,9 @@ export function createViewer(opts) {
     v.player = createPlayer({ aspect: aspectNow(), autoRotate: opts.autoRotate, focus: !!on });
     if (v.T) v.player.load(v.T.events);
   };
-  v.focus = () => (opts.focus != null ? !!opts.focus : !opts.compat && opts.studio !== false);
+  v.focus = () => (opts.focus != null ? !!opts.focus : studioOn());
+  // highlight an agent or file from outside (hovering it in a panel): named and marked like a selection
+  v.highlight = (id) => { v.hl = id || null; };
   v.zoom = (k) => { cam.zoom = Math.max(0.15, Math.min(8, cam.zoom / k)); };
   v.reset = () => { cam.zoom = 1; cam.panX = 0; cam.panY = 0; v.select(null); };
   v.select = (id) => { v.sel = id; if (v.onSelect) v.onSelect(id, id ? v.inspect(id) : null); };
@@ -123,28 +122,24 @@ export function createViewer(opts) {
     } else resizeAt = 0;
     const t0 = performance.now();
     const { s, k } = v.player.at(v.t / 1000);
-    const studio = studioMode(opts, W, v.compat);
-    F = buildFrame(s, k, W, H, { camera: cam, selected: v.sel, compat: v.compat, hideDirNames: opts.hideDirNames, inset: inset(), agentNames: !!studio });
+    const studio = studioOn();
+    F = buildFrame(s, k, W, H, { camera: cam, selected: v.sel, highlight: v.hl || v.hover, compat: v.compat, hideDirNames: opts.hideDirNames, inset: inset(), agentNames: studio });
     if (backend) backend.draw(F, W, H, dpr, BG);
     const i = v.T.indexAt(v.t);
-    if (i >= 0 && opts.caption !== false && !v.compat) {
+    const hud = opts.hud !== false;
+    if (i >= 0 && hud && opts.caption !== false && !v.compat) {
       const ev = v.T.events[i];
       caption = (ev.agent ? ev.agent + ' · ' : '') + ev.type + (ev.text ? ' — ' + ev.text : ev.resource ? ' — ' + ev.resource : ev.tool ? ' — ' + ev.tool : '');
       captionColor = ev.type.includes('fail') || ev.type === 'error' ? [1, 0.6, 0.62] : ev.type.includes('passed') || ev.type.includes('completed') ? [0.75, 1, 0.82] : [1, 1, 1];
     } else caption = '';
-    const narrow = studio === 'compact';
     drawText(octx, F, W, H, dpr, {
-      date: v.compat || opts.date === false ? '' : v.T.t0 != null ? formatDate(v.T.t0 + Math.min(v.t, v.T.duration + TAIL_MS)) : '',
-      dateY: opts.clockY != null ? opts.clockY + (narrow ? 50 : 0) : narrow ? 70 : undefined, keyX: opts.legendX != null ? opts.legendX - 20 : 0, keyY: opts.legendY != null ? opts.legendY - 22 : 0,
-      key: opts.legend !== false && !narrow, keyMax: studio ? 6 : 0, keyBottom: H - (opts.insetBottom || 0) - 8, caption, captionColor, captionBottom: (opts.captionBottom || 34) + (narrow ? 132 : 0), fontScale: opts.fontScale,
+      date: !hud || v.compat || opts.date === false ? '' : v.T.t0 != null ? formatDate(v.T.t0 + Math.min(v.t, v.T.duration + TAIL_MS)) : '',
+      dateY: opts.clockY, keyX: opts.legendX != null ? opts.legendX - 20 : 0, keyY: opts.legendY != null ? opts.legendY - 22 : 0,
+      key: hud && opts.legend !== false, keyMax: studio ? 6 : 0, keyBottom: H - (opts.insetBottom || 0) - 8, caption, captionColor, captionBottom: opts.captionBottom || 34, fontScale: opts.fontScale,
     });
-    const mode = studioMode(opts, W, v.compat);
-    if (mode) {
-      const I = inset();
-      const col = mode === 'column'
-        ? { x: W - (opts.insetRight || 0) - STUDIO_W - 12, w: STUDIO_W, y: (opts.insetTop || 0) + 4, bottom: H - (opts.insetBottom || 0) - 6 }
-        : { x: 8, w: W - 16, y: (opts.insetTop || 0) + 2, bottom: H - (opts.insetBottom || 0) - 4 };
-      drawStory(octx, storyAt(v.T, storyInfo(), v.t), F, W, H, { inset: I, studio: col, compact: mode === 'compact', fontScale: opts.fontScale, t: v.t / 1000 });
+    if (studio) {
+      v.story = storyAt(v.T, storyInfo(), v.t);
+      drawStory(octx, v.story, F, W, H, { inset: inset(), compact: W < 640, fontScale: opts.fontScale });
     }
     // spend spare time computing checkpoints ahead, so scrubbing stays instant
     if (!sync) v.player.bakeAhead(v.T.duration / 1000 + TAIL_MS / 1000, v.ft < 10 ? 3 : 1);
@@ -173,7 +168,8 @@ export function createViewer(opts) {
       if (drag.moved > 4 && F) { cam.panX -= dx / F.V.K; cam.panY -= dy / F.V.K; }
     } else {
       const r = rect();
-      v.hover = pick(e.clientX - r.left, e.clientY - r.top);
+      const h = pick(e.clientX - r.left, e.clientY - r.top);
+      if (h !== v.hover) { v.hover = h; if (v.onHover) v.onHover(h); }
       ovc.style.cursor = v.hover ? 'pointer' : 'grab';
     }
   });
@@ -183,6 +179,7 @@ export function createViewer(opts) {
     if (d && d.moved < 6 && e.type === 'pointerup') v.select(pick(d.px, d.py));
   };
   ovc.addEventListener('pointerup', up);
+  ovc.addEventListener('pointerleave', () => { if (v.hover) { v.hover = null; if (v.onHover) v.onHover(null); } });
   ovc.addEventListener('pointercancel', up);
   ovc.addEventListener('wheel', (e) => { e.preventDefault(); v.zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12); }, { passive: false });
 

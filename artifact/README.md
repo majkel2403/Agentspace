@@ -9,7 +9,7 @@
 | `project/Main.dc.html` | wcześniejsze centrum dowodzenia (zastąpione przez Hermes); jego scenę (dawniej galaktyka 3D) podmienia na scenę jak Gource `gourcify-main.mjs` (wkleja rdzeń i trzy przebiegi zespołowe; uruchamiać po zmianie rdzenia) |
 | `project/Roster.dc.html`, `Mobile.dc.html` | wcześniejsza wersja (katalog, telefon 3D) — zamrożone |
 | `bundle-core.mjs` | wspólne sklejanie rdzenia i przebiegów dla tablic |
-| `build-app.mjs` | wkleja rdzeń `packages/core` (kolejność z `manifest.json`, bez importów; model paneli z `app.js`, ten sam co w `web/`) i przebiegi `demo/runs` do dwóch tablic |
+| `build-app.mjs` | wkleja rdzeń `packages/core`, interfejs `packages/ui` (szablon, logika, styl — te same co w `web/`) i przebiegi `demo/runs` do dwóch tablic |
 | `check-board.mjs` | statyczna kontrola tablicy `.dc.html` (bez przeglądarki) |
 | `shot.mjs` | zrzuty tablic w Chromium — wymaga lokalnych kopii fontów/Reacta i runtime'u typu Design (patrz niżej) |
 | `legacy/` | narzędzia i dane, którymi powstała wersja 3D (archiwum, bez gwarancji, że dziś działają) |

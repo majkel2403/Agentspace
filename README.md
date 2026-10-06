@@ -166,12 +166,15 @@ Zapisuje pary obrazów (Gource po lewej, nasz renderer po prawej) i miarę SSIM 
   odtwarzacz z punktami kontrolnymi, opis klatki, WebGL + awaryjny Canvas 2D, napisy, inspektor), `render/viewer.js`.
   `manifest.json` podaje kolejność plików do budowy bez modułów (artefakt).
 - `server/` — ingest (HTTP / WS / STDIN), Event Store, LIVE fan-out, REPLAY.
-- `web/` — aplikacja Hermes · Centrum dowodzenia: górny pasek (fazy przebiegu, odczyty, zegar, raport, wczytanie
-  logu), lewa kolumna (zlecenie dla Hermesa, lista przebiegów, zakładki Dziennik / Rozmowy / Pliki), scena pracy
-  agentów z kolumną studia (zespół, plan, edytor, terminal), inspektor po kliknięciu pliku lub agenta, raport po
-  zakończeniu, dolny pasek (odtwarzanie, prędkość, oś czasu z fazami, kamera „Śledź pracę”). Na telefonie panele są
-  arkuszami wybieranymi zakładkami Scena / Zlecenie / Dziennik / Rozmowy. Panele liczy wspólny model
-  `packages/core/app.js` — ten sam co w tablicach artefaktu, więc web i kanwa wyglądają i działają tak samo.
+- `packages/ui/` — interfejs Hermes jako jeden system: `hermes.css` (tokeny i siatka, trzy układy `xl | m | s` wybierane
+  szerokością okna), `hermes.markup.mjs` (jeden szablon), `hermes.logic.js` (jedna logika). Panele: Zespół, Kod
+  i terminal, Rozmowy, Pliki, Inspektor, Raport (zakładki jednej kolumny, więc nic na nic nie nachodzi), po lewej
+  Zlecenie i Dziennik. Płótno rysuje tylko świat (drzewo, agenci, nitki, wiadomości, dymki); najechanie na agenta lub
+  plik w panelu podświetla go na scenie.
+- `web/` — podłącza ten interfejs do serwera (`app.js`: lista przebiegów, odczyt, LIVE przez WebSocket) i renderuje
+  szablon (`dc-lite.js`). Te same pliki z `packages/ui` osadza `artifact/build-app.mjs` w tablicach kanwy.
+- `tools/layout-check.mjs` — test układu: 6 rozmiarów okna × 5 stanów, bez nakładania paneli, bez wyjścia poza
+  ekran, bez tekstu poniżej 12 px (wymaga `npm start` i Playwright).
 - `demo/` — zapisane przebiegi (`runs/*.jsonl`, generowane przez `npm run demo:build`), lista plików prawdziwego
   repozytorium socket.io (`workspaces/socket.io.txt`) i emiter na żywo. `npm run demo:build -- --workspace <katalog>`
   buduje przebieg „napraw repo” na drzewie dowolnego repozytorium git (np. własnego).

@@ -18,7 +18,7 @@ export function coreBundle(repo) {
     }
     src += `// ---- ${f}\n` + s.trim() + '\n';
   }
-  return `const NW = (() => {\n${src}\nreturn { parseJsonl, createTimeline, createViewer, app: { runFacts, appState, matchTask, mmss } };\n})();`;
+  return `const NW = (() => {\n${src}\nreturn { parseJsonl, createTimeline, createViewer, app: { runFacts, appState, matchTask, mmss, studioState, legendOf, cssRgb } };\n})();`;
 }
 
 // the canvas checker forbids literal URLs and network words in the page source: escape them inside the string

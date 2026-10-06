@@ -2,7 +2,7 @@
 // it scrubs exactly like the scene. Who created which agent, the plan, task assignments, conversations, code being
 // written into files (from the recorded content / patch) and commands in a terminal (from the recorded output).
 // Typing is paced for reading; the text itself is exactly what the producer recorded.
-//   storyAt(T, info, tMs) -> { brief, agents, plan, spawns, packets, bubbles, windows, tags }
+//   storyAt(T, info, tMs) -> { brief, agents, plan, spawns, packets, bubbles, windows, tags, lastCode, lastTerm }
 //   info: { label(id), colour(id), pathsOfEv(i) -> tree paths the event touched }
 
 export const STORY = {
@@ -32,7 +32,7 @@ export function patchLines(patch, start) {
 export function storyAt(T, info, tMs) {
   const t = tMs / 1000;
   const upto = T.indexAt(tMs);
-  const S = { brief: null, agents: [], plan: null, spawns: [], packets: [], bubbles: [], windows: [], tags: [], done: false };
+  const S = { brief: null, agents: [], plan: null, spawns: [], packets: [], bubbles: [], windows: [], tags: [], done: false, lastCode: null, lastTerm: null };
   const ag = new Map();
   const agent = (id) => {
     if (!ag.has(id)) ag.set(id, { id, label: info.label(id), parent: id === 'hermes' ? null : 'hermes', role: id === 'hermes' ? 'orkiestrator' : '', spawnT: null, status: 'idle', tool: '', task: '', taskT: -1, statusT: 0 });
@@ -129,6 +129,15 @@ export function storyAt(T, info, tMs) {
   // windows: code being written and terminals; the newest stay, older ones fade out
   for (const w of terms.values()) wins.push(Object.assign(w, { dur: typeTime(w.command.length, STORY.CMD_CPS, 2.5) }));
   wins.sort((a, b) => a.t0 - b.t0);
+  // the newest code and terminal windows, kept after they fade from the scene (the app's Code panel shows them)
+  const progress = (w) => {
+    const age = t - w.t0; const p = Math.max(0, Math.min(1, age / w.dur));
+    return Object.assign({}, w, { age, typed: w.kind === 'code' ? Math.floor(w.chars * p) : Math.floor(w.command.length * p), typing: p < 1, lines: w.kind === 'term' ? w.lines.filter((l) => l.t <= t) : w.lines });
+  };
+  for (let k = wins.length - 1; k >= 0 && (!S.lastCode || !S.lastTerm); k--) {
+    if (wins[k].kind === 'code' && !S.lastCode) S.lastCode = progress(wins[k]);
+    if (wins[k].kind === 'term' && !S.lastTerm) S.lastTerm = progress(wins[k]);
+  }
   const live = wins.filter((w) => {
     const stop = w.kind === 'term' ? (w.end == null ? Infinity : w.end) : w.end;
     return t - stop < STORY.WIN_HOLD + STORY.WIN_FADE;

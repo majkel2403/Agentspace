@@ -126,3 +126,82 @@ export function appState(T, facts, t, label, actions) {
   };
   return { idx, done, failed, phases, kpis, log, talk, files, report };
 }
+
+// ---- the studio panels (team, plan, code, terminal) and the scene legend, from the story (story.js) and the frame
+const CODE_KW = new Set('const let var function return if else for while do switch case break continue new this class extends import export from default async await try catch finally throw typeof instanceof in of null undefined true false private public protected readonly static interface type void describe it expect before after beforeEach afterEach'.split(' '));
+export const CODE_COLOURS = { kw: '#C9A2FF', str: '#B8E986', com: '#7F8BB3', num: '#FFAD7A', fn: '#7FD3FF', code: '#D9E1F2', head: '#F2C14E' };
+export const cssRgb = (c, a) => (c ? 'rgba(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ',' + (a == null ? 1 : a) + ')' : '#A3AED0');
+
+// a code line as coloured tokens (JS/TS-like; markdown headings)
+export function codeTokens(s, md) {
+  const K = CODE_COLOURS;
+  if (md) return [{ s, c: /^#/.test(s) ? K.head : K.code }];
+  const out = [];
+  const re = /(\/\/.*$)|("(?:[^"\\]|\\.)*"?|'(?:[^'\\]|\\.)*'?|`(?:[^`\\]|\\.)*`?)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*)(?=\s*\()|([A-Za-z_$][\w$]*)/g;
+  let last = 0; let m;
+  while ((m = re.exec(s))) {
+    if (m.index > last) out.push({ s: s.slice(last, m.index), c: K.code });
+    const c = m[1] ? K.com : m[2] ? K.str : m[3] ? K.num : m[4] ? (CODE_KW.has(m[4]) ? K.kw : K.fn) : CODE_KW.has(m[5]) ? K.kw : K.code;
+    out.push({ s: m[0], c });
+    last = m.index + m[0].length;
+  }
+  if (last < s.length) out.push({ s: s.slice(last), c: K.code });
+  return out;
+}
+
+const AGENT_STATUS = {
+  done: ['gotowe', '#8CFFB4'], fail: ['błąd', '#FF8F9A'], wait: ['czeka', '#FFC979'], work: ['pracuje', '#8CFFB4'],
+};
+
+// St: storyAt(...) at the viewer's time; o.reduce: no typing (prefers-reduced-motion), o.maxLines: editor lines
+export function studioState(St, o) {
+  o = o || {};
+  if (!St) return { brief: null, team: [], plan: null, code: null, term: null };
+  const names = new Map(St.agents.map((a) => [a.id, a.label]));
+  const name = (id) => names.get(id) || id;
+  const team = St.agents.map((a) => {
+    const st = a.status === 'idle' ? [a.id === 'hermes' ? 'koordynuje' : 'wolny', '#7F8BB3'] : AGENT_STATUS[a.status] || ['', '#7F8BB3'];
+    return {
+      id: a.id, name: a.label, role: a.role || '', depth: a.depth || 0, colour: cssRgb(a.col), task: a.task || '',
+      status: a.status === 'work' && a.tool ? a.tool : st[0], statusColour: st[1], working: a.status === 'work', fresh: a.age != null && a.age < 2.4,
+    };
+  });
+  let plan = null;
+  if (St.plan) {
+    const cur = St.plan.cur;
+    plan = { total: St.plan.steps.length, done: Math.min(cur, St.plan.steps.length), steps: St.plan.steps.map((text, k) => ({ n: String(k + 1).padStart(2, '0'), text, state: k < cur ? 'done' : k === cur ? 'cur' : 'todo' })) };
+  }
+  let code = null;
+  const w = St.lastCode;
+  if (w) {
+    const md = /\.md$/i.test(w.file);
+    let budget = o.reduce ? Infinity : w.typed;
+    const lines = [];
+    for (const l of w.lines) {
+      if (l.t === '+') {
+        if (budget <= 0) break;
+        const take = Math.min(l.s.length, budget);
+        lines.push({ n: l.n == null ? '' : String(l.n), sign: '+', kind: 'add', tokens: codeTokens(l.s.slice(0, take), md), caret: take < l.s.length || budget - l.s.length - 1 <= 0 });
+        budget -= l.s.length + 1;
+      } else lines.push({ n: l.n == null ? '' : String(l.n), sign: l.t === '-' ? '−' : ' ', kind: l.t === '-' ? 'del' : 'ctx', tokens: codeTokens(l.s, md), caret: false });
+    }
+    const typing = w.typing && !o.reduce;
+    lines.forEach((l, k) => { l.caret = typing && k === lines.length - 1; });
+    const max = o.maxLines || 40;
+    code = { file: w.file, path: w.full, who: name(w.who), created: w.created, add: w.add, del: w.del, typing, lines: lines.slice(-max) };
+  }
+  let term = null;
+  const tw = St.lastTerm;
+  if (tw) {
+    const typed = o.reduce ? tw.command.length : tw.typed;
+    term = { who: name(tw.who), tool: tw.tool, command: tw.command.slice(0, typed), typing: !o.reduce && typed < tw.command.length, running: tw.end == null, fail: !!tw.fail,
+      lines: tw.lines.slice(-14).map((l) => ({ s: l.s, bad: !!l.bad })) };
+  }
+  return { brief: St.brief, team, plan, code, term };
+}
+
+// the file-extension key of the frame as chips (the app shows it as HTML; the canvas Gource key is off)
+export function legendOf(F, max) {
+  if (!F || !F.key) return [];
+  return F.key.slice().sort((a, b) => a.row - b.row).slice(0, max || 6).map((k) => ({ ext: k.ext ? '.' + k.ext : 'inne', n: String(k.n), colour: cssRgb(k.col) }));
+}

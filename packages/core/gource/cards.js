@@ -6,8 +6,9 @@ import { TONE_COLOUR } from './actions.js';
 
 const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
 const SANS = "'Instrument Sans', FreeSans, 'Helvetica Neue', Arial, sans-serif";
+// the Hermes palette (night dispatch room): ink panels, hairlines, gold for Hermes and the current step
 const C = {
-  glass: 'rgba(11,13,22,0.88)', line: 'rgba(140,160,220,0.22)', text: '#E8ECF8', mut: '#97A3C7', dim: '#6E7AA0',
+  glass: 'rgba(7,11,24,0.9)', line: 'rgba(132,152,255,0.2)', head: '#C5CEE8', text: '#E8ECF8', mut: '#A3AED0', dim: '#7F8BB3',
   gold: '#F2C14E', ok: '#8CFFB4', bad: '#FF7A88', wait: '#FFC979',
   add: 'rgba(80,220,140,0.13)', del: 'rgba(255,90,110,0.14)',
   kw: '#C9A2FF', str: '#B8E986', com: '#6F7AA0', num: '#FFAD7A', fn: '#7FD3FF', code: '#D9E1F2',
@@ -25,10 +26,18 @@ function rrect(ctx, x, y, w, h, r) {
 }
 function panel(ctx, x, y, w, h, a, border) {
   ctx.globalAlpha = a;
-  rrect(ctx, x, y, w, h, 9);
+  rrect(ctx, x, y, w, h, 6);
   ctx.fillStyle = C.glass; ctx.fill();
   ctx.strokeStyle = border || C.line; ctx.lineWidth = 1; ctx.stroke();
   ctx.globalAlpha = 1;
+}
+// panel head as in the command centre: gold diamond, uppercase mono label, muted meta on the right, hairline below
+function phead(ctx, x, y, w, label, meta, fs) {
+  ctx.font = '500 ' + 11.5 * fs + 'px ' + MONO;
+  ctx.fillStyle = C.gold; ctx.fillText('◆', x + 10, y + 18 * fs);
+  ctx.fillStyle = C.head; ctx.fillText(label, x + 24, y + 18 * fs);
+  if (meta) { ctx.fillStyle = C.dim; ctx.textAlign = 'right'; ctx.fillText(meta, x + w - 10, y + 18 * fs); ctx.textAlign = 'left'; }
+  ctx.fillStyle = 'rgba(132,152,255,0.16)'; ctx.fillRect(x + 1, y + 27 * fs, w - 2, 1);
 }
 function wrap(ctx, text, maxW, maxLines) {
   const words = String(text).split(/\s+/).filter(Boolean);
@@ -169,14 +178,13 @@ function board(ctx, S, col, fs, compact, t) {
   if (compact) return chips(ctx, S, col, fs);
   const x = col.x; const w = col.w; let y = col.y;
   const rowH = compact ? 22 * fs : 40 * fs;
-  const planH = S.plan && !compact ? 26 * fs + S.plan.steps.length * 18 * fs : 0;
+  const planH = S.plan && !compact ? 34 * fs + S.plan.steps.length * 18 * fs : 0;
   const briefLines = S.brief && !compact ? 2 : 0;
-  const h = 30 * fs + briefLines * 16 * fs + S.agents.length * rowH + planH + 8;
+  const h = 34 * fs + briefLines * 16 * fs + S.agents.length * rowH + planH + 8;
   panel(ctx, x, y, w, h, 1);
-  ctx.font = '600 ' + 11 * fs + 'px ' + MONO; ctx.fillStyle = C.mut;
-  ctx.fillText('ZESPÓŁ HERMESA', x + 12, y + 19 * fs);
-  ctx.textAlign = 'right'; ctx.fillText(String(S.agents.length - 1) + (S.agents.length - 1 === 1 ? ' AGENT' : ' AGENTÓW'), x + w - 12, y + 19 * fs); ctx.textAlign = 'left';
-  y += 28 * fs;
+  const n = S.agents.length - 1;
+  phead(ctx, x, y, w, 'ZESPÓŁ', n + (n === 1 ? ' agent' : ' agentów'), fs);
+  y += 32 * fs;
   if (briefLines) {
     ctx.font = 12.5 * fs + 'px ' + SANS; ctx.fillStyle = C.text;
     const ls = wrap(ctx, 'Zlecenie: ' + S.brief.text, w - 24, 2);
@@ -212,10 +220,9 @@ function board(ctx, S, col, fs, compact, t) {
   });
   y += S.agents.length * rowH;
   if (planH) {
-    ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(x + 12, y + 4); ctx.lineTo(x + w - 12, y + 4); ctx.stroke();
-    ctx.font = '600 ' + 11 * fs + 'px ' + MONO; ctx.fillStyle = C.mut;
-    ctx.fillText('PLAN', x + 12, y + 20 * fs);
-    y += 26 * fs;
+    const doneN = Math.min(S.plan.cur, S.plan.steps.length);
+    phead(ctx, x, y, w, 'PLAN', doneN + ' / ' + S.plan.steps.length, fs);
+    y += 30 * fs;
     S.plan.steps.forEach((s, i) => {
       const done = i < S.plan.cur; const cur = i === S.plan.cur;
       ctx.font = (cur ? '600 ' : '') + 12.5 * fs + 'px ' + SANS;

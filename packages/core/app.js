@@ -1,0 +1,128 @@
+// The Hermes app model, shared by the web app and the canvas boards: what the panels show at time t, read from
+// the event log (phases, readouts, process log, conversations, files, final report) and matching a typed order
+// to the closest recorded run. Pure functions; the views only lay them out.
+
+export const TONES = {
+  assign: ['zlecenie', '#F2C14E'], question: ['pytanie', '#7CC4FF'], answer: ['odpowiedź', '#D6BEFF'], handoff: ['przekazanie', '#D6BEFF'],
+  critique: ['krytyka', '#FF8F9A'], revision: ['poprawka', '#FFB48A'], approve: ['akceptacja', '#34D3BE'], result: ['wynik', '#FFE7A8'], brief: ['brief', '#E8ECF8'],
+};
+// keywords that match a typed order to a recorded run (the demo has no live model behind it)
+export const RUN_KEYWORDS = {
+  'repo-fix': ['repo', 'napraw', 'blad', 'bug', 'socket', 'test', 'kod', 'reconnect', 'rozlacz', 'heartbeat', 'github', 'commit'],
+  panel: ['panel', 'csv', 'dashboard', 'wykres', 'sprzeda', 'sklep', 'zamowie', 'alert', 'mvp', 'kpi'],
+  medytacja: ['medyt', 'aplikac', 'rodzic', 'dziec', 'premier', 'kampan', 'komunikat', 'pozycjon', 'marketing'],
+  niemcy: ['niem', 'rynek', ' de', 'kosmetyk', 'e-sklep', 'ekspansj', 'go/no-go', 'amazon', 'vat', 'berlin'],
+};
+
+const normText = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l');
+export const isBad = (type) => type.indexOf('fail') >= 0 || type === 'error';
+export const isGood = (type) => type.indexOf('passed') >= 0 || type.indexOf('completed') >= 0;
+export const eventColour = (type) => (isBad(type) ? '#FF5A6A' : isGood(type) ? '#7CFF9A' : type === 'agent.spawned' ? '#F2C14E' : type === 'message.sent' ? '#D6BEFF' : type.indexOf('file.') === 0 || type === 'workspace.scanned' ? '#9FE3FF' : '#2A3560');
+export const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const eventText = (e) => e.text || e.resource || e.command || e.tool || e.name || '';
+const WRITE = /^file\.(created|modified|deleted)$|^resource\.written$/;
+
+// the run id whose keywords best match a typed order, or null
+export function matchTask(text, ids) {
+  const x = ' ' + normText(text) + ' ';
+  let best = null; let bs = 0;
+  for (const id of ids) {
+    let s = 0;
+    for (const k of RUN_KEYWORDS[id] || []) if (x.indexOf(k) >= 0) s++;
+    if (s > bs) { bs = s; best = id; }
+  }
+  return best;
+}
+
+// facts that do not depend on time: the phases (the plan, or the run's own milestones) and the order
+export function runFacts(T) {
+  const ev = T.events;
+  const rel = T.rel;
+  const plan = ev.filter((e) => e.type === 'planner.step' && Array.isArray(e.steps)).pop();
+  let phases;
+  if (plan) {
+    phases = plan.steps.map((name, k) => {
+      const i = ev.findIndex((e) => Number(e.step) === k);
+      return { name, start: i >= 0 ? rel[i] : null };
+    });
+    phases.forEach((p, k) => { if (p.start == null) p.start = k ? phases[k - 1].start : 0; });
+  } else {
+    const at = (pred, d) => { const i = ev.findIndex(pred); return i >= 0 ? rel[i] : d; };
+    const firstSpawn = at((e) => e.type === 'agent.spawned', 0);
+    const spawns = ev.map((e, i) => (e.type === 'agent.spawned' ? rel[i] : -1)).filter((x) => x >= 0);
+    const lastSpawn = spawns.length ? spawns[spawns.length - 1] : firstSpawn;
+    const firstResult = at((e) => e.type === 'result.returned', T.duration * 0.85);
+    phases = [{ name: 'Analiza', start: 0 }, { name: 'Skład zespołu', start: firstSpawn }, { name: 'Współpraca', start: lastSpawn }, { name: 'Dostawa', start: Math.max(lastSpawn, firstResult) }];
+  }
+  phases.forEach((p, k) => { p.end = k + 1 < phases.length ? Math.max(p.start, phases[k + 1].start) : T.duration; });
+  const started = ev.find((e) => e.type === 'task.started');
+  return { phases, title: started ? started.text || '' : '', by: started && started.user ? started.user : '' };
+}
+
+// everything the panels show at time t (ms): label(id) names agents, actions are the player's action stream
+export function appState(T, facts, t, label, actions) {
+  const ev = T.events;
+  const idx = T.indexAt(t);
+  const upto = ev.slice(0, idx + 1);
+  const done = upto.some((e) => e.type === 'task.completed');
+  const failed = upto.some((e) => e.type === 'task.failed');
+  const phases = facts.phases.map((p, k) => {
+    const fill = t >= p.end ? 100 : t <= p.start ? 0 : Math.round(((t - p.start) / Math.max(1, p.end - p.start)) * 100);
+    const cur = t >= p.start && t < p.end;
+    const num = String(k + 1).padStart(2, '0');
+    return { num, name: p.name, cur, fill, label: cur ? num + ' ' + p.name : num, colour: cur ? '#F2C14E' : fill >= 100 ? '#C5CEE8' : '#5C6894' };
+  });
+  const spawned = upto.filter((e) => e.type === 'agent.spawned').length;
+  const spawnedAll = ev.filter((e) => e.type === 'agent.spawned').length;
+  const touched = new Set(upto.filter((e) => WRITE.test(e.type)).map((e) => e.resource)).size;
+  const msgs = upto.filter((e) => e.type === 'message.sent').length;
+  const tp = upto.filter((e) => e.type === 'test.passed').length;
+  const tf = upto.filter((e) => e.type === 'test.failed').length;
+  const kpis = [
+    { label: 'agenci', value: spawned + ' / ' + spawnedAll, colour: '#E8ECF8' },
+    { label: 'pliki', value: String(touched), colour: '#E8ECF8' },
+    { label: 'wiadomości', value: String(msgs), colour: '#E8ECF8' },
+  ];
+  if (ev.some((e) => e.type.indexOf('test.') === 0)) kpis.push({ label: 'testy', value: tp + ' ✓ ' + tf + ' ✗', colour: tf && !done ? '#FF8F9A' : '#8CFFB4' });
+
+  const log = [];
+  for (let i = idx; i >= 0 && log.length < 120; i--) {
+    const e = ev[i];
+    log.push({ i, time: mmss(T.rel[i]), type: e.type, who: e.agent ? label(e.agent) : '', text: eventText(e), colour: eventColour(e.type) });
+  }
+  const talk = [];
+  for (let i = idx; i >= 0 && talk.length < 80; i--) {
+    const e = ev[i];
+    if (e.type !== 'message.sent') continue;
+    const tn = TONES[e.tone] || ['wiadomość', '#A3AED0'];
+    talk.push({ i, time: mmss(T.rel[i]), from: label(e.agent || 'hermes'), to: e.to === 'user' ? (facts.by || 'Zlecający') : label(e.to || 'hermes'), tone: tn[0], colour: tn[1], text: e.text || '' });
+  }
+  const byEv = new Map();
+  for (const a of actions) if (!byEv.has(a.ev)) byEv.set(a.ev, a.path);
+  const seen = new Map();
+  for (let i = 0; i <= idx; i++) {
+    const e = ev[i];
+    if (!WRITE.test(e.type)) continue;
+    const res = String(e.resource || '');
+    const lines = (x) => String(x).split('\n');
+    const add = e.content != null ? lines(e.content).length : e.patch != null ? lines(e.patch).filter((l) => l[0] === '+').length : 0;
+    const del = e.patch != null ? lines(e.patch).filter((l) => l[0] === '-').length : 0;
+    seen.set(res, {
+      i, time: mmss(T.rel[i]), name: res.split('/').pop(), dir: res.split('/').slice(0, -1).join('/') || '/', who: label(e.agent || 'hermes'),
+      kind: e.type === 'file.created' ? 'nowy' : e.type === 'file.deleted' ? 'usunięty' : 'zmiana',
+      colour: e.type === 'file.created' ? '#7CFF9A' : e.type === 'file.deleted' ? '#FF5A6A' : '#FFB48A',
+      diff: add || del ? '+' + add + (del ? ' −' + del : '') : '', id: byEv.has(i) ? 'file:' + byEv.get(i) : null,
+    });
+  }
+  const files = [...seen.values()].sort((a, b) => b.i - a.i);
+
+  const doc = done ? [...upto].reverse().find((e) => e.type === 'file.created' && e.content && /\.md$/i.test(String(e.resource || ''))) : null;
+  const completed = upto.find((e) => e.type === 'task.completed');
+  const report = {
+    status: failed ? 'Przebieg zakończony błędem' : 'Zadanie wykonane', title: facts.title, summary: completed ? completed.text || '' : '',
+    kpis: [{ label: 'czas', value: mmss(T.duration) }, { label: 'agenci', value: String(spawnedAll) }, { label: 'pliki', value: String(touched) }, { label: 'wiadomości', value: String(msgs) }],
+    doc: doc ? String(doc.content) : '', docPath: doc ? String(doc.resource || '') : '',
+    results: upto.filter((e) => e.type === 'result.returned').map((e) => ({ who: label(e.agent || 'hermes'), text: e.text || '' })),
+  };
+  return { idx, done, failed, phases, kpis, log, talk, files, report };
+}

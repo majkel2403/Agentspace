@@ -73,6 +73,13 @@ export function createViewer(opts) {
   v.setSpeed = (s) => { v.speed = s; };
   v.setLive = (on) => { v.live = !!on; if (on) v.playing = true; };
   v.setInsets = (o) => { Object.assign(opts, o); };
+  // follow the work on / off: the camera is part of the simulation, so the history is re-run with the new mode
+  v.setFocus = (on) => {
+    opts.focus = !!on;
+    v.player = createPlayer({ aspect: aspectNow(), autoRotate: opts.autoRotate, focus: !!on });
+    if (v.T) v.player.load(v.T.events);
+  };
+  v.focus = () => (opts.focus != null ? !!opts.focus : !opts.compat && opts.studio !== false);
   v.zoom = (k) => { cam.zoom = Math.max(0.15, Math.min(8, cam.zoom / k)); };
   v.reset = () => { cam.zoom = 1; cam.panX = 0; cam.panY = 0; v.select(null); };
   v.select = (id) => { v.sel = id; if (v.onSelect) v.onSelect(id, id ? v.inspect(id) : null); };

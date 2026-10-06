@@ -18,11 +18,11 @@ export function coreBundle(repo) {
     }
     src += `// ---- ${f}\n` + s.trim() + '\n';
   }
-  return `const NW = (() => {\n${src}\nreturn { parseJsonl, createTimeline, createViewer };\n})();`;
+  return `const NW = (() => {\n${src}\nreturn { parseJsonl, createTimeline, createViewer, app: { runFacts, appState, matchTask, mmss } };\n})();`;
 }
 
 // the canvas checker forbids literal URLs and network words in the page source: escape them inside the string
-// literal (/ is '/' at run time), so the data stays exactly as recorded
+// literal (a \u002f escape is '/' at run time), so the data stays exactly as recorded
 export function runsScript(repo, runs) {
   const list = runs.map(([id, name]) => ({ id, name, jsonl: fs.readFileSync(path.join(repo, 'demo', 'runs', id + '.jsonl'), 'utf8') }));
   return 'const NW_RUNS = ' + JSON.stringify(list).replace(/:\/\//g, ':\\u002f\\u002f').replace(/WebSocket/g, 'Web\\u0053ocket').replace(/fetch\(/g, 'fetch\\u0028') + ';';

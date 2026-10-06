@@ -6,7 +6,7 @@
       "expand": "fill",
       "h": 1760,
       "is_interactive": true,
-      "title": "Centrum dowodzenia · scena jak Gource",
+      "title": "Wcześniejsza wersja · centrum dowodzenia",
       "w": 1440,
       "x": 0,
       "y": 1040
@@ -27,19 +27,19 @@
       "x": 0,
       "y": 2920
     },
-    "Workflow.dc.html": {
+    "Hermes.dc.html": {
       "expand": "fill",
       "h": 900,
       "is_interactive": true,
-      "title": "Neural Workflow · jak Gource, ze zdarzeń przebiegu",
+      "title": "Hermes · Centrum dowodzenia (jedna aplikacja)",
       "w": 1440,
       "x": 0,
       "y": 0
     },
-    "WorkflowMobile.dc.html": {
+    "HermesMobile.dc.html": {
       "h": 844,
       "is_interactive": true,
-      "title": "Neural Workflow · telefon",
+      "title": "Hermes · telefon",
       "w": 390,
       "x": 1520,
       "y": 0
@@ -67,15 +67,23 @@
       "fill": "blue",
       "maxH": 300,
       "size": 24,
-      "text": "Centrum dowodzenia (poniżej): naciśnij „Uruchom Hermesa” albo przewiń oś czasu. Scena w środku działa jak Gource: drzewo to pliki zespołu, awatary to agenci, promienie to tworzenie (zielony), zmiana (pomarańczowy) i odczyt (niebieski). Przeciągnij, by przesunąć, kółkiem przybliż, kliknij agenta, by otworzyć go w inspektorze.",
+      "text": "Wcześniejsze wersje (obok i niżej): centrum dowodzenia (scena przerobiona na styl Gource), katalog specjalistów i telefon 3D. Zostały jako historia projektu — aktualna jest aplikacja Hermes powyżej.",
       "w": 390,
       "x": 1520,
       "y": 1040
     },
+    "shape-xrpsqy": {
+      "d": "M303.3 170.3 C233.1 170.3 107.3 172.4 45.6 210.5 C24.1 223.8 17.6 245 17.6 269.1 C17.6 275.3 18.1 281.8 18.8 288.4 C25.4 347.8 77 426.5 115.4 468.2 C176.5 534.6 300.4 620.4 381.2 650.8 C412.6 662.6 461.7 675.1 508 675.1 C537.6 675.1 566.1 669.9 587.9 656.1 C632.2 628.1 663.4 516 673.8 484.3 C688 441 699.8 396.9 711.4 352.8 C725.4 299.4 740.2 244.4 740.2 192.9 C740.2 133 720 77.9 655 36 C612.8 8.9 565.5 0 517.2 0 C468.8 0 419.5 8.9 373.1 17.3 C302.1 30.1 234.4 57.3 166.4 81.7 C150.5 87.4 133 90 118.1 97.8 C75.1 120.3 39.4 156.8 0 186.4",
+      "h": 675.1,
+      "kind": "pen",
+      "w": 740.2,
+      "x": 2123.4,
+      "y": 853.6
+    },
     "title": {
       "kind": "title1",
       "maxW": 1440,
-      "text": "Hermes: Neural Workflow i zespół agentów",
+      "text": "Hermes: Centrum dowodzenia zespołu agentów",
       "w": 240,
       "x": 0,
       "y": -260
@@ -84,7 +92,7 @@
       "fill": "blue",
       "maxH": 420,
       "size": 24,
-      "text": "Neural Workflow w stylu Gource: drzewo to przestrzeń robocza przebiegu (pliki repo, strony, pamięć, MCP, testy), a Hermes i agenci to awatary, które podlatują do tego, co czytają lub zmieniają, i strzelają promieniami (zielony utworzenie, pomarańczowy zmiana, czerwony usunięcie, niebieski odczyt). Wszystko pochodzi z prawdziwych zdarzeń w logu. Przewijaj oś czasu w obie strony, kliknij plik lub awatar, żeby zobaczyć, co robił; przeciągnij, by przesunąć widok. „Wczytaj log (JSONL)” odtwarza Twój przebieg.",
+      "text": "Hermes to teraz jedna aplikacja: po lewej zlecenie dla Hermesa i lista przebiegów, na środku scena jak Gource (drzewo to przestrzeń robocza, awatary to agenci, promienie: zielony utworzenie, pomarańczowy zmiana, niebieski odczyt), z prawej studio — zespół, plan, rozmowy, edytor i terminal. U góry fazy przebiegu i odczyty, na dole oś czasu z fazami i kamera „Śledź pracę”. Zakładki Dziennik / Rozmowy / Pliki, kliknij plik lub agenta, aby zobaczyć, co robił; po zakończeniu otwórz Raport.",
       "w": 390,
       "x": 1990,
       "y": 0
@@ -93,19 +101,19 @@
       "fill": "orange",
       "maxH": 300,
       "size": 24,
-      "text": "Przebiegi są zapisanymi scenariuszami demo. W „Naprawa repo” drzewo plików jest prawdziwe (socket.io, 862 pliki), ale błąd i poprawka w historii są demonstracyjne. Tryb LIVE przez WebSocket działa w aplikacji w repo Agentspace (npm start); podgląd nie ma dostępu do sieci. Renderer jest napisany od zera według zachowania Gource 0.54 i porównany klatka w klatkę z prawdziwym Gource.",
+      "text": "Przebiegi są zapisanymi scenariuszami demo; wpisane zadanie dopasowuje się słowami kluczowymi do najbliższego z nich. W „Naprawa repo” drzewo plików jest prawdziwe (socket.io), ale błąd i poprawka są demonstracyjne. Ta sama aplikacja działa w repo Agentspace (npm start) z trybem LIVE przez WebSocket; podgląd nie ma dostępu do sieci.",
       "w": 390,
       "x": 1990,
       "y": 460
     }
   },
   "order": [
-    "Workflow.dc.html",
-    "WorkflowMobile.dc.html",
+    "Hermes.dc.html",
+    "HermesMobile.dc.html",
     "Main.dc.html",
     "Roster.dc.html",
     "Mobile.dc.html"
   ],
   "pages": [],
-  "title": "Hermes — Neural Workflow i zespół agentów"
+  "title": "Hermes — Centrum dowodzenia zespołu agentów"
 }

@@ -3,47 +3,80 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hermes · Neural Workflow</title>
+<title>Hermes · Centrum dowodzenia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="preload" href="/web/fonts/FreeSans.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="/web/style.css">
 </head>
-<body>
-<div id="stage">
-  <canvas id="gl" aria-hidden="true"></canvas>
-  <canvas id="ov" aria-label="Przestrzeń robocza przebiegu jak w Gource: przeciągnij, aby przesunąć, kółkiem przybliż, kliknij plik lub agenta, aby zobaczyć, co robił" role="img"></canvas>
-</div>
+<body class="hx" data-mtab="scene">
+<canvas id="gl" aria-hidden="true"></canvas>
+<canvas id="ov" role="img" aria-label="Przestrzeń robocza przebiegu: przeciągnij, aby przesunąć, kółkiem przybliż, kliknij plik lub agenta, aby zobaczyć, co robił"></canvas>
 
-<header class="bar top">
-  <div class="brand">◆ HERMES <span>// Neural Workflow</span></div>
-  <label class="field">Przebieg
-    <select id="run"></select>
-  </label>
-  <span id="live" class="badge" hidden>● LIVE</span>
-  <span id="status" class="muted"></span>
-  <label class="file">Wczytaj log (.jsonl)<input id="file" type="file" accept=".jsonl,.json,.ndjson,.txt"></label>
+<header class="hx-bar top">
+  <div class="brand">
+    <span class="mark"><svg viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="#F2C14E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="16" r="5"/><path d="M11 15C8 14.5 5.5 12.8 3.5 9.5"/><path d="M11 18C8.5 18.2 6 17.5 4 15.5"/><path d="M21 15C24 14.5 26.5 12.8 28.5 9.5"/><path d="M21 18C23.5 18.2 26 17.5 28 15.5"/><path d="M16 21v7"/></svg></span>
+    <div class="names">
+      <h1>HERMES <span>//</span> <b class="wide">CENTRUM DOWODZENIA</b></h1>
+      <div id="runline" class="hx-mono sub"></div>
+    </div>
+  </div>
+  <ol id="phases" aria-label="Fazy przebiegu"></ol>
+  <ul id="kpis" class="hx-mono" aria-label="Odczyty"></ul>
+  <div id="clock" class="hx-mono"></div>
+  <span id="live" class="hx-mono live" hidden>● LIVE</span>
+  <div class="actions">
+    <button id="report-btn" class="hx-btn" type="button" disabled><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5v4h4"/><path d="M10 12h5M10 15.5h5"/></svg><span class="lbl">Raport</span></button>
+    <label class="hx-btn hx-file"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="M7.5 8.5L12 4l4.5 4.5"/><path d="M5 15v4h14v-4"/></svg><span class="lbl">Wczytaj log</span><input id="file" type="file" accept=".jsonl,.json,.ndjson,.txt" aria-label="Wczytaj log zdarzeń w formacie JSONL"></label>
+  </div>
 </header>
 
-<aside id="log" class="panel left" aria-label="Process Log">
-  <h2>Process Log</h2>
-  <ol id="log-list"></ol>
+<aside id="left" aria-label="Zlecenie i przebieg">
+  <section id="order" class="hx-panel">
+    <div class="hx-ph"><span class="d">◆</span>Zlecenie<span id="status" class="m"></span></div>
+    <div class="body">
+      <label for="task" class="cap">Zadanie dla Hermesa</label>
+      <textarea id="task" rows="3" placeholder="Opisz, co ma zostać zrobione…"></textarea>
+      <div class="row"><button id="launch" class="hx-btn hx-pri" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="#1A1300" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>Uruchom Hermesa</button><span id="match"></span></div>
+      <span class="cap">Przebiegi</span>
+      <div id="runs"></div>
+    </div>
+  </section>
+  <section id="lists" class="hx-panel">
+    <div id="tabs" role="tablist" aria-label="Widok listy"></div>
+    <div id="list" class="hx-scroll"></div>
+  </section>
 </aside>
 
-<aside id="inspector" class="panel right" aria-live="polite" hidden>
-  <button id="close-ins" class="x" aria-label="Zamknij">×</button>
-  <div id="ins"></div>
+<aside id="inspector" class="hx-panel" aria-live="polite" aria-label="Inspektor" hidden>
+  <div class="hx-ph"><span class="d">◆</span>Inspektor<span id="ins-kind" class="m"></span></div>
+  <button id="close-ins" class="hx-btn x" type="button" aria-label="Zamknij inspektor">×</button>
+  <div id="ins" class="hx-scroll"></div>
 </aside>
 
-<footer class="bar bottom">
-  <button id="play" class="pri" aria-label="Odtwórz">▶</button>
-  <button id="restart" aria-label="Od początku">⟲</button>
-  <div class="seg" role="group" aria-label="Prędkość">
-    <button data-speed="0.25">0.25×</button><button data-speed="1" aria-pressed="true">1×</button><button data-speed="4">4×</button><button data-speed="10">10×</button>
+<section id="report" class="hx-panel" role="dialog" aria-label="Raport z przebiegu" hidden>
+  <div class="hx-ph"><span class="d">◆</span>Raport<span id="report-run" class="m"></span></div>
+  <button id="close-report" class="hx-btn x" type="button" aria-label="Zamknij raport">×</button>
+  <div id="report-body" class="hx-scroll"></div>
+</section>
+
+<footer class="hx-bar bottom">
+  <nav id="mtabs" role="tablist" aria-label="Widok"></nav>
+  <div class="transport">
+    <button id="play" class="hx-btn hx-pri hx-ico" type="button" aria-label="Odtwórz">▶</button>
+    <button id="restart" class="hx-btn hx-ico" type="button" aria-label="Od początku"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg></button>
+    <div class="seg" role="group" aria-label="Prędkość">
+      <button class="hx-btn" type="button" data-speed="0.25">0.25×</button><button class="hx-btn" type="button" data-speed="1" aria-pressed="true">1×</button><button class="hx-btn" type="button" data-speed="4">4×</button><button class="hx-btn" type="button" data-speed="10">10×</button>
+    </div>
+    <div class="scrub"><canvas id="ticks" aria-hidden="true"></canvas><input id="t" type="range" min="0" max="1000" value="0" step="1" aria-label="Oś czasu"></div>
+    <span id="note" class="hx-mono"></span>
+    <div class="cam" role="group" aria-label="Kamera">
+      <button id="follow" class="hx-btn" type="button" aria-pressed="true" title="Kamera podąża za pracą agentów"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg><span class="lbl">Śledź pracę</span></button>
+      <button id="zo" class="hx-btn hx-ico" type="button" aria-label="Oddal">−</button>
+      <button id="zi" class="hx-btn hx-ico" type="button" aria-label="Przybliż">+</button>
+      <button id="reset" class="hx-btn hx-ico" type="button" aria-label="Dopasuj widok"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
   </div>
-  <div class="scrub"><canvas id="ticks" aria-hidden="true"></canvas><input id="t" type="range" min="0" max="1000" value="0" step="1" aria-label="Oś czasu"></div>
-  <span id="clock" class="mono"></span>
-  <div class="seg" role="group" aria-label="Kamera"><button id="zo" aria-label="Oddal">−</button><button id="zi" aria-label="Przybliż">+</button><button id="reset">Wyzeruj</button></div>
 </footer>
 <script type="module" src="/web/app.js"></script>
 </body>

@@ -21,7 +21,7 @@ for (const j of jobs) {
   await page.waitForFunction(() => window.__NW && window.__NW.T, null, { timeout: 15000 }).catch(() => logs.push('viewer not ready'));
   if (j.eval) await page.evaluate(j.eval);
   await page.waitForTimeout(j.wait || 1500);
-  const info = await page.evaluate(() => ({ backend: window.__NW.backend, t: Math.round(window.__NW.t), ft: window.__NW.ft && window.__NW.ft.toFixed(1), q: window.__NW.q }));
+  const info = await page.evaluate(() => ({ backend: window.__NW.backend, t: Math.round(window.__NW.t), ft: window.__NW.ft && window.__NW.ft.toFixed(1) }));
   await page.screenshot({ path: out + '/' + j.name + '.png' });
   console.log(j.name, JSON.stringify(info), logs.slice(0, 5).join(' | '));
   await ctx.close();

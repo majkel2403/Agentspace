@@ -71,7 +71,7 @@ export function createSim(opts) {
     users: [], userById: {},
     acts: [], msgs: [],
     key: {},
-    cam: { x: 0, y: 0, z: -ZOOM_MIN, dx: 0, dy: 0, dz: -ZOOM_MIN, px: 0, py: 0, pz: -ZOOM_MIN, vx: 0, vy: 0, vz: 0, tz: ZOOM_MIN, zinT: 0 },
+    cam: { x: 0, y: 0, z: -ZOOM_MIN, dx: 0, dy: 0, px: 0, py: 0, pz: -ZOOM_MIN, vx: 0, vy: 0, ex: 0, ey: 0, pex: 0, pey: 0, vex: 0, vey: 0, tex: 0, tey: 0, zinX: 0, zinY: 0 },
     rot: 0, rotLeft: 0, rotT: -1, rotDone: false, autoRotate: !(opts && opts.autoRotate === false),
     revealQ: [], revealAcc: 0, scanBeamT: -1,
     idle: 0, rng: rngSeed1(), keyT: 1, keyEnt: {},
@@ -694,7 +694,7 @@ export function step(s, ctx) {
   for (const d of s.dirs) { d.px = d.x; d.py = d.y; d.psx = d.sx; d.psy = d.sy; }
   for (const f of s.files) { f.px = f.x; f.py = f.y; }
   for (const u of s.users) { u.px = u.x; u.py = u.y; }
-  s.cam.px = s.cam.x; s.cam.py = s.cam.y; s.cam.pz = s.cam.z;
+  s.cam.px = s.cam.x; s.cam.py = s.cam.y; s.cam.pz = s.cam.z; s.cam.pex = s.cam.ex; s.cam.pey = s.cam.ey;
   s.tick++;
   s.t = s.tick * STEP;
   for (const fi of s.removed) deleteFile(s, s.files[fi]);
@@ -789,28 +789,40 @@ function cameraBounds(s) {
   }
   return b;
 }
+// visible height is 2·distance (90° field of view), visible width 2·distance·aspect
+export function camDistance(ex, ey, aspect) {
+  return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.max(ey, ex / aspect)));
+}
 function camera(s, dt) {
   const c = s.cam;
   const b = cameraBounds(s);
-  let want = ZOOM_MIN;
+  // the camera follows the half width and half height the frame must show; the distance is derived from them
+  // and the screen's aspect ratio only when drawing (camDistance), so resizing the window needs no re-run
+  let wx = 0; let wy = 0;
   if (b) {
     c.dx = (b.x0 + b.x1) / 2; c.dy = (b.y0 + b.y1) / 2;
-    let w = (b.x1 - b.x0) * PADDING; let h = (b.y1 - b.y0) * PADDING;
-    w /= s.aspect; // visible height is 2·distance, visible width 2·distance·aspect (landscape and portrait)
-    want = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.max(w, h) / 2)); // tan(45°) * 2 = 2
+    wx = (b.x1 - b.x0) / 2 * PADDING; wy = (b.y1 - b.y0) / 2 * PADDING;
   } else { c.dx = 0; c.dy = 0; }
-  if (want >= c.tz) { c.tz = want; c.zinT = 0; }
-  else if (want < c.tz * ZOOM_IN_SHARE) { c.zinT += dt; if (c.zinT > ZOOM_IN_DELAY) { c.tz = want; c.zinT = 0; } }
-  else c.zinT = 0;
-  c.dz = -c.tz;
+  // grow at once, shrink only after the tree has stayed clearly smaller for a while
+  const hold = (want, t, timer) => {
+    if (want >= c[t]) { c[t] = want; c[timer] = 0; }
+    else if (want < c[t] * ZOOM_IN_SHARE) { c[timer] += dt; if (c[timer] > ZOOM_IN_DELAY) { c[t] = want; c[timer] = 0; } }
+    else c[timer] = 0;
+  };
+  hold(wx, 'tex', 'zinX'); hold(wy, 'tey', 'zinY');
   const spring = (x, v, target, w) => v + (w * w * (target - x) - 2 * w * v) * dt;
-  c.vx = spring(c.x, c.vx, c.dx, CAM_OMEGA_POS); c.vy = spring(c.y, c.vy, c.dy, CAM_OMEGA_POS); c.vz = spring(c.z, c.vz, c.dz, CAM_OMEGA);
-  const vmax = ZOOM_RATE * Math.abs(c.z);
-  if (Math.abs(c.vz) > vmax) c.vz = Math.sign(c.vz) * vmax;
-  const pmax = Math.abs(c.z) * 0.8;
+  c.vx = spring(c.x, c.vx, c.dx, CAM_OMEGA_POS); c.vy = spring(c.y, c.vy, c.dy, CAM_OMEGA_POS);
+  c.vex = spring(c.ex, c.vex, c.tex, CAM_OMEGA); c.vey = spring(c.ey, c.vey, c.tey, CAM_OMEGA);
+  // zoom speed limit: each extent changes by at most 30 % a second
+  const lim = (v, e) => { const m = ZOOM_RATE * Math.max(e, ZOOM_MIN); return Math.max(-m, Math.min(m, v)); };
+  c.vex = lim(c.vex, c.ex); c.vey = lim(c.vey, c.ey);
+  const z = camDistance(c.ex, c.ey, s.aspect);
+  const pmax = z * 0.8;
   const pv = len(c.vx, c.vy);
   if (pv > pmax) { c.vx = c.vx / pv * pmax; c.vy = c.vy / pv * pmax; }
-  c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt;
+  c.x += c.vx * dt; c.y += c.vy * dt;
+  c.ex = Math.max(0, c.ex + c.vex * dt); c.ey = Math.max(0, c.ey + c.vey * dt);
+  c.z = -camDistance(c.ex, c.ey, s.aspect);
   // one slow automatic 90° turn when the tree grows long in the wrong direction for the screen, never mid-growth
   if (s.rotT >= 0) {
     const ease = (t) => t * t * (3 - 2 * t);

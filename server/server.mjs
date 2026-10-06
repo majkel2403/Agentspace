@@ -5,8 +5,10 @@
 //     - WebSocket  ws://HOST:PORT/ingest        (one JSON event per message)
 //     - HTTP       POST /events                 (one JSON object, an array, or JSONL body)
 //     - STDIN      node server/server.mjs --stdin   (JSONL lines, e.g. piped from a process log)
+//   INGEST_TOKEN=<secret> requires `Authorization: Bearer <secret>` (or ?token=) on POST /events and ws /ingest;
+//   set it whenever HOST is not 127.0.0.1.
 //   Viewers:
-//     - GET  /                                  the 3D viewer (web/)
+//     - GET  /                                  the viewer (web/)
 //     - GET  /api/runs                          list of runs (recorded + demo)
 //     - GET  /api/runs/:run                     full event log of a run (JSONL) for REPLAY
 //     - WS   ws://HOST:PORT/live?run=<id|*>     live events as they are recorded
@@ -20,6 +22,9 @@ import { createStore } from './store.mjs';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const PORT = Number(process.env.PORT || 4777);
 const HOST = process.env.HOST || '127.0.0.1';
+const TOKEN = process.env.INGEST_TOKEN || '';
+if (!TOKEN && HOST !== '127.0.0.1' && HOST !== 'localhost') console.warn('warning: HOST=' + HOST + ' without INGEST_TOKEN — anyone on the network can write events');
+const authorized = (req, url) => !TOKEN || req.headers.authorization === 'Bearer ' + TOKEN || url.searchParams.get('token') === TOKEN;
 const store = createStore(path.join(ROOT, 'data', 'runs'), [path.join(ROOT, 'demo', 'runs')]);
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.jsonl': 'application/x-ndjson; charset=utf-8', '.svg': 'image/svg+xml', '.ttf': 'font/ttf' };
 
@@ -37,7 +42,7 @@ function ingest(raw) {
 function serveStatic(req, res, rel) {
   const allowed = [path.join(ROOT, 'web'), path.join(ROOT, 'packages')];
   const file = path.normalize(path.join(ROOT, rel));
-  if (!allowed.some((a) => file.startsWith(a))) { res.writeHead(403); return res.end('forbidden'); }
+  if (!allowed.some((a) => file.startsWith(a + path.sep))) { res.writeHead(403); return res.end('forbidden'); }
   fs.readFile(file, (err, buf) => {
     if (err) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' });
@@ -47,8 +52,10 @@ function serveStatic(req, res, rel) {
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  const p = decodeURIComponent(url.pathname);
+  let p;
+  try { p = decodeURIComponent(url.pathname); } catch (e) { res.writeHead(400); return res.end('bad request'); }
   if (req.method === 'POST' && p === '/events') {
+    if (!authorized(req, url)) { res.writeHead(401, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ error: 'unauthorized' })); }
     let body = '';
     req.on('data', (c) => { body += c; if (body.length > 5e6) req.destroy(); });
     req.on('end', () => {
@@ -82,6 +89,7 @@ const wss = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, sock, head) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname !== '/live' && url.pathname !== '/ingest') return sock.destroy();
+  if (url.pathname === '/ingest' && !authorized(req, url)) { sock.write('HTTP/1.1 401 Unauthorized\r\n\r\n'); return sock.destroy(); }
   wss.handleUpgrade(req, sock, head, (ws) => {
     if (url.pathname === '/live') {
       ws.run = url.searchParams.get('run') || '*';

@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Centrum dowodzenia</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B1020}
+button{font-family:inherit;color:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid #F2C14E;outline-offset:2px}
+textarea::placeholder{color:#7F8BB3}
+@keyframes hm-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes hm-pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+@keyframes hm-rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.hm-msg{animation:hm-in .4s ease-out both}
+.hm-chip{animation:hm-pop .3s ease-out both}
+.hm-rise{animation:hm-rise .55s ease-out both}
+.hm-btn:hover{background:#1D2850 !important}
+.hm-pri:hover{background:#FFD36B !important}
+.hm-node:hover{background:rgba(232,236,248,0.07) !important}
+.hm-feed{scrollbar-width:thin;scrollbar-color:#34406B transparent}
+.hm-range{-webkit-appearance:none;appearance:none;width:100%;height:28px;margin:0;background:transparent;cursor:pointer}
+.hm-range::-webkit-slider-runnable-track{height:4px;background:#5F6D9F;border-radius:2px}
+.hm-range::-moz-range-track{height:4px;background:#5F6D9F;border-radius:2px}
+.hm-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:22px;margin-top:-9px;border-radius:3px;background:#F2C14E;border:0}
+.hm-range::-moz-range-thumb{width:12px;height:22px;border-radius:3px;background:#F2C14E;border:0}
+.hm-fade{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 44px);mask-image:linear-gradient(to bottom,transparent 0,#000 44px)}
+@media (prefers-reduced-motion: reduce){.hm-msg,.hm-chip,.hm-rise{animation:none}}
+</style>
+</helmet>
+<div style="min-height: 1300px; background: #0B1020; color: #E8ECF8; font-family: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 40px; padding: 14px 24px; border-bottom: 1px solid #232C4E">
+<div style="display: flex; align-items: center; gap: 12px">
+<svg viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#F2C14E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="16" r="5"/><path d="M11 15C8 14.5 5.5 12.8 3.5 9.5"/><path d="M11 18C8.5 18.2 6 17.5 4 15.5"/><path d="M21 15C24 14.5 26.5 12.8 28.5 9.5"/><path d="M21 18C23.5 18.2 26 17.5 28 15.5"/><path d="M16 21v7"/></svg>
+<div>
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; line-height: 1.1">Hermes</h1>
+<div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #7F8BB3">Agentspace · centrum dowodzenia</div>
+</div>
+</div>
+<ol aria-label="Fazy przebiegu" style="flex: 1 1 460px; min-width: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px 20px">
+<sc-for list="{{phaseSteps}}" as="ph" hint-placeholder-count="4">
+<li style="flex: 1 1 110px; min-width: 110px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #7F8BB3">{{ph.num}}</span>
+<span style="font-weight: 600; font-size: 14px; color: {{ph.color}}">{{ph.label}}</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #7F8BB3; margin-left: auto">{{ph.range}}</span>
+</div>
+<div style="height: 3px; background: #232C4E; border-radius: 2px; overflow: hidden"><div style="height: 100%; width: {{ph.fill}}%; background: #F2C14E"></div></div>
+</li>
+</sc-for>
+</ol>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<a href="Roster.dc.html" class="hm-btn" style="display: flex; align-items: center; min-height: 40px; box-sizing: border-box; padding: 0 16px; background: #161F3D; border: 1px solid #34406B; border-radius: 6px; color: #E8ECF8; font-size: 14px; font-weight: 600; text-decoration: none">Katalog specjalistów</a>
+<sc-if value="{{showReportBtn}}" hint-placeholder-val="{{ false }}">
+<button type="button" class="hm-btn" onClick="{{showReport}}" style="min-height: 40px; padding: 0 16px; background: #161F3D; border: 1px solid #34406B; border-radius: 6px; color: #E8ECF8; font-size: 14px; font-weight: 600; cursor: pointer">Pokaż raport</button>
+</sc-if>
+<div style="display: flex; align-items: center; gap: 8px; padding: 6px 14px; border: 1px solid #34406B; border-radius: 999px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #E8ECF8; white-space: nowrap">
+<span style="display: block; width: 8px; height: 8px; border-radius: 50%; background: {{statusDot}}"></span>{{statusLabel}}
+</div>
+</div>
+</header>
+<div role="status" style="position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">{{announce}}</div>
+
+<main style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; padding: 16px 24px 28px">
+
+<section aria-label="Zadanie i analiza" style="flex: 1 1 296px; max-width: 420px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<div style="background: #111831; border: 1px solid #232C4E; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<label for="hm-task" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #A3AED0">Zadanie dla Hermesa</label>
+<textarea id="hm-task" rows="5" value="{{task}}" onChange="{{onTask}}" placeholder="Opisz, co ma zostać zrobione…" style="width: 100%; box-sizing: border-box; min-height: 124px; padding: 12px; background: #0E1530; border: 1px solid #5F6D9F; border-radius: 6px; color: #E8ECF8; font-family: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.5; resize: vertical"></textarea>
+<div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #A3AED0; margin-top: 4px">Gotowe scenariusze</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="3">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.active}}" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; box-sizing: border-box; text-align: left; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; color: #E8ECF8; background: {{c.bg}}; border: 1px solid {{c.border}}">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{c.numColor}}">{{c.num}}</span>
+<span style="flex: 1">{{c.label}}</span>
+</button>
+</sc-for>
+</div>
+<button type="button" class="hm-pri" onClick="{{run}}" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 48px; margin-top: 4px; background: #F2C14E; border: 0; border-radius: 6px; color: #1A1300; font-size: 15px; font-weight: 700; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1300" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>
+Uruchom Hermesa
+</button>
+<sc-if value="{{hasNote}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 13px; color: #F2C14E">{{note}}</p>
+</sc-if>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #7F8BB3">Wersja demonstracyjna: Hermes dobiera najbliższy z gotowych scenariuszy, a przebiegi są zaplanowane z wyprzedzeniem, nie generowane na żywo.</p>
+</div>
+
+<div style="background: #111831; border: 1px solid #232C4E; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h2 style="margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: #A3AED0">Analiza Hermesa</h2>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #7F8BB3">faza 01</span>
+</div>
+<sc-if value="{{hasGoal}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #F2C14E">Cel</span>
+<span style="font-size: 15px; line-height: 1.45; color: #E8ECF8; min-height: 66px">{{goalText}}</span>
+</div>
+</sc-if>
+<sc-for list="{{analysisGroups}}" as="g" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #A3AED0">{{g.title}}</span>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{g.items}}" as="it" hint-placeholder-count="3">
+<div class="hm-chip" style="padding: 6px 10px; background: #0E1530; border: 1px solid #232C4E; border-radius: 6px; font-size: 13px; line-height: 1.4; color: #E8ECF8">{{it.text}}</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="Mapa zespołu i oś czasu" style="flex: 999 1 620px; min-width: 0; position: relative; display: flex; flex-direction: column; gap: 16px">
+<sc-if value="{{stageShown}}" hint-placeholder-val="{{ true }}">
+
+<div style="background: #111831; border: 1px solid #232C4E; border-radius: 10px; overflow: hidden">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 12px 16px; border-bottom: 1px solid #232C4E">
+<div style="flex: 1 1 240px; min-width: 0">
+<h2 style="margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: #A3AED0">Mapa zespołu</h2>
+<div style="font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{taskTitle}}</div>
+</div>
+<ul aria-label="Linie robocze" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px">
+<sc-for list="{{lineLegend}}" as="ln" hint-placeholder-count="4">
+<li style="display: flex; align-items: center; gap: 6px">
+<span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: {{ln.color}}; color: #0B1020; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500">{{ln.letter}}</span>
+<span style="font-size: 13px; color: #A3AED0">{{ln.name}}</span>
+</li>
+</sc-for>
+</ul>
+</div>
+<div style="padding: 10px 10px 0; overflow-x: auto">
+<div style="position: relative; width: 100%; min-width: 600px; max-width: 900px; margin: 0 auto; aspect-ratio: 820 / 500; background-color: #0B1020; background-image: linear-gradient(#151D3A 1px, transparent 1px), linear-gradient(90deg, #151D3A 1px, transparent 1px); background-size: 32px 32px; border-radius: 6px; overflow: hidden">
+<svg viewBox="0 0 820 500" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%" aria-hidden="true">
+<sc-for list="{{spokes}}" as="sp" hint-placeholder-count="0">
+<polyline points="{{sp.points}}" style="fill: none; stroke: {{sp.color}}; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: {{sp.dash}}; opacity: {{sp.op}}"/>
+</sc-for>
+<sc-for list="{{rails}}" as="rl" hint-placeholder-count="0">
+<line x1="{{rl.x1}}" y1="{{rl.y1}}" x2="{{rl.x2}}" y2="{{rl.y2}}" style="stroke: {{rl.color}}; stroke-width: {{rl.w}}; stroke-linecap: round; opacity: {{rl.op}}"/>
+</sc-for>
+<sc-for list="{{links}}" as="lk" hint-placeholder-count="0">
+<polyline points="{{lk.points}}" style="fill: none; stroke: {{lk.color}}; stroke-width: {{lk.w}}; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: {{lk.dash}}; opacity: {{lk.op}}"/>
+</sc-for>
+<sc-for list="{{packets}}" as="pk" hint-placeholder-count="0">
+<circle cx="{{pk.x}}" cy="{{pk.y}}" r="{{pk.r}}" style="fill: {{pk.color}}; opacity: {{pk.op}}"/>
+</sc-for>
+<sc-for list="{{stations}}" as="s" hint-placeholder-count="0">
+<g transform="{{s.tf}}">
+<circle cx="0" cy="0" r="{{s.pulseR}}" style="fill: none; stroke: {{s.color}}; stroke-width: 2; opacity: {{s.pulseOp}}"/>
+<circle cx="0" cy="0" r="{{s.arrR}}" style="fill: none; stroke: {{s.arrColor}}; stroke-width: 2.5; opacity: {{s.arrOp}}"/>
+<circle cx="0" cy="0" r="31" style="fill: none; stroke: #232C4E; stroke-width: 3"/>
+<circle cx="0" cy="0" r="31" transform="rotate(-90)" style="fill: none; stroke: {{s.color}}; stroke-width: 3; stroke-linecap: round; stroke-dasharray: {{s.prog}}"/>
+<circle cx="0" cy="0" r="24" style="fill: #0B1020; stroke: {{s.ringColor}}; stroke-width: 3; stroke-linecap: round; stroke-dasharray: {{s.baseDash}}; opacity: {{s.baseOp}}"/>
+<sc-if value="{{s.done}}" hint-placeholder-val="{{ false }}">
+<g transform="translate(21 -21)">
+<circle cx="0" cy="0" r="9" style="fill: {{s.color}}"/>
+<path d="M-4 0.5 L-1 3.5 L4.5 -3" style="fill: none; stroke: #0B1020; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"/>
+</g>
+</sc-if>
+</g>
+</sc-for>
+<g transform="translate(78 250)">
+<circle cx="0" cy="0" r="{{hub.pulseR}}" style="fill: none; stroke: #F2C14E; stroke-width: 2; opacity: {{hub.pulseOp}}"/>
+<circle cx="0" cy="0" r="56" transform="{{hub.spin}}" style="fill: none; stroke: #F2C14E; stroke-width: 1.5; stroke-dasharray: 4 9; stroke-linecap: round; opacity: 0.6"/>
+<circle cx="0" cy="0" r="44" style="fill: #0B1020; stroke: #F2C14E; stroke-width: 2.5"/>
+<circle cx="0" cy="0" r="36" style="fill: #161F3D; stroke: #34406B; stroke-width: 1"/>
+<g transform="translate(-20 -20) scale(1.25)" style="fill: none; stroke: #F2C14E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round">
+<circle cx="16" cy="16" r="5"/>
+<path d="M11 15C8 14.5 5.5 12.8 3.5 9.5"/>
+<path d="M11 18C8.5 18.2 6 17.5 4 15.5"/>
+<path d="M21 15C24 14.5 26.5 12.8 28.5 9.5"/>
+<path d="M21 18C23.5 18.2 26 17.5 28 15.5"/>
+<path d="M16 21v7"/>
+</g>
+</g>
+</svg>
+<sc-for list="{{nodes}}" as="nd" hint-placeholder-count="3">
+<button type="button" class="hm-node" onClick="{{nd.pick}}" aria-pressed="{{nd.sel}}" aria-label="{{nd.aria}}" style="position: absolute; left: {{nd.left}}%; top: {{nd.top}}%; margin-top: {{nd.mt}}%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; width: 15.12%; padding: 0 0 4px; box-sizing: border-box; border-radius: 8px; cursor: pointer; opacity: {{nd.op}}; background: {{nd.bg}}; border: 1px solid {{nd.border}}">
+<span style="display: flex; align-items: center; justify-content: center; width: {{nd.sp}}%; aspect-ratio: 1 / 1; font-family: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 17px; line-height: 1; color: {{nd.monoColor}}; opacity: {{nd.monoOp}}; transform: scale({{nd.k}})">{{nd.mono}}</span>
+<span style="display: inline-flex; align-items: center; gap: 5px; font-weight: 600; font-size: 13px; line-height: 16px; color: #E8ECF8; white-space: nowrap; text-shadow: 0 0 6px #0B1020, 0 0 3px #0B1020"><sc-if value="{{nd.hasLine}}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: {{nd.lineColor}}; color: #0B1020; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 14px; text-shadow: none">{{nd.lineLetter}}</span></sc-if>{{nd.name}}</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; color: {{nd.statusColor}}; text-shadow: 0 0 6px #0B1020, 0 0 3px #0B1020">{{nd.status}}</span>
+</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-top: 1px solid #232C4E; background: #0E1530; margin-top: 10px">
+<span style="flex: none; padding-top: 2px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #F2C14E">{{captionLabel}}</span>
+<span style="font-size: 14px; line-height: 1.5; color: #E8ECF8; min-height: 42px">{{captionText}}</span>
+</div>
+</div>
+</sc-if>
+
+<div style="order: 2; background: #111831; border: 1px solid #232C4E; border-radius: 10px; overflow: hidden">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 12px 16px; border-bottom: 1px solid #232C4E">
+<button type="button" class="hm-pri" onClick="{{togglePlay}}" aria-label="{{playAria}}" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; background: #F2C14E; border: 0; border-radius: 50%; cursor: pointer">
+<sc-if value="{{isPlaying}}" hint-placeholder-val="{{ false }}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1300" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5v14"/><path d="M16 5v14"/></svg>
+</sc-if>
+<sc-if value="{{notPlaying}}" hint-placeholder-val="{{ true }}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1300" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>
+</sc-if>
+</button>
+<button type="button" class="hm-btn" onClick="{{restart}}" aria-label="Odtwórz od początku" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; background: #161F3D; border: 1px solid #34406B; border-radius: 50%; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8ECF8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg>
+</button>
+<div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; white-space: nowrap"><span style="color: #E8ECF8">{{timeNow}}</span><span style="color: #7F8BB3"> / 1:00</span></div>
+<div role="group" aria-label="Prędkość odtwarzania" style="display: flex; gap: 4px">
+<sc-for list="{{speeds}}" as="sp" hint-placeholder-count="3">
+<button type="button" onClick="{{sp.pick}}" aria-pressed="{{sp.active}}" style="min-width: 48px; min-height: 44px; padding: 0 10px; border-radius: 6px; cursor: pointer; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #E8ECF8; background: {{sp.bg}}; border: 1px solid {{sp.border}}">{{sp.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="overflow-x: auto">
+<div style="display: flex; gap: 12px; padding: 12px 16px 14px; min-width: 460px">
+<div style="flex: none; width: 132px">
+<div style="height: 22px"></div>
+<div style="height: 28px"></div>
+<sc-for list="{{ganttRows}}" as="r" hint-placeholder-count="4">
+<div style="height: 34px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; border-top: 1px solid #1B2444">
+<div style="display: flex; align-items: center; gap: 6px; line-height: 16px">
+<span style="flex: none; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; border: 1px solid {{r.color}}; background: {{r.chipBg}}; color: {{r.chipFg}}; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 14px">{{r.letter}}</span>
+<span style="font-size: 13px; font-weight: 600; color: {{r.nameColor}}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{r.short}}</span>
+</div>
+<span style="font-size: 12px; line-height: 16px; color: {{r.labelColor}}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{r.taskLabel}}</span>
+</div>
+</sc-for>
+</div>
+<div style="flex: 1 1 0; min-width: 0; position: relative">
+<div style="position: relative; height: 22px; margin: 0 6px">
+<sc-for list="{{phaseBands}}" as="pb" hint-placeholder-count="4">
+<div style="position: absolute; top: 0; height: 22px; box-sizing: border-box; left: {{pb.left}}%; width: {{pb.width}}%; border-left: 1px solid #34406B; padding-left: 6px; font-size: 12px; line-height: 22px; color: {{pb.color}}; overflow: hidden; white-space: nowrap">{{pb.label}}</div>
+</sc-for>
+</div>
+<input type="range" class="hm-range" min="0" max="600" step="1" value="{{scrubValue}}" onChange="{{onScrub}}" aria-label="Oś czasu przebiegu" aria-valuetext="{{timeNow}}"/>
+<sc-for list="{{ganttRows}}" as="r" hint-placeholder-count="4">
+<div style="position: relative; height: 34px; box-sizing: border-box; border-top: 1px solid #1B2444">
+<div style="position: absolute; left: 6px; right: 6px; top: 0; bottom: 0; opacity: {{r.dim}}">
+<sc-for list="{{r.bars}}" as="b" hint-placeholder-count="1">
+<div style="position: absolute; top: 9px; height: 16px; box-sizing: border-box; border-radius: 4px; overflow: hidden; left: {{b.left}}%; width: {{b.width}}%; background: {{b.bg}}; border: {{b.border}}">
+<div style="height: 100%; width: {{b.fill}}%; background: {{b.color}}"></div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<div style="position: absolute; top: 0; bottom: 0; width: 2px; background: #F2C14E; pointer-events: none; left: {{playheadLeft}}"></div>
+</div>
+</div>
+</div>
+</div>
+
+<sc-if value="{{reportOpen}}" hint-placeholder-val="{{ false }}">
+<section aria-labelledby="hm-rep-h" class="hm-rise" style="order: 1; box-sizing: border-box; background: #0B1020; border: 1px solid #34406B; border-radius: 10px; padding: 28px 32px 32px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg viewBox="0 0 32 32" width="26" height="26" fill="none" stroke="#F2C14E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="16" r="5"/><path d="M11 15C8 14.5 5.5 12.8 3.5 9.5"/><path d="M11 18C8.5 18.2 6 17.5 4 15.5"/><path d="M21 15C24 14.5 26.5 12.8 28.5 9.5"/><path d="M21 18C23.5 18.2 26 17.5 28 15.5"/><path d="M16 21v7"/></svg>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #F2C14E">{{reportTag}} · {{scenarioChip}}</span>
+</div>
+<button type="button" class="hm-btn" onClick="{{closeReport}}" aria-label="Zamknij raport" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; background: #161F3D; border: 1px solid #34406B; border-radius: 50%; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8ECF8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+</button>
+</div>
+<h2 id="hm-rep-h" style="margin: 0; font-family: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 32px; line-height: 1.12; letter-spacing: -0.015em; max-width: 760px; text-wrap: balance">{{reportTitle}}</h2>
+<p style="margin: 0; font-size: 17px; line-height: 1.55; color: #A3AED0; max-width: 760px">{{reportLead}}</p>
+<div style="display: flex; flex-direction: column; gap: 18px; max-width: 820px">
+<sc-for list="{{reportSections}}" as="sec" hint-placeholder-count="3">
+<div class="hm-rise" style="display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 4px 12px; padding-top: 16px; border-top: 1px solid #232C4E">
+<div aria-hidden="true" style="font-family: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 26px; line-height: 1.1; color: #7F8BB3">{{sec.num}}</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700; color: #E8ECF8">{{sec.h}}</h3>
+<p style="margin: 0; font-size: 15px; line-height: 1.6; color: #E8ECF8">{{sec.p}}</p>
+</div>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{reportNextShown}}" hint-placeholder-val="{{ true }}">
+<div class="hm-rise" style="max-width: 820px; padding: 16px 18px; background: #111831; border: 1px solid #34406B; border-radius: 10px">
+<div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #F2C14E; margin-bottom: 8px">Następne kroki</div>
+<ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{reportNext}}" as="nx" hint-placeholder-count="2">
+<li style="font-size: 15px; line-height: 1.5; color: #E8ECF8">{{nx.text}}</li>
+</sc-for>
+</ol>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px">
+<button type="button" class="hm-pri" onClick="{{download}}" style="display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 20px; background: #F2C14E; border: 0; border-radius: 6px; color: #1A1300; font-size: 15px; font-weight: 700; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1300" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7.5 11l4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/></svg>
+Pobierz raport (.md)
+</button>
+<button type="button" class="hm-btn" onClick="{{closeReport}}" style="min-height: 48px; padding: 0 20px; background: #161F3D; border: 1px solid #34406B; border-radius: 6px; color: #E8ECF8; font-size: 15px; font-weight: 600; cursor: pointer">Wróć do mapy</button>
+<span aria-live="polite" style="font-size: 13px; color: #34D3BE">{{toast}}</span>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #7F8BB3; max-width: 820px">Przebieg demonstracyjny: scenariusz jest zaplanowany z wyprzedzeniem, nie generowany na żywo.</p>
+</sc-if>
+</section>
+</sc-if>
+</section>
+
+<section aria-label="Strumień wiadomości i inspektor" style="flex: 1 1 360px; max-width: 460px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<div style="background: #111831; border: 1px solid #232C4E; border-radius: 10px; height: 520px; display: flex; flex-direction: column; overflow: hidden">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #232C4E; flex: none">
+<h2 style="margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: #A3AED0">Strumień wiadomości</h2>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #7F8BB3">{{feedCount}}</span>
+</div>
+<div id="hm-feed" class="hm-fade hm-feed" role="region" tabindex="0" aria-label="Przebieg rozmowy agentów" onScroll="{{onFeedScroll}}" style="flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px">
+<div style="flex: 1 0 0"></div>
+<sc-for list="{{feed}}" as="m" hint-placeholder-count="3">
+<div class="hm-msg" style="flex: none; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: {{m.bg}}; border: {{m.cardBorder}}; border-radius: 8px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #7F8BB3">{{m.time}}</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600"><span style="display: block; width: 8px; height: 8px; border-radius: 50%; background: {{m.fromColor}}"></span>{{m.fromName}}</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7F8BB3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600"><span style="display: block; width: 8px; height: 8px; border-radius: 50%; background: {{m.toColor}}"></span>{{m.toName}}</span>
+<span style="margin-left: auto; padding: 1px 8px; border-radius: 999px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{m.kindColor}}; border: 1px solid {{m.kindColor}}">{{m.kindLabel}}</span>
+</div>
+<div style="font-size: 14px; line-height: 1.45; color: #E8ECF8">{{m.text}}</div>
+<sc-if value="{{m.hasAttach}}" hint-placeholder-val="{{ false }}">
+<div style="display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; padding: 2px 8px; background: #0E1530; border: 1px solid #34406B; border-radius: 6px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #A3AED0">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A3AED0" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg>
+{{m.attach}}
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="background: #111831; border: 1px solid #232C4E; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-height: 380px; box-sizing: border-box">
+<h2 style="margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: #A3AED0">Inspektor</h2>
+<sc-if value="{{isHermes}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; border: 2px solid #F2C14E; background: #0B1020">
+<svg viewBox="0 0 32 32" width="30" height="30" fill="none" stroke="#F2C14E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="16" r="5"/><path d="M11 15C8 14.5 5.5 12.8 3.5 9.5"/><path d="M11 18C8.5 18.2 6 17.5 4 15.5"/><path d="M21 15C24 14.5 26.5 12.8 28.5 9.5"/><path d="M21 18C23.5 18.2 26 17.5 28 15.5"/><path d="M16 21v7"/></svg>
+</span>
+<div>
+<div style="font-family: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 20px; line-height: 1.15">Hermes</div>
+<div style="font-size: 13px; color: #A3AED0">Dyspozytor i orkiestrator zespołu</div>
+</div>
+</div>
+<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #E8ECF8">{{hermesText}}</p>
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{hermesStats}}" as="st" hint-placeholder-count="4">
+<div style="padding: 10px 12px; background: #0E1530; border: 1px solid #232C4E; border-radius: 8px">
+<dt style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #A3AED0">{{st.label}}</dt>
+<dd style="margin: 2px 0 0; font-family: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 24px; line-height: 1.2">{{st.value}}</dd>
+</div>
+</sc-for>
+</dl>
+</sc-if>
+<sc-if value="{{isAgent}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; flex: none; border-radius: 50%; border: 3px solid {{ins.color}}; background: #0B1020; color: {{ins.color}}; font-family: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 20px">{{ins.mono}}</span>
+<div style="min-width: 0">
+<div style="font-family: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 19px; line-height: 1.15">{{ins.name}}</div>
+<div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: {{ins.color}}">{{ins.line}}</div>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px">
+<div style="display: flex; align-items: center; gap: 8px">
+<span aria-hidden="true" style="display: flex; align-items: flex-end; gap: 3px; height: 16px">
+<span style="display: block; width: 5px; height: 6px; border-radius: 1px; background: {{ins.bar1}}"></span>
+<span style="display: block; width: 5px; height: 11px; border-radius: 1px; background: {{ins.bar2}}"></span>
+<span style="display: block; width: 5px; height: 16px; border-radius: 1px; background: {{ins.bar3}}"></span>
+</span>
+<span style="font-size: 13px; color: #E8ECF8">{{ins.tier}}</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="display: block; width: 8px; height: 8px; border-radius: 50%; background: {{ins.statusColor}}"></span>
+<span style="font-size: 13px; color: #E8ECF8">{{ins.status}}</span>
+</div>
+</div>
+<div style="padding: 10px 12px; background: #0E1530; border: 1px solid #232C4E; border-radius: 8px">
+<div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #A3AED0">Dlaczego Hermes go wybrał</div>
+<div style="margin-top: 4px; font-size: 14px; line-height: 1.5; color: #E8ECF8">{{ins.why}}</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{ins.tools}}" as="tl" hint-placeholder-count="3">
+<span style="padding: 3px 9px; background: #161F3D; border: 1px solid #34406B; border-radius: 999px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #E8ECF8">{{tl.name}}</span>
+</sc-for>
+</div>
+<sc-if value="{{ins.hasLast}}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 13px; line-height: 1.5; color: #A3AED0"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase">Ostatnio · {{ins.lastTime}}</span><br/>{{ins.lastText}}</div>
+</sc-if>
+</sc-if>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+const SCEN = [
+{"id":"medytacja","chip":"Premiera aplikacji do medytacji","task":"Przygotuj premierę aplikacji do medytacji dla zapracowanych rodziców małych dzieci: pozycjonowanie, główny komunikat, kanały dotarcia oraz plan pierwszych 30 dni po starcie.","keywords":["medytac","rodzic","aplikacj","premier","launch","mindful","uważn","relaks","stres","zapracowan","pozycjon"],"analysis":{"goal":"Zaplanować premierę aplikacji do medytacji, która trafi do rodziców niemających ani chwili dla siebie.","constraints":["Mały zespół, więc tylko kanały bez udziału dużej agencji","Ton bez ezoteryki i bez obietnic leczniczych","Plan obejmuje wyłącznie pierwsze 30 dni po starcie"],"success":["Jedno hasło, które odpowiada na brak czasu rodzica","Plan 30 dni z pomiarem po tygodniu i kontrolą w dniu 30","Spójny pakiet: komunikat, kreacje i kanały"],"risks":["Obietnica spokoju bez odpowiedzi na brak czasu","Szybki spadek aktywności po pierwszym tygodniu","Zbyt wiele kanałów naraz przy małym zespole"]},"agents":[{"id":"rynek","name":"Badacz rynku","short":"Rynek","line":"R","col":1,"tier":"balanced","tools":["Przegląd kategorii","Mapa luk","Analiza kanałów"],"why":"Zanim ktokolwiek zacznie pisać, trzeba wiedzieć, co kategoria obiecuje rodzicom i gdzie zostawia lukę.","spawn":6.5},{"id":"opinie","name":"Analityk opinii","short":"Opinie","line":"R","col":2,"tier":"fast","tools":["Analiza recenzji","Grupowanie tematów","Parafrazy cytatów"],"why":"Szybko wydobywa z recenzji i wątków rodziców powody porzucania medytacji oraz słowa, którymi sami o tym mówią.","spawn":7.4},{"id":"strateg","name":"Strateg produktu","short":"Strateg","line":"C","col":2,"tier":"deep","tools":["Pozycjonowanie","Model potrzeb JTBD","Plan 30 dni"],"why":"Pozycjonowanie i plan 30 dni wiążą resztę zespołu, więc ta rola wymaga najgłębszego rozumowania.","spawn":8.4},{"id":"copy","name":"Copywriter","short":"Copy","line":"C","col":3,"tier":"balanced","tools":["Hasło i nagłówki","Teksty do sklepu","Sekwencja e-maili"],"why":"Przekłada pozycjonowanie na krótkie teksty dla zmęczonego rodzica: nagłówek, opis w sklepie i e-maile po instalacji.","spawn":9.5},{"id":"wizual","name":"Projektant wizualny","short":"Wizual","line":"C","col":4,"tier":"balanced","tools":["Moodboard","Szablony kreacji","Ikonografia"],"why":"Buduje ciepły, domowy język wizualny i szablony kreacji, które udźwigną obietnicę krótkiego czasu.","spawn":10.6},{"id":"krytyk","name":"Krytyk komunikatu","short":"Krytyk","line":"Q","col":4,"tier":"deep","tools":["Test założeń","Przegląd komunikatu","Rejestr ryzyk"],"why":"Sprawdza, czy komunikat odpowiada na realną blokadę rodziców, i wytyka luki, zanim plan trafi do składu.","spawn":11.8},{"id":"redaktor","name":"Redaktor planu","short":"Redaktor","line":"D","col":5,"tier":"balanced","tools":["Skład dokumentu","Harmonogram","Kontrola spójności"],"why":"Scala wyniki zespołu w jeden plan premiery i pilnuje, by kolejność działań oraz ryzyka były czytelne.","spawn":13}],"links":[{"from":"rynek","to":"strateg"},{"from":"opinie","to":"copy"},{"from":"strateg","to":"copy"},{"from":"strateg","to":"wizual"},{"from":"copy","to":"wizual"},{"from":"copy","to":"krytyk"},{"from":"krytyk","to":"redaktor"},{"from":"wizual","to":"redaktor"},{"from":"strateg","to":"redaktor"},{"from":"copy","to":"redaktor"}],"tasks":[{"agent":"rynek","from":14.5,"to":23,"label":"Mapa kategorii i kanałów"},{"agent":"opinie","from":15.5,"to":22.5,"label":"Tematy z opinii rodziców"},{"agent":"strateg","from":21,"to":28.5,"label":"Pozycjonowanie i persona"},{"agent":"strateg","from":32.5,"to":40.5,"label":"Plan pierwszych 30 dni"},{"agent":"copy","from":25,"to":31,"label":"Komunikat v1 i teksty sklepu"},{"agent":"copy","from":34,"to":39,"label":"Przepisanie komunikatu v2"},{"agent":"wizual","from":30,"to":37,"label":"Kierunek wizualny i paleta"},{"agent":"wizual","from":39.5,"to":44.5,"label":"Szablony z hasłem v2"},{"agent":"krytyk","from":31.5,"to":36.5,"label":"Przegląd komunikatu v1","review":true},{"agent":"krytyk","from":39.5,"to":47.5,"label":"Przegląd całości i ryzyk","review":true},{"agent":"redaktor","from":38,"to":41,"label":"Szkielet planu premiery"},{"agent":"redaktor","from":41.5,"to":49.5,"label":"Skład planu i spójność"}],"events":[{"t":14.9,"from":"hermes","to":"rynek","kind":"brief","text":"Zmapuj rynek aplikacji do medytacji dla rodziców małych dzieci: obietnice kategorii, luki oraz kanały, w których rodzice szukają pomocy."},{"t":15.9,"from":"hermes","to":"opinie","kind":"brief","text":"Przeanalizuj opinie i wątki rodziców o medytacji i śnie: co próbowali, dlaczego rezygnowali i jakich słów używają. Podaj wynik w tematach."},{"t":17,"from":"rynek","to":"opinie","kind":"question","text":"Czy rodzice rezygnują z medytacji przez sam format, czy z braku miejsca w dniu? Od tego zależy, gdzie szukam luki."},{"t":18.5,"from":"opinie","to":"rynek","kind":"answer","text":"Głównie z braku miejsca w dniu: sesje trwające kilkanaście minut odpadają, a wieczorem dokłada się zmęczenie. Sam pomysł rzadko bywa problemem."},{"t":20,"from":"hermes","to":"strateg","kind":"brief","text":"Ustal pozycjonowanie i grupę docelową dla zapracowanych rodziców, potem rozpisz pierwsze 30 dni po starcie. Mapę rynku dostaniesz od Badacza."},{"t":21.5,"from":"opinie","to":"copy","kind":"handoff","text":"Cztery tematy z opinii: zmęczenie wieczorem, poczucie winy, brak chwili bez dziecka, porzucanie długich sesji. Dołączam parafrazy w języku rodziców.","attach":"tematy_opinii.md"},{"t":23,"from":"rynek","to":"strateg","kind":"handoff","text":"Kategoria obiecuje głównie spokój i sen; luką jest krótki rytuał mieszczący się w dniu. Kanały: grupy rodziców, poradniki o śnie, podcasty.","attach":"mapa_rynku.md"},{"t":24,"from":"hermes","to":"copy","kind":"brief","text":"Napisz komunikat premiery i teksty do sklepu dla zmęczonego rodzica. Korzystaj z tematów Analityka opinii i pozycjonowania Stratega."},{"t":25.5,"from":"copy","to":"strateg","kind":"question","text":"Do kogo piszę: do matek czy do obojga rodziców, i czy to rodzice niemowląt, czy przedszkolaków? Zmienia to ton i przykłady."},{"t":27,"from":"strateg","to":"copy","kind":"answer","text":"Rdzeń: pracujący rodzic dziecka do 6 lat. Pisz neutralnie płciowo, bo ojcowie to niedoceniona grupa. Pozycja: rytuał mieszczący się w dniu."},{"t":28,"from":"hermes","to":"wizual","kind":"brief","text":"Zaprojektuj kierunek wizualny premiery: paleta, ikonografia i szablony kreacji. Ma być ciepło i po ludzku, bez ezoteryki."},{"t":29,"from":"strateg","to":"wizual","kind":"handoff","text":"Pozycja i persona dla kierunku wizualnego: ciepło i codzienność domu, bez póz lotosu i zachodów słońca. Notatka w załączniku.","attach":"pozycjonowanie.md"},{"t":30,"from":"hermes","to":"krytyk","kind":"brief","text":"Oceń komunikat pod kątem jednego pytania: czy odpowiada na realną blokadę rodziców? Wskaż konkretnie, czego brakuje."},{"t":31,"from":"copy","to":"krytyk","kind":"handoff","text":"Wersja 1: nagłówek «Znajdź spokój w chaosie rodzicielstwa», opis w sklepie i e-mail powitalny. Proszę o przegląd.","attach":"komunikat_v1.md"},{"t":33,"from":"krytyk","to":"copy","kind":"critique","text":"Nagłówek obiecuje spokój, a z opinii wynika, że blokadą jest brak czasu, nie chęci. Nie mówi też, ile to zajmie. Rodzic szuka minut, nie spokoju."},{"t":34,"from":"wizual","to":"copy","kind":"question","text":"Czy w nagłówku pojawi się liczba minut? Od tego zależy hierarchia typografii w szablonach."},{"t":35.5,"from":"copy","to":"wizual","kind":"answer","text":"Tak: główną obietnicą będzie czas, a spokój przejdzie do podtytułu. Zostaw duży, osobny blok na liczbę minut."},{"t":37,"from":"hermes","to":"redaktor","kind":"brief","text":"Scal wyniki zespołu w plan premiery: pozycjonowanie, komunikat, kanały, kreacje i 30 dni. Zacznij od szkieletu, wyniki będą spływać."},{"t":38.5,"from":"copy","to":"krytyk","kind":"revision","text":"Odpowiedź na zarzut o brak czasu: nagłówek «Trzy minuty spokoju między bajką a snem» podaje liczbę minut i miejsce w dniu. Jest też wariant poranny.","attach":"komunikat_v2.md"},{"t":40,"from":"strateg","to":"redaktor","kind":"handoff","text":"Plan 30 dni: tydzień startowy z pomiarem aktywności, kolejne tygodnie budowania nawyku i punkt kontrolny w dniu 30. Miary opisowo, bez kwot.","attach":"plan_30_dni.md"},{"t":41,"from":"krytyk","to":"copy","kind":"approve","text":"Wersja 2 odpowiada na zarzut: czas i miejsce w dniu rodzica są w nagłówku, a spokój jest skutkiem. Zatwierdzam do składu planu."},{"t":42,"from":"copy","to":"redaktor","kind":"handoff","text":"Zatwierdzony komunikat v2: nagłówek, opis w sklepie, e-mail powitalny i krótka sekwencja nawykowa na pierwsze dni.","attach":"komunikat_final.md"},{"t":43,"from":"krytyk","to":"redaktor","kind":"handoff","text":"Rejestr ryzyk: spadek aktywności po pierwszym tygodniu, brak danych o ojcach, zbyt wiele kanałów naraz. Dołączam mitygacje.","attach":"ryzyka.md"},{"t":44.5,"from":"wizual","to":"redaktor","kind":"handoff","text":"Szablony z blokiem czasu, paleta i ikonografia: formaty do sklepu, mediów społecznościowych i e-maila. Wytyczne w paczce.","attach":"wytyczne_wizualne.pdf"},{"t":45.5,"from":"redaktor","to":"krytyk","kind":"question","text":"Które ryzyka trafiają do raportu jako otwarte, a które plan już zamyka? Chcę je rozdzielić wyraźnie."},{"t":47,"from":"krytyk","to":"redaktor","kind":"answer","text":"Otwarte: spadek aktywności po pierwszym tygodniu i brak danych o ojcach. Nadmiar kanałów zamyka plan: tylko dwa na start."},{"t":48.5,"from":"redaktor","to":"hermes","kind":"result","text":"Plan premiery gotowy: pozycjonowanie, komunikat v2, dwa kanały, kreacje i 30 dni z punktem kontrolnym. Dwa ryzyka oznaczone jako otwarte.","attach":"plan_premiery.md"},{"t":52,"from":"hermes","to":"user","kind":"result","text":"Wyniki zespołu zebrane, składam rekomendację: obietnica czasu zamiast samego spokoju, dwa kanały na start i plan 30 dni z kontrolą."},{"t":56.5,"from":"hermes","to":"user","kind":"result","text":"Raport dostarczony. Rdzeń: trzy minuty spokoju dla rodziców, start przez społeczności i sklep z e-mailem, dwa otwarte ryzyka do sprawdzenia."}],"report":{"title":"Premiera aplikacji do medytacji: plan dla zapracowanych rodziców","lead":"Rekomendacja: obiecywać rodzicom nie sam spokój, lecz trzy minuty spokoju, które mieszczą się w ich dniu. Poniżej pozycjonowanie, komunikat, kanały, plan 30 dni i otwarte ryzyka.","sections":[{"h":"Pozycjonowanie i grupa docelowa","p":"Rdzeniem grupy jest pracujący rodzic dziecka do 6 lat: zmęczony wieczorem i obciążony poczuciem winy, że nie ma chwili dla siebie. Z opinii rodziców wynika, że rzadko odrzucają oni samą medytację; rezygnują, bo długie sesje nie mieszczą się w dniu. Pozycja: krótki rytuał dopasowany do realnych okien dnia, a nie kolejna aplikacja o spokoju. Przekaz jest neutralny płciowo, bo ojcowie to grupa niedoceniana."},{"h":"Komunikat po rundzie krytyki","p":"Wersja 1 obiecywała spokój w chaosie rodzicielstwa, a Krytyk wskazał, że pomija główną blokadę, czyli brak czasu: nagłówek nie mówił, ile to zajmie. Wersja 2 odwraca hierarchię: «Trzy minuty spokoju między bajką a snem» obiecuje czas i miejsce w dniu, a spokój jest skutkiem. Wariant poranny i e-maile powitalne trzymają tę samą obietnicę. Hasło trzeba jeszcze sprawdzić na rodzicach."},{"h":"Kanały i kierunek wizualny","p":"Na start dwa kanały: społeczności i podcasty dla rodziców oraz strona aplikacji w sklepie z e-mailem powitalnym. Przy małym zespole to granica, której nie warto przekraczać. Media płatne wchodzą dopiero po pomiarze po pierwszym tygodniu, a ich budżet to [kwota]. Kierunek wizualny jest ciepły i domowy, bez póz lotosu, a szablony mają duży, osobny blok na liczbę minut."},{"h":"Pierwsze 30 dni i otwarte ryzyka","p":"Tydzień 1: start z komunikatem v2 we wszystkich punktach styku i pomiar aktywności na koniec tygodnia. Tygodnie 2–4: budowanie nawyku e-mailami i krótkimi podpowiedziami. Dzień 30: punkt kontrolny aktywności. Otwarte pozostają dwa ryzyka: spadek aktywności po pierwszym tygodniu oraz brak danych o ojcach, które trzeba sprawdzić, zanim poszerzymy komunikat."}],"next":["Sprawdzić hasło v2 w pięciu krótkich rozmowach z rodzicami, także z ojcami","Potwierdzić dwa kanały startowe i ustalić budżet mediów płatnych: [kwota]","Zaplanować pomiar aktywności po pierwszym tygodniu i punkt kontrolny w dniu 30"]}},
+{"id":"panel","chip":"MVP panelu sprzedażowego","task":"Zaprojektuj i zbuduj MVP panelu sprzedażowego dla małego sklepu internetowego: import zamówień z pliku CSV, trzy wykresy oraz alert o nagłym spadku sprzedaży.","keywords":["panel","sprzeda","sklep","zamówie","wykres","alert","import","dashboard","raport","spadk"],"analysis":{"goal":"Dostarczyć działające MVP panelu: import zamówień z CSV, trzy wykresy i alert o nagłym spadku sprzedaży.","constraints":["Dane wejściowe wyłącznie z plików CSV","Zakres MVP: trzy wykresy i jeden typ alertu","Bez płatnych usług zewnętrznych, prosty hosting"],"success":["Typowy plik CSV importuje się bez ręcznych poprawek","Trzy wykresy zasilane jednym kontraktem danych","Alert reaguje na symulowany spadek, nie na zwykłe wahania"],"risks":["Złośliwe komórki i zbyt duże pliki CSV","Niespójne daty, separatory i kodowanie w CSV","Fałszywe alarmy przy niepełnych dniach i małej liczbie zamówień"]},"agents":[{"id":"analityk","name":"Analityk wymagań","short":"Analityk","line":"R","col":1,"tier":"balanced","tools":["Granice zakresu","Mapa wymagań","Kryteria akceptacji"],"why":"Wymagania są ogólnikowe, więc zakres MVP i kryteria akceptacji trzeba spisać, zanim ruszy projekt i kod.","spawn":6.5},{"id":"architekt","name":"Architekt systemu","short":"Architekt","line":"C","col":2,"tier":"deep","tools":["Model danych","Kontrakt wykresów","Przegląd spójności"],"why":"Importer, API wykresów i alert muszą współdzielić jeden model danych; ta decyzja wyznacza resztę prac.","spawn":7.5},{"id":"dane","name":"Programista danych","short":"Dane","line":"C","col":3,"tier":"balanced","tools":["Parser CSV","Agregacje dzienne","Walidacja schematu"],"why":"Import CSV i agregacje dzienne to rdzeń MVP, a ich poprawność decyduje o wiarygodności wykresów i alertu.","spawn":8.5},{"id":"frontend","name":"Programista interfejsu","short":"Interfejs","line":"C","col":4,"tier":"balanced","tools":["Biblioteka wykresów","Szkic interfejsu","Testy komponentów"],"why":"Trzy wykresy i widok alertu da się budować równolegle z backendem, gdy kontrakt danych jest już uzgodniony.","spawn":9.5},{"id":"bezp","name":"Specjalista bezpieczeństwa","short":"Ochrona","line":"Q","col":4,"tier":"deep","tools":["Przegląd kodu","Model zagrożeń","Lista kontrolna OWASP"],"why":"Plik wgrywany przez użytkownika to klasyczny wektor ataku, więc import wymaga niezależnego przeglądu bezpieczeństwa.","spawn":10.5},{"id":"qa","name":"Tester QA","short":"Tester","line":"Q","col":2,"tier":"fast","tools":["Pliki próbne CSV","Testy akceptacyjne","Symulacja spadku"],"why":"Alert o spadku łatwo rozstroić fałszywymi alarmami, więc trzeba go sprawdzić na danych próbnych i symulacji spadku.","spawn":11.5},{"id":"integrator","name":"Integrator wydania","short":"Integrator","line":"D","col":5,"tier":"balanced","tools":["Skrypt budowania","Lista zmian","Instrukcja uruchomienia"],"why":"Wynik ma być jednym pakietem, który właściciel sklepu uruchomi sam, więc ktoś musi złożyć całość i spisać instrukcję.","spawn":12.5}],"links":[{"from":"analityk","to":"architekt"},{"from":"architekt","to":"dane"},{"from":"architekt","to":"frontend"},{"from":"dane","to":"frontend"},{"from":"dane","to":"bezp"},{"from":"analityk","to":"qa"},{"from":"qa","to":"dane"},{"from":"frontend","to":"integrator"},{"from":"bezp","to":"integrator"},{"from":"qa","to":"integrator"}],"tasks":[{"agent":"analityk","from":14.5,"to":20.5,"label":"Wymagania i kryteria akceptacji"},{"agent":"analityk","from":44,"to":49,"label":"Odbiór zgodności z wymaganiami"},{"agent":"architekt","from":16,"to":22.5,"label":"Model danych zamówień"},{"agent":"architekt","from":23,"to":28,"label":"Kontrakt danych wykresów"},{"agent":"architekt","from":37,"to":42,"label":"Przegląd spójności komponentów"},{"agent":"dane","from":23.5,"to":30,"label":"Import CSV i agregacje"},{"agent":"dane","from":31,"to":37,"label":"Poprawki zabezpieczeń importu"},{"agent":"dane","from":37.5,"to":42.5,"label":"Korekta reguły alertu"},{"agent":"frontend","from":21,"to":29,"label":"Szkielet panelu i wykresy"},{"agent":"frontend","from":29.5,"to":38.5,"label":"Widok alertu i podpięcie danych"},{"agent":"bezp","from":27,"to":33.5,"label":"Przegląd bezpieczeństwa importu","review":true},{"agent":"bezp","from":38,"to":44,"label":"Ponowna weryfikacja poprawek","review":true},{"agent":"qa","from":22.5,"to":33.5,"label":"Plan testów i dane próbne"},{"agent":"qa","from":34,"to":46,"label":"Testy akceptacyjne i alert","review":true},{"agent":"integrator","from":29,"to":36,"label":"Skrypt budowania i uruchomienia"},{"agent":"integrator","from":39,"to":47.5,"label":"Złożenie wydania MVP"}],"events":[{"t":14.85,"from":"hermes","to":"analityk","kind":"brief","text":"Zadanie: MVP panelu sprzedażowego małego sklepu. Ustal granice zakresu i kryteria akceptacji dla importu CSV, trzech wykresów i alertu."},{"t":15.76,"from":"hermes","to":"architekt","kind":"brief","text":"Zaprojektuj model danych zamówień i jeden kontrakt danych dla wszystkich wykresów. Wymagania dostaniesz od analityka w trakcie pracy."},{"t":16.67,"from":"hermes","to":"dane","kind":"brief","text":"Zbuduj import zamówień z CSV oraz dzienne agregacje dla wykresów i alertu. Schemat dostarczy architekt, kod trafi do przeglądu bezpieczeństwa."},{"t":17.58,"from":"hermes","to":"frontend","kind":"brief","text":"Zbuduj panel z trzema wykresami i widokiem alertu. Kontrakt uzgodnij z architektem, dane pobieraj z endpointów programisty danych."},{"t":18.49,"from":"hermes","to":"bezp","kind":"brief","text":"Przejrzyj import CSV pod kątem ataków przez wgrywany plik. Wady zgłaszaj wprost autorowi kodu i podawaj, jak je poprawić."},{"t":19.4,"from":"hermes","to":"qa","kind":"brief","text":"Przygotuj plan testów i pliki próbne dla importu oraz alertu. Sprawdź, czy alert nie zgłasza fałszywych spadków."},{"t":20.31,"from":"hermes","to":"integrator","kind":"brief","text":"Przygotuj skrypt budowania i uruchomienia, a na końcu złóż komponenty w jedno wydanie MVP z instrukcją dla właściciela sklepu."},{"t":21.22,"from":"analityk","to":"architekt","kind":"handoff","text":"Wymagania: import zamówień z CSV, trzy wykresy (przychód dzienny, najlepiej sprzedające się produkty, liczba zamówień) i alert o spadku.","attach":"wymagania.md"},{"t":22.13,"from":"analityk","to":"qa","kind":"handoff","text":"Kryteria akceptacji: poprawny plik importuje się w całości, błędne wiersze są zgłaszane z numerem, alert reaguje na spadek, nie na wahania.","attach":"kryteria.md"},{"t":23.04,"from":"architekt","to":"dane","kind":"handoff","text":"Schemat: tabele zamówień i pozycji, data w ISO 8601, kwoty jako liczby dziesiętne. Importer mapuje kolumny CSV wprost na ten model.","attach":"model_danych.md"},{"t":24,"from":"frontend","to":"architekt","kind":"question","text":"Jaki kontrakt przyjmujemy dla wykresów: gotowe szeregi z backendu czy surowe zamówienia do agregacji w przeglądarce?"},{"t":25.5,"from":"architekt","to":"frontend","kind":"answer","text":"Gotowe szeregi z backendu: dla każdego wykresu tablica {etykieta, wartość}, daty w ISO 8601, puste dni uzupełnione zerem.","attach":"kontrakt_wykresow.md"},{"t":26.5,"from":"qa","to":"bezp","kind":"question","text":"Jakie złośliwe pliki CSV dodać do testów importu poza zbyt dużym rozmiarem? Chcę je mieć w zestawie od początku."},{"t":27.5,"from":"bezp","to":"qa","kind":"answer","text":"Komórki zaczynające się od =, +, - lub @, pola z cudzysłowami i nowymi liniami, błędne kodowanie oraz plik ze zmienionym rozszerzeniem."},{"t":29,"from":"dane","to":"bezp","kind":"handoff","text":"Importer gotowy do przeglądu: parsowanie, mapowanie kolumn i zapis do bazy. Agregacje dzienne dokończę równolegle.","attach":"import_csv.py"},{"t":30,"from":"dane","to":"frontend","kind":"handoff","text":"Endpointy działają zgodnie z kontraktem: trzy szeregi danych dla wykresów i status alertu. Przykładowa odpowiedź w załączniku.","attach":"przyklad_api.json"},{"t":31,"from":"bezp","to":"dane","kind":"critique","text":"Komórki z =, +, - lub @ na początku trafiają do bazy bez zmian, co grozi wstrzyknięciem formuł. Brak limitów rozmiaru, wierszy i kontroli typu pliku."},{"t":34,"from":"qa","to":"dane","kind":"critique","text":"Alert porównuje niepełny dzień ze średnią z poprzednich, więc w południe zgłasza fałszywy spadek. Potrzebne: tylko pełne dni i próg w konfiguracji."},{"t":37,"from":"dane","to":"bezp","kind":"revision","text":"Poprawione: komórki z =, +, - lub @ dostają przedrostek apostrofu, plik ma limit rozmiaru i liczby wierszy, nieznany typ jest odrzucany.","attach":"import_csv_v2.py"},{"t":38.5,"from":"frontend","to":"integrator","kind":"handoff","text":"Interfejs gotowy: trzy wykresy, widok alertu i obsługa pustych danych; wynik to statyczne pliki serwowane przez backend.","attach":"panel_ui.zip"},{"t":40,"from":"architekt","to":"frontend","kind":"approve","text":"Przegląd spójności: pola i formaty dat w interfejsie zgadzają się z kontraktem wykresów. Bez uwag do architektury."},{"t":41,"from":"bezp","to":"dane","kind":"approve","text":"Ponowna weryfikacja: neutralizacja formuł, limity i odrzucanie nieznanego typu działają na plikach próbnych. Import może wejść do wydania."},{"t":42.5,"from":"dane","to":"qa","kind":"revision","text":"Alert liczy teraz tylko pełne dni i porównuje je z medianą z 7 ostatnich pełnych dni; próg spadku ustawia się w konfiguracji."},{"t":43.5,"from":"bezp","to":"integrator","kind":"handoff","text":"Raport przeglądu: import zabezpieczony; do wydania dołącz uwagę, że MVP nie ma logowania, więc powinien działać tylko w sieci lokalnej.","attach":"raport_bezp.md"},{"t":44.5,"from":"qa","to":"dane","kind":"approve","text":"Alert zachowuje się poprawnie na serii z symulowanym spadkiem i na niepełnym dniu. Zamykam uwagę."},{"t":45.5,"from":"qa","to":"integrator","kind":"handoff","text":"Testy akceptacyjne przechodzą dla importu, wykresów i alertu; pliki próbne i opis przypadków dołączone do wydania.","attach":"raport_testow.md"},{"t":47.5,"from":"integrator","to":"hermes","kind":"result","text":"Wydanie MVP złożone: importer, API wykresów, interfejs, testy i instrukcja uruchomienia w jednym pakiecie, z uwagą o pracy tylko w sieci lokalnej.","attach":"panel_mvp.zip"},{"t":49,"from":"analityk","to":"hermes","kind":"approve","text":"Zakres odpowiada wymaganiom: import CSV, trzy wykresy i alert działają. Poza zakresem: logowanie, wielu użytkowników, integracje ze sklepem."},{"t":50,"from":"hermes","to":"user","kind":"result","text":"Synteza w toku: łączę wyniki zespołu w raport z rekomendacjami i listą otwartych ryzyk."},{"t":56,"from":"hermes","to":"user","kind":"result","text":"Dostarczone: kompletny pakiet MVP panelu sprzedażowego oraz raport z kolejnością dalszych prac i otwartymi ryzykami."}],"report":{"title":"Panel sprzedażowy MVP: pakiet, zabezpieczenia i dalsze kroki","lead":"Zespół złożył działające MVP panelu: import CSV z zabezpieczeniami, trzy wykresy zasilane jednym kontraktem i alert, który nie reaguje na niepełne dni. Przed użyciem poza siecią lokalną brakuje logowania.","sections":[{"h":"Zakres i architektura","p":"Zespół zamknął zakres MVP w trzech elementach: import zamówień z CSV, trzy wykresy (przychód dzienny, najlepiej sprzedające się produkty, liczba zamówień) oraz alert o spadku. Architekt ustalił jeden model danych i jeden kontrakt: backend zwraca gotowe szeregi z datami w ISO 8601 i zerami dla pustych dni, więc interfejs nie agreguje danych w przeglądarce."},{"h":"Bezpieczeństwo importu","p":"Przegląd wykazał dwie wady: komórki zaczynające się od =, +, - lub @ trafiały do bazy bez zmian, co grozi wstrzyknięciem formuł przy eksporcie, oraz brakowało limitów rozmiaru, liczby wierszy i kontroli typu pliku. Programista danych dodał apostrof neutralizujący formuły, oba limity i odrzucanie nieznanego typu; specjalista potwierdził poprawki na plikach próbnych."},{"h":"Alert i jakość","p":"Tester wykrył, że alert porównywał niepełny bieżący dzień ze średnią z dni poprzednich, co dawało fałszywe alarmy w ciągu dnia. Reguła liczy teraz tylko pełne dni i porównuje je z medianą z 7 ostatnich pełnych dni, a próg spadku jest konfigurowalny. Testy akceptacyjne obejmują import, wykresy i symulowany spadek; progi wymagają jeszcze kalibracji na prawdziwych danych sklepu."},{"h":"Wydanie i uruchomienie","p":"Integrator złożył w jedno wydanie importer, API wykresów, interfejs jako statyczne pliki serwowane przez backend, testy i instrukcję uruchomienia. Zakres odpowiada wymaganiom analityka. Poza MVP zostają logowanie, obsługa wielu użytkowników i integracje ze sklepem; do czasu ich dodania panel powinien działać wyłącznie w sieci lokalnej."}],"next":["Skalibrować próg alertu na historycznych zamówieniach sklepu","Dodać logowanie i ograniczyć dostęp do importu przed wdrożeniem poza sieć lokalną","Zaplanować automatyczne zasilanie z API sklepu zamiast ręcznego importu CSV"]}},
+{"id":"niemcy","chip":"Czy wejść z e-sklepem na rynek DE?","task":"Oceń, czy polski e-sklep z naturalnymi kosmetykami powinien wejść na rynek niemiecki. Przygotuj rekomendację go/no-go oraz plan pierwszych 90 dni.","keywords":["niemiec","niemc","kosmetyk","sklep","ekspansj","zagranic","eksport","rynek","wejści"],"analysis":{"goal":"Rozstrzygnąć, czy polski e-sklep z kosmetykami naturalnymi ma wejść na rynek DE, i rozpisać pierwsze 90 dni.","constraints":["Tylko sprawdzalne przepisy UE i DE, bez liczb z pamięci","Każdy wniosek prawny do potwierdzenia z doradcą prawnym","Ograniczony budżet i zespół na pierwszy etap"],"success":["Jasna rekomendacja go/no-go z uzasadnieniem","Plan 90 dni z etapami i bramkami decyzyjnymi","Lista wymogów zgodności gotowa dla doradcy prawnego"],"risks":["Brak zaufania do marki bez lokalnych recenzji","Niezgodność etykiet i dokumentacji z wymogami UE","Logistyka i zwroty mogą zjeść marżę na starcie"]},"agents":[{"id":"rynek","name":"Badacz rynku","short":"Rynek","line":"R","col":1,"tier":"balanced","tools":["Przegląd źródeł","Analiza segmentów","Mapa kanałów"],"why":"Decyzja o DE zaczyna się od popytu: kto kupuje kosmetyki naturalne online, jakimi kanałami i czego oczekuje od marki z Polski.","spawn":7},{"id":"finanse","name":"Analityk finansowy","short":"Finanse","line":"R","col":2,"tier":"balanced","tools":["Model kosztów","Scenariusze","Arkusz marży"],"why":"Bez modelu logistyki, zwrotów i marketingu rekomendacja go/no-go byłaby opinią, a nie decyzją.","spawn":8},{"id":"zgodnosc","name":"Specjalista ds. zgodności","short":"Zgodność","line":"Q","col":2,"tier":"deep","tools":["Wymogi UE i DE","Portal CPNP","Lista kontrolna VAT OSS"],"why":"Błąd w wymogach (CPNP, osoba odpowiedzialna, opakowania) zablokuje sprzedaż kosmetyków, więc rola dostaje głębokie rozumowanie.","spawn":9},{"id":"strateg","name":"Strateg wejścia","short":"Strateg","line":"C","col":3,"tier":"deep","tools":["Plan 90 dni","Macierz decyzji","Roadmapa etapów"],"why":"Ktoś musi zamienić wyniki badań, kosztów i wymogów w plan na 90 dni z bramkami go/no-go.","spawn":10.2},{"id":"adwokat","name":"Adwokat diabła","short":"Adwokat","line":"Q","col":4,"tier":"deep","tools":["Test założeń","Premortem","Analiza luk"],"why":"Nowy rynek kusi optymizmem; niezależny krytyk ma sprawdzić założenia, zanim zespół zainwestuje czas i pieniądze.","spawn":11.6},{"id":"redaktor","name":"Redaktor raportu","short":"Redaktor","line":"D","col":5,"tier":"fast","tools":["Szkielet raportu","Korekta językowa","Skład dokumentu"],"why":"Wyniki pięciu ról trzeba złożyć w jeden raport dla właściciela sklepu. To praca powtarzalna, więc wystarczy szybki model.","spawn":13}],"links":[{"from":"rynek","to":"finanse"},{"from":"rynek","to":"strateg"},{"from":"finanse","to":"strateg"},{"from":"zgodnosc","to":"strateg"},{"from":"strateg","to":"adwokat"},{"from":"adwokat","to":"redaktor"},{"from":"strateg","to":"redaktor"},{"from":"zgodnosc","to":"redaktor"}],"tasks":[{"agent":"rynek","from":15,"to":25.7,"label":"Profil klienta i kanały w DE"},{"agent":"finanse","from":16.5,"to":28.1,"label":"Model kosztów wejścia"},{"agent":"finanse","from":37.5,"to":42,"label":"Przeliczenie wariantu pilotażu"},{"agent":"zgodnosc","from":15.5,"to":26.9,"label":"Mapa wymogów UE i DE"},{"agent":"zgodnosc","from":34.8,"to":38,"label":"Zgodność pilotażu na platformie"},{"agent":"zgodnosc","from":40,"to":43.1,"label":"Sekcja zgodności do raportu"},{"agent":"strateg","from":25.5,"to":31.8,"label":"Szkic planu wejścia na 90 dni"},{"agent":"strateg","from":34,"to":45.5,"label":"Korekta planu: pilotaż etap 1"},{"agent":"adwokat","from":32,"to":37,"label":"Test założeń planu","review":true},{"agent":"adwokat","from":39,"to":43,"label":"Weryfikacja poprawionego planu","review":true},{"agent":"adwokat","from":43.2,"to":46.5,"label":"Rejestr ryzyk otwartych","review":true},{"agent":"redaktor","from":20.5,"to":29.5,"label":"Szkielet raportu końcowego"},{"agent":"redaktor","from":43.5,"to":48.5,"label":"Skład i redakcja raportu"}],"events":[{"t":14.9,"from":"hermes","to":"rynek","kind":"brief","text":"Ustal, kto w Niemczech kupuje online kosmetyki naturalne, w jakich kanałach i czego oczekuje od marki z zagranicy. Bez liczb z pamięci."},{"t":15.9,"from":"hermes","to":"zgodnosc","kind":"brief","text":"Zmapuj wymogi UE i DE dla sprzedaży wysyłkowej kosmetyków. Każdy wniosek oznacz: „do potwierdzenia z doradcą prawnym”."},{"t":16.9,"from":"hermes","to":"finanse","kind":"brief","text":"Zbuduj model kosztów wejścia: logistyka, zwroty, marketing, opakowania. Wartości wpisz jako [placeholdery], bez zmyślonych kwot."},{"t":17.9,"from":"hermes","to":"strateg","kind":"brief","text":"Poczekaj na badania, koszty i wymogi, potem złóż plan wejścia na 90 dni z bramkami go/no-go. Rekomendacja ma być jednoznaczna."},{"t":19,"from":"hermes","to":"adwokat","kind":"brief","text":"Gdy strateg odda szkic, szukaj słabych założeń. Krytykuj konkretnie: co nie gra i jakiego dowodu brakuje."},{"t":20,"from":"hermes","to":"redaktor","kind":"brief","text":"Przygotuj szkielet raportu: rekomendacja, plan 90 dni, zgodność, ryzyka. Treść dostaniesz od zespołu, zacznij od struktury."},{"t":21,"from":"redaktor","to":"hermes","kind":"question","text":"Dla kogo piszemy: zarząd czy właściciel sklepu? Od tego zależy, ile kontekstu prawnego zmieszczę w pierwszej części."},{"t":22.1,"from":"hermes","to":"redaktor","kind":"answer","text":"Dla właściciela sklepu, który decyduje o budżecie. Najpierw rekomendacja, potem plan i ryzyka; szczegóły prawne w osobnej sekcji."},{"t":23.4,"from":"finanse","to":"rynek","kind":"question","text":"Które kanały sprzedaży w DE da się wycenić osobno: własny sklep, marketplace, partner drogeryjny? Potrzebuję tego do modelu."},{"t":24.5,"from":"rynek","to":"finanse","kind":"answer","text":"Wyceniaj osobno trzy kanały: własny sklep z wersją DE, marketplace i partnera drogeryjnego. Różnią się kontrolą nad marką i kosztem klienta."},{"t":25.7,"from":"rynek","to":"strateg","kind":"handoff","text":"Profil klienta DE i mapa kanałów gotowe. Segment: kupujący, którzy czytają skład i szukają jasnego pochodzenia. To hipotezy do weryfikacji.","attach":"profil_klienta_de.md"},{"t":26.9,"from":"zgodnosc","to":"strateg","kind":"handoff","text":"Wymogi: rozporządzenie WE 1223/2009, osoba odpowiedzialna w UE, CPNP, VAT OSS, 14 dni odstąpienia, VerpackG/LUCID. Do potwierdzenia z doradcą prawnym.","attach":"wymogi_zgodnosci.md"},{"t":28.1,"from":"finanse","to":"strateg","kind":"handoff","text":"Model kosztów gotowy. Największy wpływ na wynik mają logistyka, zwroty i koszt pozyskania klienta; parametry to [placeholdery] do uzupełnienia.","attach":"model_kosztow.xlsx"},{"t":29.3,"from":"strateg","to":"redaktor","kind":"handoff","text":"Struktura rekomendacji: teza, etapy, bramki decyzyjne, ryzyka. Dopasuj do niej szkielet raportu, treść dosyłam po przeglądzie adwokata.","attach":"struktura_planu.md"},{"t":31.8,"from":"strateg","to":"adwokat","kind":"handoff","text":"Szkic v1: start własnym sklepem DE, główna obietnica to polskie pochodzenie i naturalny skład, skalowanie reklam od 3. tygodnia.","attach":"plan_90_dni_v1.md"},{"t":34,"from":"adwokat","to":"strateg","kind":"critique","text":"Zakładasz, że Niemcy kupią „polską naturalność” bez lokalnych certyfikatów i recenzji. Brak dowodu, a reklamy od 3. tygodnia zaufania nie zbudują."},{"t":35.1,"from":"strateg","to":"zgodnosc","kind":"question","text":"Jeśli etap 1 pójdzie przez marketplace, czy rejestracje się upraszczają? Czy CPNP i osoba odpowiedzialna są wymagane od początku?"},{"t":36.2,"from":"zgodnosc","to":"strateg","kind":"answer","text":"Wymogi zostają. Osoba odpowiedzialna i CPNP przed pierwszą sprzedażą, a platformy zwykle wymagają LUCID. Do potwierdzenia z doradcą prawnym."},{"t":37.3,"from":"strateg","to":"finanse","kind":"question","text":"Po zmianie na pilotaż na marketplace: które koszty znikają na starcie, a które dochodzą (prowizje, zasady zwrotów)?"},{"t":38.4,"from":"finanse","to":"strateg","kind":"answer","text":"Znika koszt budowy wersji DE sklepu na starcie; dochodzą prowizje platformy i jej zasady zwrotów. Przeliczam scenariusze pilotażu."},{"t":39.7,"from":"strateg","to":"adwokat","kind":"revision","text":"Korekta: etap 1 to pilotaż na marketplace, by zebrać niemieckie recenzje i sprawdzić potrzebę certyfikatów. Własny sklep po bramce w tygodniu 9.","attach":"plan_90_dni_v2.md"},{"t":40.9,"from":"adwokat","to":"strateg","kind":"approve","text":"Zarzut zamknięty. Warunek: bramka w tygodniu 9 opiera się na recenzjach, zwrotach i zgłoszeniach jakości, a nie na samym upływie czasu."},{"t":42,"from":"finanse","to":"strateg","kind":"handoff","text":"Scenariusze pilotażu: wynik zależy od zwrotów i kosztu pozyskania klienta. Do bramki dodaj próg opłacalności jako [placeholder].","attach":"scenariusze_pilotazu.xlsx"},{"t":43.1,"from":"zgodnosc","to":"redaktor","kind":"handoff","text":"Sekcja zgodności do raportu: wymogi w kolejności wdrożenia, każdy z adnotacją „do potwierdzenia z doradcą prawnym”.","attach":"sekcja_zgodnosc.md"},{"t":44.2,"from":"adwokat","to":"redaktor","kind":"handoff","text":"Otwarte ryzyka do raportu: zaufanie do marki, zwroty, zgodność etykiet. Wpisz je wprost, bez łagodzenia.","attach":"ryzyka_otwarte.md"},{"t":45.5,"from":"strateg","to":"redaktor","kind":"handoff","text":"Plan finalny: tyg. 1-3 zgodność i platforma, 4-8 pilotaż, bramka w tyg. 9, potem własny sklep DE albo wstrzymanie. Składaj raport na tej wersji.","attach":"plan_90_dni_final.md"},{"t":48.3,"from":"redaktor","to":"hermes","kind":"result","text":"Raport złożony: warunkowe go, plan 90 dni z bramką po pilotażu, wymogi zgodności i otwarte ryzyka. Gotowy do syntezy.","attach":"raport_niemcy.md"},{"t":52,"from":"hermes","to":"user","kind":"result","text":"Synteza w toku: łączę wyniki sześciu agentów w rekomendację warunkowego go z pilotażem na marketplace i planem 90 dni."},{"t":56.5,"from":"hermes","to":"user","kind":"result","text":"Raport dostarczony: warunkowe go z etapem 1 na marketplace, plan 90 dni, lista wymogów zgodności i otwarte ryzyka.","attach":"raport_niemcy.md"}],"report":{"title":"Rekomendacja: warunkowe go na rynek DE przez pilotaż","lead":"Wchodzić etapami, nie od razu własnym sklepem. Etap 1 to pilotaż na marketplace, który sprawdzi, czy niemieccy klienci zaufają marce; własny sklep DE dopiero po bramce w tygodniu 9.","sections":[{"h":"Rekomendacja go/no-go","p":"Rekomendujemy warunkowe go. Pierwszy szkic zakładał start własnym sklepem DE, z polskim pochodzeniem i naturalnym składem jako główną obietnicą. Adwokat diabła zakwestionował to założenie: nie ma dowodu, że klient niemiecki zaufa nowej marce bez lokalnych certyfikatów i recenzji. Dlatego etap 1 to pilotaż na marketplace. Własny sklep DE wchodzi dopiero po bramce, która opiera się na recenzjach, zwrotach i zgłoszeniach jakościowych."},{"h":"Zgodność: lista przed pierwszą sprzedażą","p":"Przed pierwszą sprzedażą trzeba mieć: osobę odpowiedzialną w UE i zgodność produktów z rozporządzeniem kosmetycznym WE 1223/2009, zgłoszenie w CPNP, rozliczanie VAT przez procedurę OSS, obsługę 14-dniowego odstąpienia od umowy oraz rejestrację w LUCID zgodnie z VerpackG. Pilotaż na platformie tych obowiązków nie zdejmuje. Wszystko do potwierdzenia z doradcą prawnym."},{"h":"Ekonomia pilotażu","p":"O wyniku pilotażu zdecydują przede wszystkim logistyka, zwroty i koszt pozyskania klienta. Pilotaż na marketplace odracza koszt budowy wersji DE sklepu, ale dokłada prowizje platformy i jej zasady zwrotów. Parametry modelu to [placeholdery] do uzupełnienia danymi firmy; raport celowo nie zawiera liczb rynkowych, a próg opłacalności trzeba ustalić przed startem."},{"h":"Plan 90 dni i otwarte ryzyka","p":"Tygodnie 1-3: lista zgodności, rejestracje, etykiety, wybór platformy. Tygodnie 4-8: pilotaż i zbieranie recenzji. Tydzień 9: bramka oparta na recenzjach, zwrotach i zgłoszeniach jakościowych. Dalej: własny sklep DE albo wstrzymanie. Otwarte ryzyka: zaufanie do marki, zwroty, zgodność etykiet."}],"next":["Potwierdzić wymogi z doradcą prawnym: osoba odpowiedzialna, CPNP, OSS, VerpackG/LUCID","Uzupełnić model kosztów danymi sklepu, ustalić próg opłacalności i kryteria bramki","Wybrać platformę pilotażową i przygotować produkty z kompletną dokumentacją"]}},
+];
+
+const DUR = 60;
+const PH = [0, 6, 14, 50, 60];
+const PH_LABELS = ['Analiza', 'Skład zespołu', 'Współpraca', 'Dostawa'];
+const PH_SHORT = ['Analiza', 'Skład', 'Współpraca', 'Dostawa'];
+const EXTRA_KW = {
+  medytacja: ['medyt', 'dziec', 'mama', 'tata', 'aplikac', 'wellbeing', 'sen '],
+  panel: ['csv', 'dashboard', 'wykres', 'analityk', 'kpi', 'zamowie', 'sprzedaz'],
+  niemcy: ['de ', 'berlin', 'kosmetyk', 'marketplace', 'amazon', 'vat', 'ekspansj', 'e-sklep', 'rynek niem'],
+};
+const FLIGHT = 1.5;
+const REPORT_AT = 51;
+const HUB = { x: 78, y: 250 };
+const VW = 820;
+const VH = 500;
+const CIRC = 2 * Math.PI * 31;
+const GOLD = '#F2C14E';
+const LINE = {
+  R: { name: 'Badania', color: '#4FA3FF' },
+  C: { name: 'Tworzenie', color: '#FF9A3D' },
+  Q: { name: 'Jakość', color: '#34D3BE' },
+  D: { name: 'Dostawa', color: '#C4A7FF' },
+};
+const KIND = {
+  assign: { label: 'przydział', color: '#F2C14E' },
+  brief: { label: 'zlecenie', color: '#E8ECF8' },
+  handoff: { label: 'przekazanie', color: '#E8ECF8' },
+  question: { label: 'pytanie', color: '#7CC4FF' },
+  answer: { label: 'odpowiedź', color: '#E8ECF8' },
+  critique: { label: 'krytyka', color: '#FF8FA3' },
+  revision: { label: 'poprawka', color: '#FFB48A' },
+  approve: { label: 'akceptacja', color: '#34D3BE' },
+  result: { label: 'wynik', color: '#E8ECF8' },
+};
+const TIER = {
+  deep: { label: 'Głębokie rozumowanie', bars: 3 },
+  balanced: { label: 'Zrównoważony', bars: 2 },
+  fast: { label: 'Szybki', bars: 1 },
+};
+const STATUS = {
+  wait: { label: 'czeka', color: '#7F8BB3' },
+  work: { label: 'pracuje', color: '' },
+  review: { label: 'recenzja', color: '' },
+  done: { label: 'gotowe', color: '' },
+};
+const HUB_STATUS = ['analiza', 'skład zespołu', 'koordynacja', 'synteza', 'gotowe'];
+const HERMES_TXT = [
+  'Hermes rozkłada zadanie na cel, ograniczenia, kryteria sukcesu i ryzyka. Dopiero potem decyduje, kogo potrzebuje.',
+  'Dla każdej roli Hermes uzasadnia wybór i dobiera poziom rozumowania: głęboki tam, gdzie liczy się osąd, szybki tam, gdzie liczy się tempo.',
+  'Hermes pilnuje przekazań między agentami i pętli krytyki. Nie wykonuje pracy za nich, tylko usuwa blokady.',
+  'Hermes zbiera wyniki agentów, porównuje je z kryteriami sukcesu i składa jeden dokument.',
+  'Przebieg zakończony. Raport jest gotowy do pobrania.',
+];
+const AN = { goal: 0.4, c: [1.7, 2.2, 2.7], s: [3.1, 3.6, 4.1], r: [4.5, 4.95, 5.4] };
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+const easeOutBack = (x) => { const c1 = 1.70158; const c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const f1 = (v) => Math.round(v * 10) / 10;
+const mmss = (t) => { const s = Math.floor(t); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const ukey = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+
+function polyLen(pts) {
+  let L = 0;
+  for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  return L;
+}
+function pointAt(pts, d) {
+  let rest = d;
+  for (let i = 1; i < pts.length; i++) {
+    const seg = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    if (rest <= seg || i === pts.length - 1) {
+      const k = seg > 0 ? clamp(rest / seg, 0, 1) : 0;
+      return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * k, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * k };
+    }
+    rest -= seg;
+  }
+  return pts[pts.length - 1];
+}
+function segDist(s, a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const L2 = dx * dx + dy * dy || 1;
+  const u = Math.max(0, Math.min(1, ((s.x - a.x) * dx + (s.y - a.y) * dy) / L2));
+  return Math.hypot(s.x - (a.x + u * dx), s.y - (a.y + u * dy));
+}
+function clearance(pts, obstacles, skipIds) {
+  let min = 1e9;
+  obstacles.forEach((o) => {
+    if (skipIds.indexOf(o.id) >= 0) return;
+    for (let k = 1; k < pts.length; k++) min = Math.min(min, segDist(o, pts[k - 1], pts[k]));
+  });
+  return min;
+}
+function bezierBypass(p, q, side, mag) {
+  const dx = q.x - p.x;
+  const dy = q.y - p.y;
+  const L = Math.hypot(dx, dy) || 1;
+  const c = { x: (p.x + q.x) / 2 + ((-dy / L) * side * mag) * 2, y: (p.y + q.y) / 2 + ((dx / L) * side * mag) * 2 };
+  const pts = [];
+  for (let i = 0; i <= 28; i++) {
+    const u = i / 28;
+    pts.push({ x: (1 - u) * (1 - u) * p.x + 2 * (1 - u) * u * c.x + u * u * q.x, y: (1 - u) * (1 - u) * p.y + 2 * (1 - u) * u * c.y + u * u * q.y });
+  }
+  return pts;
+}
+// octilinear route (horizontal + 45 degree + vertical) that keeps clear of other stations and their labels;
+// falls back to a gentle bypass arc when every octilinear option brushes past an obstacle
+function routeAvoid(p, q, obstacles, skipIds) {
+  const dx = q.x - p.x;
+  const dy = q.y - p.y;
+  const adx = Math.abs(dx);
+  const ady = Math.abs(dy);
+  if (ady < 1 || adx < 1) return [p, q];
+  const sx = Math.sign(dx);
+  const sy = Math.sign(dy);
+  let cands;
+  if (adx >= ady) {
+    const free = adx - ady;
+    cands = [0.5, 0, 1].map((f) => {
+      const xm = p.x + sx * free * f;
+      return [p, { x: xm, y: p.y }, { x: xm + sx * ady, y: q.y }, q];
+    });
+  } else {
+    cands = [[p, { x: q.x, y: p.y + sy * adx }, q], [p, { x: p.x, y: q.y - sy * adx }, q]];
+  }
+  const OK = 40;
+  let best = cands[0];
+  let bc = -1;
+  for (let i = 0; i < cands.length; i++) {
+    const cl = clearance(cands[i], obstacles, skipIds);
+    if (cl >= OK) return cands[i];
+    if (cl > bc) { bc = cl; best = cands[i]; }
+  }
+  [[1, 55], [-1, 55], [1, 85], [-1, 85]].forEach((o) => {
+    const arc = bezierBypass(p, q, o[0], o[1]);
+    const cl = clearance(arc, obstacles, skipIds);
+    if (cl > bc + 1) { bc = cl; best = arc; }
+  });
+  return best;
+}
+
+const PREP = {};
+function prep(sc) {
+  if (PREP[sc.id]) return PREP[sc.id];
+  const order = ['R', 'C', 'Q', 'D'].filter((l) => sc.agents.some((a) => a.line === l));
+  const YS = { 1: [250], 2: [170, 330], 3: [96, 250, 404], 4: [84, 195, 306, 416] }[order.length];
+  const maxCol = Math.max(2, ...sc.agents.map((a) => a.col));
+  const X0 = 236;
+  const X1 = 756;
+  const agents = sc.agents.map((a, i) => ({
+    ...a,
+    i,
+    x: X0 + ((a.col - 1) * (X1 - X0)) / (maxCol - 1),
+    y: YS[order.indexOf(a.line)],
+    color: LINE[a.line].color,
+    mono: a.short.charAt(0).toUpperCase(),
+  }));
+  const byId = {};
+  agents.forEach((a) => { byId[a.id] = a; });
+  const P = (id) => (id === 'hermes' ? HUB : { x: byId[id].x, y: byId[id].y });
+  const obstacles = [{ id: 'hermes', x: HUB.x, y: HUB.y }];
+  agents.forEach((a) => { obstacles.push({ id: a.id, x: a.x, y: a.y }); obstacles.push({ id: a.id, x: a.x, y: a.y + 52 }); });
+  const routes = {};
+  const addRoute = (a, b, pts) => { routes[a + '>' + b] = pts; routes[b + '>' + a] = pts.slice().reverse(); };
+  const spokes = agents.map((a) => {
+    const pts = routeAvoid(HUB, P(a.id), obstacles, ['hermes', a.id]);
+    addRoute('hermes', a.id, pts);
+    return {
+      key: ukey('hermes', a.id),
+      pts,
+      len: polyLen(pts),
+      points: pts.map((p) => f1(p.x) + ',' + f1(p.y)).join(' '),
+      color: a.color,
+      appear: a.spawn - 0.5,
+    };
+  });
+  agents.forEach((a) => agents.forEach((b) => { if (a.i < b.i && a.line === b.line) addRoute(a.id, b.id, [P(a.id), P(b.id)]); }));
+  const links = sc.links
+    .filter((l) => byId[l.from] && byId[l.to] && byId[l.from].line !== byId[l.to].line)
+    .map((l) => {
+      const A = byId[l.from];
+      const B = byId[l.to];
+      const pts = routeAvoid(P(l.from), P(l.to), obstacles, [l.from, l.to]);
+      addRoute(l.from, l.to, pts);
+      return {
+        key: ukey(l.from, l.to),
+        pts,
+        len: polyLen(pts),
+        points: pts.map((p) => f1(p.x) + ',' + f1(p.y)).join(' '),
+        color: A.color,
+        appear: Math.max(A.spawn, B.spawn) + 0.2,
+      };
+    });
+  const rails = [];
+  order.forEach((l) => {
+    const row = agents.filter((a) => a.line === l).sort((a, b) => a.col - b.col);
+    for (let k = 1; k < row.length; k++) {
+      rails.push({ a: row[k - 1], b: row[k], color: row[k - 1].color, appear: Math.max(row[k - 1].spawn, row[k].spawn) + 0.2, key: ukey(row[k - 1].id, row[k].id) });
+    }
+  });
+  const tasks = {};
+  sc.tasks.forEach((k) => { (tasks[k.agent] = tasks[k.agent] || []).push(k); });
+  Object.keys(tasks).forEach((id) => tasks[id].sort((a, b) => a.from - b.from));
+  const ev = [];
+  agents.forEach((a) => ev.push({ t: a.spawn, from: 'hermes', to: a.id, kind: 'assign', text: a.why }));
+  sc.events.forEach((e) => ev.push({ ...e }));
+  ev.sort((x, y) => x.t - y.t);
+  ev.forEach((e) => {
+    const pts = e.to === 'user' || e.from === 'user' ? null : routes[e.from + '>' + e.to] || [P(e.from), P(e.to)];
+    e.pts = pts;
+    e.len = pts ? polyLen(pts) : 0;
+    e.key = ukey(e.from, e.to);
+  });
+  const r = sc.report;
+  let md = '# ' + r.title + '\n\n' + r.lead + '\n\n';
+  r.sections.forEach((s) => { md += '## ' + s.h + '\n\n' + s.p + '\n\n'; });
+  md += '## Następne kroki\n\n';
+  r.next.forEach((n, i) => { md += i + 1 + '. ' + n + '\n'; });
+  md += '\n---\nDokument z demonstracyjnego przebiegu Hermesa (scenariusz zaplanowany z wyprzedzeniem, nie generowany na żywo).\n';
+  const out = { order, agents, byId, links, rails, spokes, tasks, ev, md };
+  PREP[sc.id] = out;
+  return out;
+}
+
+// lowercase, no diacritics, so "rynku" / "Niemczech" / "wejść" match their stems
+function norm(s) {
+  return (s || '').toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+function planner(text, fallback) {
+  const x = ' ' + norm(text) + ' ';
+  let best = null;
+  let bs = 0;
+  SCEN.forEach((sc) => {
+    let s = 0;
+    sc.keywords.concat(EXTRA_KW[sc.id] || []).forEach((k) => { if (x.indexOf(norm(k)) >= 0) s += 1; });
+    if (x.trim() && x.trim() === norm(sc.task).trim()) s += 100;
+    if (s > bs) { bs = s; best = sc; }
+  });
+  return best ? { sc: best, exact: bs >= 100 } : { sc: fallback, exact: false, none: true };
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const sc = SCEN[0];
+    this.state = { sid: sc.id, t: 36, playing: false, speed: 1, started: false, sel: 'hermes', task: sc.task, runTask: sc.task, reportClosed: false, note: '', toast: '' };
+    this._raf = 0;
+    this._last = null;
+    this._acc = 0;
+    this._toast = 0;
+    this._feedHold = false;
+    this._rm = false;
+    try { this._rm = typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { this._rm = false; }
+  }
+
+  // keep the message stream pinned to the newest message unless the viewer scrolled up to read
+  stick() {
+    if (this._feedHold || typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const el = document.getElementById('hm-feed');
+    if (el && el.scrollTop !== el.scrollHeight) el.scrollTop = el.scrollHeight;
+  }
+
+  componentDidUpdate() {
+    this.stick();
+  }
+
+  componentDidMount() {
+    this.stick();
+    const loop = (now) => {
+      this._raf = requestAnimationFrame(loop);
+      if (this._last == null) this._last = now;
+      const dt = Math.min(0.1, (now - this._last) / 1000);
+      this._last = now;
+      if (!this.state.playing) { this._acc = 0; return; }
+      this._acc += dt;
+      if (this._acc < 0.033) return;
+      const step = this._acc * this.state.speed;
+      this._acc = 0;
+      const t = this.state.t + step;
+      if (t >= DUR) this.setState({ t: DUR, playing: false });
+      else this.setState({ t });
+    };
+    this._raf = requestAnimationFrame(loop);
+  }
+
+  componentWillUnmount() {
+    cancelAnimationFrame(this._raf);
+    clearTimeout(this._toast);
+  }
+
+  scen() {
+    return SCEN.find((s) => s.id === this.state.sid) || SCEN[0];
+  }
+
+  flash(msg) {
+    clearTimeout(this._toast);
+    this.setState({ toast: msg });
+    this._toast = setTimeout(() => this.setState({ toast: '' }), 3200);
+  }
+
+  async saveReport(md, filename) {
+    try {
+      const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+      if (dl && dl.save) {
+        await dl.save({ filename, data: md });
+        this.flash('Raport zapisany');
+        return;
+      }
+    } catch (e) {
+      if (e && e.code === 'declined') { this.flash('Zapis anulowany'); return; }
+    }
+    try {
+      await navigator.clipboard.writeText(md);
+      this.flash('Raport skopiowany do schowka');
+    } catch (e) {
+      this.flash('Pobieranie niedostępne w tym podglądzie');
+    }
+  }
+
+  renderVals() {
+    const S = this.state;
+    const sc = this.scen();
+    const P = prep(sc);
+    const t = clamp(S.t, 0, DUR);
+    const phase = t < PH[1] ? 0 : t < PH[2] ? 1 : t < PH[3] ? 2 : t < DUR ? 3 : 4;
+
+    // ---------- derived agent state ----------
+    const A = P.agents.map((a) => {
+      const list = P.tasks[a.id] || [];
+      let total = 0;
+      let doneT = 0;
+      let cur = null;
+      list.forEach((k) => {
+        total += k.to - k.from;
+        if (t >= k.to) doneT += k.to - k.from;
+        else if (t >= k.from) { doneT += t - k.from; cur = k; }
+      });
+      const last = list[list.length - 1];
+      let st = 'wait';
+      if (list.length && t >= last.to) st = 'done';
+      else if (cur) st = cur.review ? 'review' : 'work';
+      const next = list.find((k) => t < k.from);
+      return {
+        a,
+        visible: t >= a.spawn,
+        st,
+        prog: total ? clamp(doneT / total, 0, 1) : 0,
+        label: cur ? cur.label : st === 'done' ? (last ? last.label : '') : next ? next.label : '',
+      };
+    });
+    const vis = A.filter((x) => x.visible);
+    const working = vis.filter((x) => x.st === 'work' || x.st === 'review').length;
+    const seen = P.ev.filter((e) => e.t <= t);
+    const msgCount = seen.length;
+    const selAgent = S.sel !== 'hermes' ? A.find((x) => x.a.id === S.sel && x.visible) : null;
+    const isHermes = !selAgent;
+    const selId = selAgent ? S.sel : 'hermes';
+    const rm = this._rm;
+
+    // ---------- activity on routes ----------
+    const act = {};
+    const arrivals = {};
+    const packets = [];
+    seen.forEach((e) => {
+      act[e.key] = e.t;
+      if (!e.pts) return;
+      const age = t - e.t;
+      if (age < FLIGHT) {
+        const kc = KIND[e.kind].color;
+        const d = ease(clamp(age / FLIGHT, 0, 1)) * e.len;
+        const fade = age < 0.2 ? age / 0.2 : 1;
+        [3, 2, 1, 0].forEach((i) => {
+          const p = pointAt(e.pts, Math.max(0, d - i * 13));
+          packets.push({ x: f1(p.x), y: f1(p.y), r: [6.5, 5, 3.8, 2.8][i], color: kc, op: f1([1, 0.55, 0.3, 0.14][i] * fade) });
+        });
+      } else if (age < FLIGHT + 0.7 && e.to !== 'hermes') {
+        arrivals[e.to] = { age: age - FLIGHT, color: KIND[e.kind].color };
+      }
+    });
+    const glow = (key) => {
+      const at = act[key];
+      if (at == null) return 0;
+      const age = t - at;
+      return age < 2.4 ? 1 - age / 2.4 : 0;
+    };
+
+    const spokes = [];
+    P.spokes.forEach((sp) => {
+      const g = ease(clamp((t - sp.appear) / 0.9, 0, 1));
+      if (g <= 0) return;
+      spokes.push({ points: sp.points, color: sp.color, dash: f1(sp.len * g) + ' ' + f1(sp.len + 2), op: f1(0.14 + 0.76 * glow(sp.key)) });
+    });
+    const rails = [];
+    P.rails.forEach((r) => {
+      const g = ease(clamp((t - r.appear) / 0.8, 0, 1));
+      if (g <= 0) return;
+      const gl = glow(r.key);
+      rails.push({ x1: r.a.x, y1: r.a.y, x2: f1(r.a.x + (r.b.x - r.a.x) * g), y2: f1(r.a.y + (r.b.y - r.a.y) * g), color: r.color, w: f1(7 + 2 * gl), op: f1(0.72 + 0.28 * gl) });
+    });
+    const links = [];
+    P.links.forEach((l) => {
+      const g = clamp((t - l.appear) / 0.9, 0, 1);
+      if (g <= 0) return;
+      const gl = glow(l.key);
+      links.push({ points: l.points, color: l.color, w: f1(3 + 2.5 * gl), op: f1(0.5 + 0.5 * gl), dash: f1(l.len * g) + ' ' + f1(l.len + 2) });
+    });
+
+    // ---------- stations & nodes ----------
+    const pulse = (t * 0.9) % 1;
+    const stations = [];
+    const nodes = [];
+    nodes.push({
+      id: 'hermes',
+      left: f1((HUB.x / VW) * 100),
+      top: f1((HUB.y / VH) * 100),
+      mt: -6.3,
+      sp: 83.9,
+      mono: '',
+      monoColor: GOLD,
+      monoOp: 1,
+      k: 1,
+      hasLine: false,
+      lineColor: GOLD,
+      lineLetter: '',
+      name: 'Hermes',
+      status: HUB_STATUS[phase],
+      statusColor: GOLD,
+      op: 1,
+      sel: selId === 'hermes',
+      bg: selId === 'hermes' ? 'rgba(242,193,78,0.08)' : 'transparent',
+      border: selId === 'hermes' ? GOLD : 'transparent',
+      aria: 'Hermes, ' + HUB_STATUS[phase] + '. Pokaż w inspektorze',
+      pick: () => this.setState({ sel: 'hermes' }),
+    });
+    vis.forEach((x) => {
+      const a = x.a;
+      const s = easeOutBack(clamp((t - a.spawn) / 0.7, 0, 1));
+      const op = clamp((t - a.spawn) / 0.4, 0, 1);
+      const working1 = x.st === 'work' || x.st === 'review';
+      const ar = arrivals[a.id];
+      const stColor = x.st === 'wait' ? STATUS.wait.color : a.color;
+      const sk = f1(Math.max(0.01, s) * 100) / 100;
+      stations.push({
+        tf: 'translate(' + f1(a.x) + ' ' + f1(a.y) + ') scale(' + sk + ')',
+        color: a.color,
+        ringColor: x.st === 'wait' ? STATUS.wait.color : a.color,
+        pulseR: f1(26 + 11 * pulse),
+        pulseOp: working1 && !rm ? f1(0.5 * (1 - pulse)) : 0,
+        arrR: ar ? f1(31 + 20 * (ar.age / 0.7)) : 31,
+        arrOp: ar && !rm ? f1(0.8 * (1 - ar.age / 0.7)) : 0,
+        arrColor: ar ? ar.color : a.color,
+        prog: f1(x.prog * CIRC) + ' ' + f1(CIRC),
+        baseDash: x.st === 'wait' ? '5 5' : x.st === 'review' ? '0.1 6' : 'none',
+        baseOp: x.st === 'wait' ? 0.8 : 1,
+        done: x.st === 'done',
+      });
+      const sel = selId === a.id;
+      nodes.push({
+        id: a.id,
+        left: f1((a.x / VW) * 100),
+        top: f1((a.y / VH) * 100),
+        mt: -4.2,
+        sp: 54.8,
+        mono: a.mono,
+        monoColor: stColor,
+        monoOp: x.st === 'wait' ? 0.75 : 1,
+        k: sk,
+        hasLine: true,
+        lineColor: a.color,
+        lineLetter: a.line,
+        name: a.short,
+        status: STATUS[x.st].label,
+        statusColor: stColor,
+        op: f1(op),
+        sel,
+        bg: sel ? 'rgba(232,236,248,0.07)' : 'transparent',
+        border: sel ? GOLD : 'transparent',
+        aria: a.name + ', ' + STATUS[x.st].label + '. Pokaż w inspektorze',
+        pick: () => this.setState({ sel: a.id }),
+      });
+    });
+    const hp = (t * 0.7) % 1;
+    const hub = { pulseR: f1(46 + 26 * hp), pulseOp: rm ? 0 : f1(0.4 * (1 - hp)), spin: 'rotate(' + (rm ? 0 : f1(t * 14)) + ')' };
+
+    // ---------- caption ----------
+    const caps = [
+      'Analizuję zadanie: cel, ograniczenia, kryteria sukcesu i ryzyka.',
+      'Dobieram role i poziom rozumowania do trudności zadań. Powołani agenci: ' + vis.length + ' z ' + P.agents.length + '.',
+      'Koordynuję pracę: pracuje ' + working + ' z ' + vis.length + ' agentów, wiadomości w obiegu: ' + msgCount + '.',
+      'Zbieram wyniki agentów w jeden dokument i porównuję je z kryteriami sukcesu.',
+      'Gotowe. Raport został dostarczony.',
+    ];
+    const capStart = PH[Math.min(phase, 3)];
+    const preview = !S.started && !S.playing;
+    const captionLabel = preview ? 'Podgląd' : 'Hermes';
+    const captionText = preview
+      ? 'Klatka z przebiegu (' + mmss(t) + '). Naciśnij „Uruchom Hermesa”, aby zobaczyć go od początku, albo przesuń suwak osi czasu.'
+      : caps[phase].slice(0, Math.max(0, Math.floor((t - capStart) * 48) + 1));
+
+    // ---------- header / stepper ----------
+    const phaseSteps = PH_LABELS.map((label, i) => {
+      const fill = clamp((t - PH[i]) / (PH[i + 1] - PH[i]), 0, 1) * 100;
+      const state = t >= PH[i + 1] ? 'done' : t >= PH[i] ? 'active' : 'todo';
+      return { num: '0' + (i + 1), label, range: mmss(PH[i]) + '–' + mmss(PH[i + 1]), fill: f1(fill), color: state === 'active' ? '#E8ECF8' : state === 'done' ? '#A3AED0' : '#7F8BB3' };
+    });
+    const statusLabel = S.playing ? 'Odtwarzanie' : t >= DUR ? 'Zakończono' : !S.started ? 'Podgląd klatki ' + mmss(t) : 'Wstrzymano';
+    const reportOpen = t >= REPORT_AT && !S.reportClosed;
+
+    // ---------- left: analysis ----------
+    const an = sc.analysis;
+    const goalLen = Math.floor((t - AN.goal) * 55);
+    const groupsDef = [
+      { title: 'Ograniczenia', items: an.constraints, at: AN.c },
+      { title: 'Kryteria sukcesu', items: an.success, at: AN.s },
+      { title: 'Ryzyka', items: an.risks, at: AN.r },
+    ];
+    const analysisGroups = groupsDef
+      .map((g) => ({ title: g.title, items: g.items.filter((_, i) => t >= g.at[i]).map((text) => ({ text })) }))
+      .filter((g) => g.items.length > 0);
+    const chips = SCEN.map((s, i) => ({
+      num: '0' + (i + 1),
+      label: s.chip,
+      active: s.id === S.sid,
+      bg: s.id === S.sid ? '#161F3D' : '#0E1530',
+      border: s.id === S.sid ? GOLD : '#34406B',
+      numColor: s.id === S.sid ? GOLD : '#7F8BB3',
+      pick: () => { this._feedHold = false; this.setState({ sid: s.id, task: s.task, runTask: s.task, t: 36, playing: false, started: false, sel: 'hermes', reportClosed: false, note: '' }); },
+    }));
+
+    // ---------- gantt ----------
+    const ganttRows = A.map((x) => {
+      const a = x.a;
+      return {
+        short: a.short,
+        letter: a.line,
+        color: a.color,
+        taskLabel: x.visible ? x.label : 'oczekuje na powołanie',
+        dim: x.visible ? 1 : 0.55,
+        nameColor: x.visible ? '#E8ECF8' : '#7F8BB3',
+        labelColor: x.visible ? '#A3AED0' : '#7F8BB3',
+        chipBg: x.visible ? a.color : 'transparent',
+        chipFg: x.visible ? '#0B1020' : a.color,
+        bars: (P.tasks[a.id] || []).map((k) => ({
+          left: f1((k.from / DUR) * 100),
+          width: f1(((k.to - k.from) / DUR) * 100),
+          fill: f1(clamp((t - k.from) / (k.to - k.from), 0, 1) * 100),
+          color: a.color,
+          bg: hexA(a.color, k.review ? 0.12 : 0.26),
+          border: k.review ? '1px dashed ' + a.color : '1px solid ' + hexA(a.color, 0.75),
+        })),
+      };
+    });
+    const phaseBands = PH_SHORT.map((label, i) => ({
+      label,
+      left: f1((PH[i] / DUR) * 100),
+      width: f1(((PH[i + 1] - PH[i]) / DUR) * 100),
+      color: i === phase ? '#E8ECF8' : '#A3AED0',
+    }));
+    // same scale as the range input: thumb travels (width - 12px), starting 6px in
+    const playheadLeft = 'calc(5px + (100% - 12px) * ' + f1((t / DUR) * 1000) / 1000 + ')';
+
+    // ---------- feed ----------
+    const who = (id) => {
+      if (id === 'hermes') return { name: 'Hermes', color: GOLD };
+      if (id === 'user') return { name: 'Ty', color: '#E8ECF8' };
+      const a = P.byId[id];
+      return { name: a.short, color: a.color };
+    };
+    const feed = seen.map((e) => {
+      const f = who(e.from);
+      const to = who(e.to);
+      const key = e.kind === 'critique' || e.kind === 'revision' || e.kind === 'approve';
+      const toUser = e.to === 'user';
+      return {
+        time: mmss(e.t),
+        fromName: f.name,
+        fromColor: f.color,
+        toName: to.name,
+        toColor: to.color,
+        kindLabel: KIND[e.kind].label,
+        kindColor: KIND[e.kind].color,
+        text: e.text,
+        hasAttach: !!e.attach,
+        attach: e.attach || '',
+        bg: key ? hexA(KIND[e.kind].color, 0.08) : toUser ? hexA(GOLD, 0.08) : '#161F3D',
+        cardBorder: key ? '1px solid ' + hexA(KIND[e.kind].color, 0.7) : toUser ? '1px solid ' + GOLD : '1px solid #232C4E',
+      };
+    });
+
+    // ---------- inspector ----------
+    let ins = { color: GOLD, mono: '', name: '', line: '', tier: '', status: '', statusColor: GOLD, why: '', tools: [], bar1: '#34406B', bar2: '#34406B', bar3: '#34406B', hasLast: false, lastTime: '', lastText: '' };
+    if (selAgent) {
+      const a = selAgent.a;
+      const tier = TIER[a.tier] || TIER.balanced;
+      const lastMsg = seen.filter((e) => e.from === a.id).pop();
+      const stColor = selAgent.st === 'wait' ? STATUS.wait.color : a.color;
+      ins = {
+        color: a.color,
+        mono: a.mono,
+        name: a.name,
+        line: a.line + ' · ' + LINE[a.line].name,
+        tier: tier.label,
+        status: STATUS[selAgent.st].label + (selAgent.label ? ' · ' + selAgent.label : ''),
+        statusColor: stColor,
+        why: a.why,
+        tools: a.tools.map((name) => ({ name })),
+        bar1: tier.bars >= 1 ? a.color : '#34406B',
+        bar2: tier.bars >= 2 ? a.color : '#34406B',
+        bar3: tier.bars >= 3 ? a.color : '#34406B',
+        hasLast: !!lastMsg,
+        lastTime: lastMsg ? mmss(lastMsg.t) : '',
+        lastText: lastMsg ? lastMsg.text : '',
+      };
+    }
+    const hermesStats = [
+      { label: 'Agenci', value: vis.length + ' / ' + P.agents.length },
+      { label: 'Wiadomości', value: String(msgCount) },
+      { label: 'Pracuje teraz', value: String(working) },
+      { label: 'Czas', value: mmss(t) },
+    ];
+
+    // ---------- report ----------
+    const r = sc.report;
+    const secs = r.sections.map((s, i) => ({ num: '0' + (i + 1), h: s.h, p: s.p, at: 52 + i * 1.6 })).filter((s) => t >= s.at);
+
+    const custom = (S.runTask || sc.task).trim() !== sc.task.trim();
+    const rawTitle = custom ? 'Wzorzec: ' + sc.chip : sc.task;
+    const taskTitle = rawTitle.length > 96 ? rawTitle.slice(0, 95) + '…' : rawTitle;
+    const announce = !S.started ? '' : reportOpen ? 'Raport końcowy jest gotowy.' : 'Faza ' + (Math.min(phase, 3) + 1) + ' z 4: ' + PH_LABELS[Math.min(phase, 3)];
+
+    return {
+      phaseSteps,
+      statusLabel,
+      statusDot: S.playing ? GOLD : '#7F8BB3',
+      showReportBtn: t >= REPORT_AT && !reportOpen,
+      showReport: () => this.setState({ reportClosed: false }),
+
+      task: S.task,
+      onTask: (e) => this.setState({ task: e.target.value }),
+      chips,
+      run: () => {
+        const m = planner(this.state.task, this.scen());
+        const picked = m.sc;
+        let note = '';
+        if (m.none) note = 'Brak dopasowania w katalogu: użyto bieżącego scenariusza.';
+        else if (!m.exact) note = 'Dopasowano najbliższy scenariusz wzorcowy: ' + picked.chip + '.';
+        this._feedHold = false;
+        this.setState({ sid: picked.id, t: 0, playing: true, started: true, sel: 'hermes', runTask: (this.state.task || '').trim() || picked.task, reportClosed: false, note });
+      },
+      hasNote: !!S.note,
+      note: S.note,
+      hasGoal: goalLen > 0,
+      goalText: an.goal.slice(0, Math.max(0, goalLen)),
+      analysisGroups,
+
+      taskTitle,
+      lineLegend: P.order.map((l) => ({ letter: l, name: LINE[l].name, color: LINE[l].color })),
+      spokes,
+      rails,
+      links,
+      packets,
+      stations,
+      hub,
+      nodes,
+      captionLabel,
+      captionText,
+      announce,
+      stageShown: !reportOpen,
+      reportTag: t >= 56.5 ? 'Dostarczone' : 'Składanie raportu',
+      onFeedScroll: (e) => {
+        const el = e.target;
+        this._feedHold = el.scrollHeight - el.scrollTop - el.clientHeight > 24;
+      },
+
+      isPlaying: !!S.playing,
+      notPlaying: !S.playing,
+      playAria: S.playing ? 'Wstrzymaj przebieg' : 'Odtwórz przebieg',
+      togglePlay: () => {
+        const s = this.state;
+        if (s.playing) { this.setState({ playing: false }); return; }
+        const t0 = s.t >= DUR ? 0 : s.t;
+        this.setState({ t: t0, playing: true, started: true, reportClosed: t0 >= REPORT_AT ? s.reportClosed : false });
+      },
+      restart: () => { this._feedHold = false; this.setState({ t: 0, playing: true, started: true, reportClosed: false, sel: 'hermes' }); },
+      timeNow: mmss(t),
+      speeds: [1, 2, 4].map((v) => ({
+        label: v + '×',
+        active: S.speed === v,
+        bg: S.speed === v ? '#161F3D' : '#0E1530',
+        border: S.speed === v ? GOLD : '#34406B',
+        pick: () => this.setState({ speed: v }),
+      })),
+      scrubValue: Math.round(t * 10),
+      onScrub: (e) => {
+        const v = clamp(Number(e.target.value) / 10, 0, DUR);
+        // dragging the slider pauses playback; scrubbing into the delivery phase shows the map, not the report
+        this.setState({ t: v, playing: false, started: true, reportClosed: v >= REPORT_AT });
+      },
+      ganttRows,
+      phaseBands,
+      playheadLeft,
+
+      reportOpen,
+      scenarioChip: sc.chip,
+      reportTitle: r.title,
+      reportLead: r.lead,
+      reportSections: secs,
+      reportNextShown: t >= 52 + r.sections.length * 1.6,
+      reportNext: r.next.map((text) => ({ text })),
+      closeReport: () => this.setState({ reportClosed: true }),
+      download: () => this.saveReport(P.md, 'hermes-' + sc.id + '.md'),
+      toast: S.toast,
+
+      feed,
+      feedCount: msgCount + ' wiad.',
+      isHermes,
+      isAgent: !isHermes,
+      hermesText: HERMES_TXT[phase],
+      hermesStats,
+      ins,
+    };
+  }
+}
+</script>
+</body>
+</html>

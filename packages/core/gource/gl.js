@@ -76,9 +76,8 @@ export function createGL(canvas) {
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
     return p;
   };
-  let P1; let P2;
-  try { P1 = prog(VS, FS); P2 = prog(BVS, BFS); } catch (e) { return null; }
   const T = makeTextures();
+  let P1; let P2; let texs; let buf; let bbuf; let loc; let bloc;
   const upload = (t, mip) => {
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -91,11 +90,19 @@ export function createGL(canvas) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     return tex;
   };
-  const texs = { file: upload(T.file, true), user: upload(T.user, true), beam: upload(T.beam, false) };
-  const buf = gl.createBuffer();
-  const bbuf = gl.createBuffer();
-  const loc = { p: gl.getAttribLocation(P1, 'p'), uv: gl.getAttribLocation(P1, 'uv'), c: gl.getAttribLocation(P1, 'c'), res: gl.getUniformLocation(P1, 'res'), tex: gl.getUniformLocation(P1, 'tex') };
-  const bloc = { p: gl.getAttribLocation(P2, 'p'), l: gl.getAttribLocation(P2, 'l'), c: gl.getAttribLocation(P2, 'c'), res: gl.getUniformLocation(P2, 'res') };
+  // GPU resources; created again when the browser restores a lost context (tab in background, GPU reset)
+  const init = () => {
+    P1 = prog(VS, FS); P2 = prog(BVS, BFS);
+    texs = { file: upload(T.file, true), user: upload(T.user, true), beam: upload(T.beam, false) };
+    buf = gl.createBuffer();
+    bbuf = gl.createBuffer();
+    loc = { p: gl.getAttribLocation(P1, 'p'), uv: gl.getAttribLocation(P1, 'uv'), c: gl.getAttribLocation(P1, 'c'), res: gl.getUniformLocation(P1, 'res'), tex: gl.getUniformLocation(P1, 'tex') };
+    bloc = { p: gl.getAttribLocation(P2, 'p'), l: gl.getAttribLocation(P2, 'l'), c: gl.getAttribLocation(P2, 'c'), res: gl.getUniformLocation(P2, 'res') };
+  };
+  try { init(); } catch (e) { return null; }
+  let lost = false;
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost = true; });
+  canvas.addEventListener('webglcontextrestored', () => { try { init(); lost = false; } catch (e) { lost = true; } });
   let V = new Float32Array(8 * 6 * 4096);
   let B = new Float32Array(8 * 6 * 512);
   let n = 0;
@@ -119,6 +126,7 @@ export function createGL(canvas) {
   const bu = UV.beam; const bv = 0.5;
 
   function draw(F, W, H, dpr, bg) {
+    if (lost || gl.isContextLost()) return;
     const cw = Math.round(W * dpr); const ch = Math.round(H * dpr);
     if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
     gl.viewport(0, 0, cw, ch);
@@ -197,5 +205,5 @@ export function createGL(canvas) {
       gl.disableVertexAttribArray(bloc.l);
     }
   }
-  return { kind: 'webgl', draw };
+  return { kind: 'webgl', draw, isLost: () => lost };
 }

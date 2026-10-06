@@ -3,6 +3,7 @@ import { parseJsonl, validateEvent, createTimeline } from '/packages/core/index.
 import { createViewer } from '/packages/core/render/viewer.js';
 
 const $ = (id) => document.getElementById(id);
+const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const params = new URLSearchParams(location.search);
 const wide = () => window.innerWidth > 900;
 // ?compat=1: draw exactly what the real Gource can show (for side-by-side comparison); ?chrome=0: no panels
@@ -50,14 +51,19 @@ function followLive(run) {
   };
 }
 
+// the run list is rebuilt only when it changed and never while the user has it open
+let runsKey = '';
 async function refreshRuns(select) {
   const runs = await (await fetch('/api/runs')).json();
   const sel = $('run');
+  const key = JSON.stringify(runs.map((r) => [r.run, r.status, r.title, r.source]));
+  if (key === runsKey || (select !== undefined && document.activeElement === sel)) return runs;
+  runsKey = key;
   sel.innerHTML = '';
   runs.sort((a, b) => b.startedAt - a.startedAt).forEach((r) => {
     const o = document.createElement('option');
     o.value = r.run;
-    o.textContent = (r.status === 'running' ? '● ' : '') + r.title.slice(0, 60) + ' · ' + r.source;
+    o.textContent = (r.status === 'running' ? '● ' : r.status === 'stale' && r.source === 'recorded' ? '◌ ' : '') + r.title.slice(0, 60) + ' · ' + (r.status === 'stale' && r.source === 'recorded' ? 'przerwany' : r.source);
     sel.appendChild(o);
   });
   if (select) sel.value = select;
@@ -115,8 +121,7 @@ window.addEventListener('resize', () => { drawTicks(); fitChrome(); });
 // ---- inspector + process log
 viewer.onSelect = (id, info) => {
   if (!id || !info || !T) { $('inspector').hidden = true; return; }
-  const esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  $('ins').innerHTML = '<div class="kind">' + (info.kind === 'file' ? 'plik' : info.sub) + ' · ' + esc(info.status) + '</div><h3>' + esc(info.label) + '</h3>' +
+  $('ins').innerHTML = '<div class="kind">' + (info.kind === 'file' ? 'plik' : esc(info.sub)) + ' · ' + esc(info.status) + '</div><h3>' + esc(info.label) + '</h3>' +
     (info.kind === 'file' ? '<p class="path">' + esc(info.sub) + '</p>' : '') +
     '<dl>' + info.stats.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join('') + '</dl>' +
     '<div class="kind" style="margin-top:8px">co robił · ostatnie zdarzenia</div>' +
@@ -138,7 +143,7 @@ viewer.onTick = (v) => {
       const e = T.events[i];
       const li = document.createElement('li');
       li.className = e.type.includes('fail') || e.type === 'error' ? 'err' : e.type.includes('passed') || e.type.includes('completed') ? 'ok' : '';
-      li.innerHTML = '<span class="k">' + (T.rel[i] / 1000).toFixed(1) + ' s · ' + e.type + (e.agent ? ' · ' + e.agent : '') + '</span><br>';
+      li.innerHTML = '<span class="k">' + (T.rel[i] / 1000).toFixed(1) + ' s · ' + esc(e.type) + (e.agent ? ' · ' + esc(e.agent) : '') + '</span><br>';
       li.appendChild(document.createTextNode(e.text || e.resource || e.tool || e.name || ''));
       list.appendChild(li);
     }

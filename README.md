@@ -31,7 +31,7 @@ Hermes / Jarvis ──► Event Bus ──► server (Workflow Recorder) ──�
 
 ## Uruchomienie
 
-Wymaga Node 22+.
+Wymaga Node 20+.
 
 ```bash
 npm install
@@ -39,7 +39,7 @@ npm start                 # http://127.0.0.1:4777  (PORT, HOST w zmiennych środ
 ```
 
 W przeglądarce: wybór przebiegu, oś czasu (0.25× / 1× / 4× / 10×, dokładne przewijanie w obie strony — symulacja ma
-punkty kontrolne co sekundę), Process Log, inspektor po kliknięciu w plik lub awatar (co dokładnie robił), przeciąganie
+punkty kontrolne: co sekundę dla ostatnich 30 s, rzadziej dla starszych, więc pamięć nie rośnie bez końca), Process Log, inspektor po kliknięciu w plik lub awatar (co dokładnie robił), przeciąganie
 przesuwa widok, kółko przybliża, „Wczytaj log (.jsonl)” odtwarza własny przebieg. `/?chrome=0` pokazuje samą scenę,
 `/?compat=1` rysuje tylko to, co umie pokazać prawdziwy Gource (do porównań).
 
@@ -62,6 +62,11 @@ Producent wysyła zdarzenia jednym z trzech kanałów — serwer zapisuje je do 
 | STDIN | `node server/server.mjs --stdin` — linie JSONL, np. `jarvis … \| node server/server.mjs --stdin` |
 
 Odczyt: `GET /api/runs` (lista), `GET /api/runs/:run` (pełny log JSONL do REPLAY), `ws://…/live?run=<id|*>` (na żywo).
+
+Zapis jest domyślnie otwarty, bo serwer słucha tylko na `127.0.0.1`. Przy `HOST=0.0.0.0` ustaw `INGEST_TOKEN=<sekret>`:
+wtedy `POST /events` i `ws /ingest` wymagają nagłówka `Authorization: Bearer <sekret>` (albo `?token=`).
+Przebieg bez `task.completed`/`task.failed`, który od 10 minut nic nie wysłał, jest na liście oznaczony jako przerwany
+zamiast LIVE.
 
 Przykład:
 
@@ -139,7 +144,10 @@ Zapisuje pary obrazów (Gource po lewej, nasz renderer po prawej) i miarę SSIM 
   repozytorium socket.io (`workspaces/socket.io.txt`) i emiter na żywo. `npm run demo:build -- --workspace <katalog>`
   buduje przebieg „napraw repo” na drzewie dowolnego repozytorium git (np. własnego).
 - `web/fonts/` — FreeSans (GNU FreeFont, GPL z wyjątkiem dla czcionek), ta sama czcionka co w Gource.
-- `test/` — `npm test` (schemat, przewijanie, układ, adapter Gource, serwer).
+- `test/` — `npm test` (schemat, przewijanie, układ, kadr, długie przebiegi, adapter Gource, serwer);
+  `npm run motion` — pomiar płynności; `npm run check` — oba. CI (`.github/workflows/ci.yml`) uruchamia je i sprawdza,
+  że `demo/runs` i tablice artefaktu są zbudowane z aktualnego kodu.
+- `artifact/` — źródła kanwy Design (generator tablic, walidator, tablice, `canvas.json`); opis w `artifact/README.md`.
 
 Przebiegi w `demo/runs` są wygenerowanymi scenariuszami, nie zapisem prawdziwego Jarvisa. W „napraw repo” drzewo plików
 jest prawdziwe (socket.io), ale błąd i poprawka w historii są demonstracyjne. Po podłączeniu producenta jego przebiegi

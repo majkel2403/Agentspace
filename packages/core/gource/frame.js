@@ -1,7 +1,7 @@
 // Frame description: turns a simulation state into what Gource draws, in screen pixels, in Gource's order:
 // edges (shadow, then line), file shadows, action beams, files, user shadows, users, bloom; then text.
 // Backends (WebGL, Canvas 2D) only rasterise this description.
-import { SIM, fileAlpha, fileColour, userAlpha, nameAlpha, dirVisible } from './sim.js';
+import { SIM, fileAlpha, fileColour, userAlpha, nameAlpha, dirVisible, camDistance } from './sim.js';
 import { ACTION_COLOUR } from './actions.js';
 
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -9,11 +9,13 @@ const lerp = (a, b, k) => a + (b - a) * k;
 // camera: Gource looks straight down with a 90° vertical field of view, so the visible world height is 2·distance
 export function view(s, k, W, H, user, inset) {
   const c = s.cam;
-  const z = -lerp(c.pz, c.z, k) * (user ? user.zoom : 1);
-  const cx = lerp(c.px, c.x, k) + (user ? user.panX : 0);
-  const cy = lerp(c.py, c.y, k) + (user ? user.panY : 0);
   // the scene is framed inside the free area between panels (insets), like Gource framing its whole window
   const L = inset ? inset.l || 0 : 0; const R = inset ? inset.r || 0 : 0; const Tp = inset ? inset.t || 0 : 0; const B = inset ? inset.b || 0 : 0;
+  // distance from the tracked half extents and this screen's free area, so any window size frames the tree
+  const aspect = Math.max(0.2, Math.max(40, W - L - R) / Math.max(40, H - Tp - B));
+  const z = camDistance(lerp(c.pex, c.ex, k), lerp(c.pey, c.ey, k), aspect) * (user ? user.zoom : 1);
+  const cx = lerp(c.px, c.x, k) + (user ? user.panX : 0);
+  const cy = lerp(c.py, c.y, k) + (user ? user.panY : 0);
   const ox = L + (W - L - R) / 2; const oy = Tp + (H - Tp - B) / 2;
   const K = (Math.max(40, H - Tp - B) / 2) / Math.max(1, z);
   return { cx, cy, K, W, H, sx: (x) => ox + (x - cx) * K, sy: (y) => oy + (y - cy) * K };

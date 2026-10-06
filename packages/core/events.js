@@ -1,6 +1,7 @@
 // Event schema of the Neural Workflow.
-// One event = one real thing that happened in a run. The renderer animates ONLY these events
-// ("zero fake animation"): every node, line, impulse, ripple and wave on screen is derived from them.
+// One event = one real thing that happened in a run. The viewer animates ONLY these events
+// ("zero fake animation"): every file, directory, beam and avatar move on screen is derived from them
+// (through the Gource-style action stream, gource/actions.js).
 //
 // Shape (JSON, one object per line in a .jsonl file):
 //   ts          number (ms since epoch) or ISO string                       required

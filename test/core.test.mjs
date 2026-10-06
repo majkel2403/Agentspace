@@ -6,6 +6,7 @@ import {
   gStringHash, gColourHash, gFileColour, gUserColour, inspect,
 } from '../packages/core/index.js';
 import { STEP } from '../packages/core/gource/sim.js';
+import { buildFrame, view } from '../packages/core/gource/frame.js';
 
 const runs = fs.readdirSync(new URL('../demo/runs/', import.meta.url)).filter((f) => f.endsWith('.jsonl'));
 const load = (f) => parseJsonl(fs.readFileSync(new URL('../demo/runs/' + f, import.meta.url), 'utf8'));
@@ -170,4 +171,33 @@ test('inspector tells what a file and an agent did', () => {
   assert.equal(ui.label, 'Coder');
   assert.ok(ui.events.length > 3);
   assert.ok(STEP > 0);
+});
+
+test('long runs keep a bounded number of checkpoints and still scrub exactly', () => {
+  // a 20-minute run: an agent touching files every few seconds
+  const events = [{ run: 'r', ts: 0, type: 'task.started' }];
+  for (let i = 1; i < 400; i++) events.push({ run: 'r', ts: i * 3000, type: 'file.modified', agent: 'coder', resource: 'src/m' + (i % 9) + '/f' + (i % 50) + '.js' });
+  events.push({ run: 'r', ts: 1200000, type: 'task.completed' });
+  const A = createPlayer(); A.load(events);
+  A.bakeAhead(1200, 1e9);
+  // 1 s for the last 30 s, every 10 s to 10 min back, then one a minute: about 30 + 57 + 10
+  assert.ok(A.kept() <= 110, 'kept ' + A.kept());
+  const far = snap(A.at(95.5).s);
+  const B = createPlayer(); B.load(events);
+  assert.equal(snap(B.at(95.5).s), far);
+});
+
+test('a frame description is finite and the tree fits any window shape without re-running', () => {
+  const { events } = load('repo-fix.jsonl');
+  const P = createPlayer({ aspect: 16 / 9 }); P.load(events);
+  const { s, k } = P.at(40);
+  for (const [W, H] of [[1280, 720], [390, 844], [800, 800]]) {
+    const F = buildFrame(s, k, W, H, {});
+    assert.ok(F.counts.files > 500 && F.counts.users > 0);
+    for (const f of F.files) assert.ok(Number.isFinite(f.x + f.y + f.size + f.a));
+    for (const e of F.edges) assert.ok(e.every(Number.isFinite));
+    const V = view(s, k, W, H);
+    const b = s.dirBounds;
+    assert.ok(V.sx(b.x0) > -10 && V.sx(b.x1) < W + 10 && V.sy(b.y0) > -10 && V.sy(b.y1) < H + 10, W + 'x' + H);
+  }
 });

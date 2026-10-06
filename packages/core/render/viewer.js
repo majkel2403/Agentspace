@@ -17,14 +17,13 @@ export function createViewer(opts) {
   const ovc = opts.overlay;
   const backend = (opts.forceCanvas2D ? null : createGL(glc)) || createC2D(glc);
   const octx = ovc.getContext('2d');
-  const rm = (() => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } })();
   const inset = () => ({ l: opts.insetLeft || 0, r: opts.insetRight || 0, t: opts.insetTop || 0, b: opts.insetBottom || 0 });
   // aspect ratio of the free area the camera frames
   const aspectOf = (W, H) => { const i = inset(); return Math.max(0.2, Math.max(40, W - i.l - i.r) / Math.max(40, H - i.t - i.b)); };
   const aspectNow = () => aspectOf(glc.clientWidth || 16, glc.clientHeight || 9);
   const v = {
     backend: backend ? backend.kind : 'none', T: null, t: 0, playing: false, speed: 1, live: false, sel: null, hover: null,
-    onSelect: null, onTick: null, compat: !!opts.compat, rm, ft: 0, q: 2,
+    onSelect: null, onTick: null, compat: !!opts.compat, ft: 0,
     player: createPlayer({ aspect: aspectNow(), autoRotate: opts.autoRotate }),
   };
   const cam = { zoom: 1, panX: 0, panY: 0 };
@@ -51,7 +50,6 @@ export function createViewer(opts) {
   v.pause = () => { v.playing = false; };
   v.setSpeed = (s) => { v.speed = s; };
   v.setLive = (on) => { v.live = !!on; if (on) v.playing = true; };
-  v.setOpening = () => {};
   v.setInsets = (o) => { Object.assign(opts, o); };
   v.zoom = (k) => { cam.zoom = Math.max(0.15, Math.min(8, cam.zoom / k)); };
   v.reset = () => { cam.zoom = 1; cam.panX = 0; cam.panY = 0; v.select(null); };

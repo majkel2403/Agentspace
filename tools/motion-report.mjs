@@ -23,7 +23,7 @@ for (const run of runs) {
   let maxPerTick = 0; let prevVis = 0;
   let maxZoom = 0; const zHist = [];
   let maxJump = 0; let maxTele = 0;
-  let clipped = 0; let fill = 0;
+  let clipped = 0; let fill = 0; let clippedResized = 0;
   const vel = {}; const lastAct = {}; const gaps = {};
   for (let k = 1; k <= n; k++) {
     const { s } = P.at(k * STEP);
@@ -40,6 +40,9 @@ for (const run of runs) {
       const x0 = V.sx(b.x0); const x1 = V.sx(b.x1); const y0 = V.sy(b.y0); const y1 = V.sy(b.y1);
       if (x0 < -8 || y0 < -8 || x1 > 1288 || y1 > 728) clipped++;
       fill = Math.max((x1 - x0) / 1280, (y1 - y0) / 720);
+      // the same simulation shown after the window was resized to a phone shape (no re-run)
+      const R = view(s, 1, 390, 650);
+      if (R.sx(b.x0) < -8 || R.sy(b.y0) < -8 || R.sx(b.x1) > 398 || R.sy(b.y1) > 658) clippedResized++;
     }
     if (zHist.length > 60) {
       const z0 = zHist[zHist.length - 61]; const z1 = zHist[zHist.length - 1];
@@ -98,6 +101,7 @@ for (const run of runs) {
     ['promienie: salwy (odstęp < 0,1 s)', bursts, LIMIT.bursts, (x) => String(x)],
     ['kadr: kroki z drzewem poza ekranem', clipped, LIMIT.clipped, (x) => String(x)],
     ['kadr (telefon): kroki poza ekranem', clippedPortrait, LIMIT.clipped, (x) => String(x)],
+    ['kadr po zmianie rozmiaru: poza ekranem', clippedResized, LIMIT.clipped, (x) => String(x)],
     ['kadr: drzewo zajmuje na końcu', 1 - fill, 1 - LIMIT.fill, (x) => ((1 - x) * 100).toFixed(0) + '% kadru'],
   ];
   console.log('\n== ' + run + ' (' + final + ' plików, ' + dur.toFixed(0) + ' s)');

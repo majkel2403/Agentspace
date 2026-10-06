@@ -27,11 +27,5 @@ export function createTimeline(inputEvents) {
     get duration() { return rel.length ? rel[rel.length - 1] : 0; },
     append(ev) { push(ev); for (const f of listeners) f(ev); },
     indexAt: lastAt,
-    // events with a <= rel < b (indices)
-    between(a, b) {
-      const out = [];
-      for (let i = Math.max(0, lastAt(a - 1e-6) + 1); i < rel.length && rel[i] < b; i++) out.push(i);
-      return out;
-    },
   };
 }

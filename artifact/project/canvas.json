@@ -1,0 +1,111 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 1760,
+      "is_interactive": true,
+      "title": "Wcześniejsza wersja · centrum dowodzenia 3D",
+      "w": 1440,
+      "x": 0,
+      "y": 1040
+    },
+    "Mobile.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "Wcześniejsza wersja · widok mobilny 3D",
+      "w": 390,
+      "x": 1520,
+      "y": 2920
+    },
+    "Roster.dc.html": {
+      "expand": "fill",
+      "h": 5630,
+      "title": "Wcześniejsza wersja · katalog specjalistów",
+      "w": 1440,
+      "x": 0,
+      "y": 2920
+    },
+    "Workflow.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Neural Workflow · jak Gource, ze zdarzeń przebiegu",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "WorkflowMobile.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "Neural Workflow · telefon",
+      "w": 390,
+      "x": 1520,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-04T21:50:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "assume": {
+      "fill": "orange",
+      "maxH": 250,
+      "size": 24,
+      "text": "Wcześniejsza wersja: przebiegi to trzy zaplanowane scenariusze, nie generowanie na żywo. Wolny tekst zadania dopasowuje się słowami kluczowymi do najbliższego z nich.",
+      "w": 390,
+      "x": 1520,
+      "y": 1420
+    },
+    "howto": {
+      "fill": "blue",
+      "maxH": 300,
+      "size": 24,
+      "text": "Wcześniejsza wersja (tablice poniżej, scena 3D): otwórz Centrum dowodzenia i naciśnij „Uruchom Hermesa”. Przeciągaj, aby obracać, kliknij agenta, plik lub decyzję, aby otworzyć inspektor. Aktualna wizualizacja to Neural Workflow na górze.",
+      "w": 390,
+      "x": 1520,
+      "y": 1040
+    },
+    "title": {
+      "kind": "title1",
+      "maxW": 1440,
+      "text": "Hermes: Neural Workflow i zespół agentów",
+      "w": 240,
+      "x": 0,
+      "y": -260
+    },
+    "workflow": {
+      "fill": "blue",
+      "maxH": 420,
+      "size": 24,
+      "text": "Neural Workflow w stylu Gource: drzewo to przestrzeń robocza przebiegu (pliki repo, strony, pamięć, MCP, testy), a Hermes i agenci to awatary, które podlatują do tego, co czytają lub zmieniają, i strzelają promieniami (zielony utworzenie, pomarańczowy zmiana, czerwony usunięcie, niebieski odczyt). Wszystko pochodzi z prawdziwych zdarzeń w logu. Przewijaj oś czasu w obie strony, kliknij plik lub awatar, żeby zobaczyć, co robił; przeciągnij, by przesunąć widok. „Wczytaj log (JSONL)” odtwarza Twój przebieg.",
+      "w": 390,
+      "x": 1990,
+      "y": 0
+    },
+    "workflowAssume": {
+      "fill": "orange",
+      "maxH": 300,
+      "size": 24,
+      "text": "Przebiegi są zapisanymi scenariuszami demo. W „Naprawa repo” drzewo plików jest prawdziwe (socket.io, 862 pliki), ale błąd i poprawka w historii są demonstracyjne. Tryb LIVE przez WebSocket działa w aplikacji w repo Agentspace (npm start); podgląd nie ma dostępu do sieci. Renderer jest napisany od zera według zachowania Gource 0.54 i porównany klatka w klatkę z prawdziwym Gource.",
+      "w": 390,
+      "x": 1990,
+      "y": 460
+    }
+  },
+  "order": [
+    "Workflow.dc.html",
+    "WorkflowMobile.dc.html",
+    "Main.dc.html",
+    "Roster.dc.html",
+    "Mobile.dc.html"
+  ],
+  "pages": [],
+  "title": "Hermes — Neural Workflow i zespół agentów"
+}

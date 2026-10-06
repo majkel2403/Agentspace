@@ -4,6 +4,7 @@
 // free middle cell, drawer, dock) -> overlays (new order, report).
 const I = (d, size = 16) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 export const ICON = {
+  reactor: '<svg class="hx-reactor" viewBox="0 0 32 32" aria-hidden="true"><circle class="r a" cx="16" cy="16" r="14"/><circle class="r b" cx="16" cy="16" r="10"/><circle class="r c" cx="16" cy="16" r="6.5"/><circle class="d" cx="16" cy="16" r="2.6"/></svg>',
   mark: '<svg viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="#F2C14E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="16" r="5"/><path d="M11 15C8 14.5 5.5 12.8 3.5 9.5"/><path d="M11 18C8.5 18.2 6 17.5 4 15.5"/><path d="M21 15C24 14.5 26.5 12.8 28.5 9.5"/><path d="M21 18C23.5 18.2 26 17.5 28 15.5"/><path d="M16 21v7"/></svg>',
   play: '<svg viewBox="0 0 24 24" width="20" height="20" fill="#1A1300" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>',
   pause: '<svg viewBox="0 0 24 24" width="20" height="20" fill="#1A1300" aria-hidden="true"><rect x="6.5" y="5.5" width="4" height="13" rx="1"/><rect x="13.5" y="5.5" width="4" height="13" rx="1"/></svg>',
@@ -122,6 +123,23 @@ const dossier = `
     </div>
   </sc-if>`;
 
+
+const boot = `
+  <sc-if value="{{bootOpen}}" hint-placeholder-val="{{ false }}">
+    <div class="hx-boot">
+      <div class="bgrid"></div>
+      <button type="button" class="hx-skipbtn" onClick="{{skipBoot}}" aria-label="Pomiń animację startową"></button>
+      <div class="inner">
+        <div class="reactor"><svg viewBox="0 0 220 220" aria-hidden="true"><circle class="r r0" cx="110" cy="110" r="104"/><circle class="r r1" cx="110" cy="110" r="92"/><circle class="r r2" cx="110" cy="110" r="72"/><circle class="r r3" cx="110" cy="110" r="52"/><circle class="dot" cx="110" cy="110" r="16"/></svg></div>
+        <h2><span style="animation-delay:.5s">H</span><span style="animation-delay:.6s">E</span><span style="animation-delay:.7s">R</span><span style="animation-delay:.8s">M</span><span style="animation-delay:.9s">E</span><span style="animation-delay:1s">S</span></h2>
+        <div class="sub">Centrum dowodzenia zespołu agentów</div>
+        <div class="log"><sc-for list="{{bootLog}}" as="bl" hint-placeholder-count="4"><div style="--d:{{bl.d}}">{{bl.text}} <b>{{bl.ok}}</b></div></sc-for></div>
+        <div class="bar"><i></i></div>
+        <div class="skip">kliknij, aby pominąć</div>
+      </div>
+    </div>
+  </sc-if>`;
+
 // rootStyle: the board gives the root its height; the web app lets it fill the page
 export function markup(rootStyle = '') {
   return `
@@ -131,11 +149,13 @@ export function markup(rootStyle = '') {
     <canvas id="hx-ov" class="hx-cv hx-ov" role="img" aria-label="{{sceneAria}}"></canvas>
   </div>
   <div class="hx-vig"></div>
+  <div class="hx-fx" aria-hidden="true"><div class="glow"></div><div class="grid"></div><div class="noise"></div><div class="scan"></div></div>
+  <div class="hx-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 
   <div class="hx-ui">
     <header class="hx-top hx-glass">
       <div class="hx-brand">
-        <span class="hx-mark">${ICON.mark}</span>
+        <span class="hx-mark">${ICON.reactor}</span>
         <div style="min-width:0"><h1>HERMES <span class="sl">//</span> <span class="long">CENTRUM DOWODZENIA</span></h1><div class="hx-run-t hx-ellip">{{runLine}}</div></div>
       </div>
       <ol class="hx-steps" aria-label="Fazy przebiegu"><sc-for list="{{phases}}" as="ph" hint-placeholder-count="5"><li class="hx-step" data-state="{{ph.state}}" style="--fill:{{ph.fill}}%" title="{{ph.title}}"><span class="n">{{ph.num}}</span><span class="t hx-ellip">{{ph.name}}</span></li></sc-for></ol>
@@ -201,6 +221,6 @@ ${panes}
       </div>
     </footer>
   </div>
-${intro}${dossier}
+${intro}${dossier}${boot}
 </div>`;
 }

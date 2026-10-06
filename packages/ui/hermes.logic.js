@@ -23,7 +23,7 @@ const hxReduce = () => { try { return !!(window.matchMedia && window.matchMedia(
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { run: null, tick: 0, idx: -1, playing: true, speed: 1, sel: null, hl: null, focus: 'auto', follow: true, task: '', note: '', bp: 'xl', sheet: false, intro: true, report: false };
+    this.state = { run: null, tick: 0, idx: -1, playing: true, speed: 1, sel: null, hl: null, focus: 'auto', follow: true, task: '', note: '', bp: 'xl', sheet: false, intro: true, report: false, boot: false };
     this._v = null; this._T = null; this._F = null; this._lanes = []; this._sum = {}; this._custom = null; this._stopLive = null; this._lastPush = 0; this._auto = 'code';
   }
 
@@ -107,8 +107,8 @@ class Component extends DCLogic {
     const gl = document.getElementById('hx-gl');
     const ov = document.getElementById('hx-ov');
     if (!gl || !ov) return;
-    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Instrument Sans', 'Segoe UI', sans-serif" });
-    if (typeof window !== 'undefined') { window.__NW = this._v; if (window.__HM_TEST) window.__HM_TEST.logic = this; }
+    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Rajdhani', 'Inter', sans-serif", fontScale: 1.12 });
+    if (typeof window !== 'undefined') { window.__NW = this._v; window.__HXAPP = this; if (window.__HM_TEST) window.__HM_TEST.logic = this; }
     this._v.onSelect = (id) => { this.setState({ sel: id || null, focus: id ? 'ins' : this.state.focus === 'ins' ? 'auto' : this.state.focus, sheet: id && this.state.bp === 's' ? true : this.state.sheet }); };
     this._v.onHover = (id) => { this.setState({ hl: id }); };
     this._v.onTick = (v) => {
@@ -133,11 +133,13 @@ class Component extends DCLogic {
     // run cards show length, team and files: read each run once
     HX_HOST.runs().forEach((r) => Promise.resolve(HX_HOST.load(r.id)).then((ev) => { if (ev && ev.length && !this._sum[r.id]) { this._sum[r.id] = runSummary(NW.createTimeline(ev)); this.setState({ tick: this.state.tick + 1 }); } }));
     const init = HX_HOST.initial ? HX_HOST.initial() : { id: (HX_HOST.runs()[0] || {}).id, intro: true };
+    if (init && init.intro !== false && !hxReduce()) { this.setState({ boot: true }); this._bootT = setTimeout(() => this.setState({ boot: false }), 3300); }
     if (init && init.id) this.open(init.id, null, init.intro === false ? {} : { idle: true, keepIntro: true });
   }
 
   componentWillUnmount() {
     if (this._stopLive) this._stopLive();
+    if (this._bootT) clearTimeout(this._bootT);
     if (this._ro) this._ro.disconnect();
     if (this._v) this._v.destroy();
     if (typeof window !== 'undefined' && this._onResize) window.removeEventListener('resize', this._onResize);
@@ -242,6 +244,11 @@ class Component extends DCLogic {
       laneNames: lanes.slice(0, 6).map((l) => ({ name: l.name, colour: l.colour })), lanesH, pct,
       scrub: String(dur ? Math.round((t / dur) * 1000) : 0),
       onScrub: (e) => { if (!v || !T) return; v.setLive(false); v.pause(); v.setTime((Number(e.target.value) / 1000) * dur); this.setState({ playing: false, tick: Math.round(v.t / 100) }); },
+      bootOpen: S.boot, skipBoot: () => this.setState({ boot: false }),
+      bootLog: [
+        ['Event Store', runs.length + ' przebiegów', 0.5], ['Renderer sceny', v ? (v.backend === 'webgl' ? 'WebGL' : 'Canvas 2D') : '—', 0.9],
+        ['Model zdarzeń', Object.keys(this._sum).length ? 'zdarzenia → akcje' : 'gotowy', 1.3], ['Przestrzeń robocza', Object.keys(this._sum).reduce((n, k) => n + this._sum[k].files, 0) + ' plików', 1.7], ['Zespół agentów', 'gotowy do pracy', 2.1],
+      ].map((x) => ({ text: x[0] + ' · ' + x[1], ok: 'OK', d: x[2] + 's' })),
       introOpen, introClosable: !!T, closeIntro: () => this.setState({ intro: false }),
       taskText: S.task, onTask: (e) => this.setState({ task: e && e.target ? e.target.value : '' }),
       matchNote: !S.task.trim() ? 'Wpisz zadanie albo wybierz zapisany przebieg.' : S.task === F.title ? 'Odtwarzam zapisany przebieg tego zadania.' : matched ? 'Najbliższy zapisany przebieg: ' + mname + '.' : S.note || 'Brak podobnego przebiegu — wybierz jeden z kart poniżej.',

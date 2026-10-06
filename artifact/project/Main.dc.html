@@ -2677,8 +2677,8 @@ const short = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, 
 // speech / thought bubbles above the avatars. The team, the plan, the editor and the terminal are app panels (HTML,
 // packages/ui), fed by app.js from the same story. Canvas 2D, screen space; positions come from the frame.
 
-const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
-const SANS = "'Instrument Sans', FreeSans, 'Helvetica Neue', Arial, sans-serif";
+const MONO = "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
+const SANS = "'Inter', FreeSans, 'Helvetica Neue', Arial, sans-serif";
 // the Hermes palette (night dispatch room): ink panels, hairlines, gold for Hermes and the current step
 const C = { text: '#E8ECF8', mut: '#A3AED0', gold: '#F2C14E' };
 const crgb = (c, a) => 'rgba(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ',' + (a == null ? 1 : Math.max(0, Math.min(1, a))).toFixed(3) + ')';

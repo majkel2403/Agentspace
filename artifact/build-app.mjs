@@ -19,7 +19,7 @@ const RUNS_JS = runsScript(REPO, [
   ['medytacja', 'Premiera aplikacji'],
   ['niemcy', 'Wejście do Niemiec'],
 ]);
-const FONTS = '<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">';
+const FONTS = '<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500..800&family=Rajdhani:wght@500;600;700&family=Inter:wght@400..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">';
 
 // the host of the boards: the recorded runs are inside the page
 const HOST = `

@@ -5,8 +5,8 @@
 import { STORY } from './story.js';
 import { TONE_COLOUR } from './actions.js';
 
-const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
-const SANS = "'Instrument Sans', FreeSans, 'Helvetica Neue', Arial, sans-serif";
+const MONO = "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
+const SANS = "'Inter', FreeSans, 'Helvetica Neue', Arial, sans-serif";
 // the Hermes palette (night dispatch room): ink panels, hairlines, gold for Hermes and the current step
 const C = { text: '#E8ECF8', mut: '#A3AED0', gold: '#F2C14E' };
 const crgb = (c, a) => 'rgba(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ',' + (a == null ? 1 : Math.max(0, Math.min(1, a))).toFixed(3) + ')';

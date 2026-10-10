@@ -330,7 +330,7 @@ export function nameAlpha(interval, total) {
 }
 
 // ------------------------------------------------------------------------------------------- users
-function addUser(s, id, label, parentId) {
+function addUser(s, id, label, parentId, col) {
   const b = s.dirBounds;
   let x = b && (b.x1 - b.x0) * (b.y1 - b.y0) > 0 ? (b.x0 + b.x1) / 2 : 0;
   let y = b && (b.x1 - b.x0) * (b.y1 - b.y0) > 0 ? (b.y0 + b.y1) / 2 : 0;
@@ -341,7 +341,7 @@ function addUser(s, id, label, parentId) {
     x = s.users[pi].x + hv[0] * USER_SIZE * 1.5; y = s.users[pi].y + hv[1] * USER_SIZE * 1.5;
   }
   const u = {
-    i: s.users.length, id, label, col: gUserColour(label), x, y, px: x, py: y, ax: 0, ay: 0, vx0: 0, vy0: 0, elapsed: 0, last: 0,
+    i: s.users.length, id, label, col: col || gUserColour(label), x, y, px: x, py: y, ax: 0, ay: 0, vx0: 0, vy0: 0, elapsed: 0, last: 0,
     actInt: 0.2, nameInt: NAME_TIME, pending: [], active: [], tool: '', toolT: -1, toolState: '', flagT: -1, flag: '', dead: false,
     want: PERSONAL, doneT: -1,
   };
@@ -629,7 +629,7 @@ function processAction(s, ctx, a) {
 }
 function userFor(s, ctx, id) {
   let ui = s.userById[id];
-  if (ui === undefined || s.users[ui].dead) ui = addUser(s, id, ctx.label(id), ctx.parent ? ctx.parent(id) : null).i;
+  if (ui === undefined || s.users[ui].dead) ui = addUser(s, id, ctx.label(id), ctx.parent ? ctx.parent(id) : null, ctx.colour ? ctx.colour(id) : null).i;
   return s.users[ui];
 }
 function queueAction(s, ctx, user, fi, kind, ev) {

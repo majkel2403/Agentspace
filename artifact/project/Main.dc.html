@@ -754,6 +754,16 @@ function gUserColour(name) {
   return [(c[0] * 0.6 + 0.4) * 0.9, (c[1] * 0.6 + 0.4) * 0.9, (c[2] * 0.6 + 0.4) * 0.9];
 }
 
+// Agent colours come from a fixed order, not from a hash of the name: the first agent to appear in the log gets the
+// first slot, the next one the second, and so on. The slots are the dark-surface steps of the data-viz reference
+// palette, in the order that passes the validator (scripts/validate_palette.js: lightness band, adjacent CVD and
+// normal-vision separation, contrast on #03060f). Hermes is the orchestrator and always gold.
+const AGENT_HEX = ['#3987e5', '#199e70', '#9085e9', '#d95926', '#d55181'];
+const HERMES_HEX = '#F2C14E';
+const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+const gAgentColour = (k) => hexRgb(AGENT_HEX[k % AGENT_HEX.length]);
+const gHermesColour = () => hexRgb(HERMES_HEX);
+
 const gHex = (c) => '#' + c.map((v) => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, '0')).join('');
 // ---- gource/actions.js
 // Workflow events -> Gource-style actions (who touched which path, how) and avatar notes.
@@ -801,6 +811,12 @@ function createActionStream() {
     t0: null,
   };
   const label = (id) => (S.users[id] ? S.users[id].label : id);
+  // colour by first appearance in the log: stable for the whole run, and the same in the scene, the timeline and the team
+  const colour = (id) => {
+    if (id === 'hermes') return gHermesColour();
+    const k = Object.keys(S.users).filter((u) => u !== 'hermes').indexOf(id);
+    return gAgentColour(k < 0 ? 0 : k);
+  };
   const userOf = (id) => {
     if (!S.users[id]) S.users[id] = { id, label: id.charAt(0).toUpperCase() + id.slice(1) };
     return id;
@@ -872,6 +888,7 @@ function createActionStream() {
   };
   S.label = label;
   S.parent = (id) => (S.users[id] ? S.users[id].parent || null : null);
+  S.colour = colour;
   return S;
 }
 
@@ -1218,7 +1235,7 @@ function nameAlpha(interval, total) {
 }
 
 // ------------------------------------------------------------------------------------------- users
-function addUser(s, id, label, parentId) {
+function addUser(s, id, label, parentId, col) {
   const b = s.dirBounds;
   let x = b && (b.x1 - b.x0) * (b.y1 - b.y0) > 0 ? (b.x0 + b.x1) / 2 : 0;
   let y = b && (b.x1 - b.x0) * (b.y1 - b.y0) > 0 ? (b.y0 + b.y1) / 2 : 0;
@@ -1229,7 +1246,7 @@ function addUser(s, id, label, parentId) {
     x = s.users[pi].x + hv[0] * USER_SIZE * 1.5; y = s.users[pi].y + hv[1] * USER_SIZE * 1.5;
   }
   const u = {
-    i: s.users.length, id, label, col: gUserColour(label), x, y, px: x, py: y, ax: 0, ay: 0, vx0: 0, vy0: 0, elapsed: 0, last: 0,
+    i: s.users.length, id, label, col: col || gUserColour(label), x, y, px: x, py: y, ax: 0, ay: 0, vx0: 0, vy0: 0, elapsed: 0, last: 0,
     actInt: 0.2, nameInt: NAME_TIME, pending: [], active: [], tool: '', toolT: -1, toolState: '', flagT: -1, flag: '', dead: false,
     want: PERSONAL, doneT: -1,
   };
@@ -1517,7 +1534,7 @@ function processAction(s, ctx, a) {
 }
 function userFor(s, ctx, id) {
   let ui = s.userById[id];
-  if (ui === undefined || s.users[ui].dead) ui = addUser(s, id, ctx.label(id), ctx.parent ? ctx.parent(id) : null).i;
+  if (ui === undefined || s.users[ui].dead) ui = addUser(s, id, ctx.label(id), ctx.parent ? ctx.parent(id) : null, ctx.colour ? ctx.colour(id) : null).i;
   return s.users[ui];
 }
 function queueAction(s, ctx, user, fi, kind, ev) {
@@ -1791,7 +1808,7 @@ const clone = typeof structuredClone === 'function' ? structuredClone : (o) => J
 
 function createPlayer(opts) {
   const P = { aspect: (opts && opts.aspect) || 16 / 9, autoRotate: !(opts && opts.autoRotate === false), focus: !!(opts && opts.focus), events: [], t0: null, stream: null, cps: [], cur: null, bake: null };
-  const ctx = () => ({ actions: P.stream.actions, notes: P.stream.notes, label: P.stream.label, parent: P.stream.parent });
+  const ctx = () => ({ actions: P.stream.actions, notes: P.stream.notes, label: P.stream.label, parent: P.stream.parent, colour: P.stream.colour });
   let C = null;
 
   function reset() {
@@ -1879,6 +1896,7 @@ function createPlayer(opts) {
   };
   P.actions = () => P.stream.actions;
   P.label = (id) => P.stream.label(id);
+  P.colour = (id) => P.stream.colour(id);
   return P;
 }
 // ---- gource/frame.js
@@ -3084,10 +3102,10 @@ function narrate(ev, label) {
 
 const markKind = (e) => (isBad(e.type) ? 'bad' : isGood(e.type) ? 'good' : e.type === 'message.sent' ? 'talk' : e.type.indexOf('file.') === 0 || e.type === 'resource.written' ? 'file' : e.type.indexOf('tool.') === 0 ? 'tool' : 'x');
 // one lane per agent: when it lived (spawn..completion) and its events, for the timeline
-function lanesOf(T, label) {
+function lanesOf(T, label, colour) {
   const order = []; const map = new Map();
   const lane = (id) => {
-    if (!map.has(id)) { const l = { id, name: label(id), colour: gHex(gUserColour(label(id))), from: null, to: null, marks: [] }; map.set(id, l); order.push(l); }
+    if (!map.has(id)) { const l = { id, name: label(id), colour: gHex(colour ? colour(id) : [1, 1, 1]), from: null, to: null, marks: [] }; map.set(id, l); order.push(l); }
     return map.get(id);
   };
   lane('hermes');
@@ -3163,7 +3181,7 @@ function createViewer(opts) {
       for (const a of acts) { if (!paths.has(a.ev)) paths.set(a.ev, []); paths.get(a.ev).push(a.path); }
       pathsKey = acts.length;
     }
-    return { label: (id) => v.player.label(id), colour: (id) => gUserColour(v.player.label(id)), pathsOfEv: (i) => paths.get(i) || [] };
+    return { label: (id) => v.player.label(id), colour: (id) => v.player.colour(id), pathsOfEv: (i) => paths.get(i) || [] };
   };
   v.setTimeline = (T) => {
     if (v.T && v.T.listeners) v.T.listeners.delete(onAppend);

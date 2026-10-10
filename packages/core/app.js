@@ -1,4 +1,4 @@
-import { gHex, gUserColour } from "./gource/colour.js";
+import { gHex } from "./gource/colour.js";
 // The Hermes app model, shared by the web app and the canvas boards: what the panels show at time t, read from
 // the event log (phases, readouts, process log, conversations, files, final report) and matching a typed order
 // to the closest recorded run. Pure functions; the views only lay them out.
@@ -249,10 +249,10 @@ export function narrate(ev, label) {
 
 const markKind = (e) => (isBad(e.type) ? 'bad' : isGood(e.type) ? 'good' : e.type === 'message.sent' ? 'talk' : e.type.indexOf('file.') === 0 || e.type === 'resource.written' ? 'file' : e.type.indexOf('tool.') === 0 ? 'tool' : 'x');
 // one lane per agent: when it lived (spawn..completion) and its events, for the timeline
-export function lanesOf(T, label) {
+export function lanesOf(T, label, colour) {
   const order = []; const map = new Map();
   const lane = (id) => {
-    if (!map.has(id)) { const l = { id, name: label(id), colour: gHex(gUserColour(label(id))), from: null, to: null, marks: [] }; map.set(id, l); order.push(l); }
+    if (!map.has(id)) { const l = { id, name: label(id), colour: gHex(colour ? colour(id) : [1, 1, 1]), from: null, to: null, marks: [] }; map.set(id, l); order.push(l); }
     return map.get(id);
   };
   lane('hermes');

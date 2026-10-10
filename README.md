@@ -174,6 +174,12 @@ Zapisuje pary obrazów (Gource po lewej, nasz renderer po prawej) i miarę SSIM 
   w wolnej komórce środkowej, więc nic go nie zasłania. Nowe zlecenie i raport to karty nad sceną.
 - `web/` — podłącza ten interfejs do serwera (`app.js`: lista przebiegów, odczyt, LIVE przez WebSocket) i renderuje
   szablon (`dc-lite.js`). Te same pliki z `packages/ui` osadza `artifact/build-app.mjs` w tablicach kanwy.
+- `adapters/jarvis.mjs` + `tools/jarvis-relay.mjs` — zadania Hermesa z Jarvisa (Telegram, cron, konsola) jako przebiegi
+  na żywo: przekaźnik czyta strumień mostu (`/bridge/events`, zdarzenia `agent`) i wysyła je do serwera. Uruchomienie:
+  `JARVIS_BRIDGE_TOKEN=… AGENTSPACE_URL=http://127.0.0.1:4777 node tools/jarvis-relay.mjs`. Test: `test/jarvis.test.mjs`.
+- Kolory agentów są stałe i zależą od kolejności pojawiania się w logu (paleta z walidatorem `dataviz`, tryb ciemny);
+  Hermes ma zawsze złoto. Mini-wykresy aktywności w szynie zespołu i słupki czasu faz / wiadomości w raporcie liczy
+  `hxStats` z tego samego logu. Raport można zapisać jako `.md` w wersji webowej (tablice kanwy nie pobierają plików).
 - `tools/layout-check.mjs` — test układu: 6 rozmiarów okna × 5 stanów, bez nakładania paneli, bez wyjścia poza
   ekran, bez tekstu poniżej 12 px (wymaga `npm start` i Playwright).
 - `demo/` — zapisane przebiegi (`runs/*.jsonl`, generowane przez `npm run demo:build`), lista plików prawdziwego

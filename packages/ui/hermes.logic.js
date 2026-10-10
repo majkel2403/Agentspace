@@ -8,23 +8,43 @@
 // Everything the panels show comes from NW.app (the event log), so the scene and the interface stay in step.
 const HX_SPEEDS = [0.25, 1, 4, 10];
 const { runFacts, appState, matchTask, mmss, studioState, legendOf, narrate, lanesOf, runSummary } = NW.app;
-const HX_TABS = {
-  code: ['Kod', 'M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14'],
-  talk: ['Rozmowy', 'M4 5h16v11H9l-5 4z'],
-  files: ['Pliki', 'M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2.5h8A1.5 1.5 0 0 1 20.5 9.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z'],
-  log: ['Dziennik', 'M5 6h14M5 12h14M5 18h9'],
-  ins: ['Inspektor', 'M12 3v4M12 17v4M3 12h4M17 12h4M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'],
-};
+const HX_BUCKETS = 16;
+const HX_TAB_NAME = { code: 'Kod', talk: 'Rozmowy', files: 'Pliki', log: 'Dziennik', ins: 'Inspektor' };
+// one pass over the log: activity per agent in 16 slices of the run (sparklines), messages per agent, phase lengths
+function hxStats(T) {
+  const dur = Math.max(1, T.duration);
+  const spark = {}; const msgs = {};
+  T.events.forEach((e, i) => {
+    const id = e.agent || 'hermes';
+    const b = Math.min(HX_BUCKETS - 1, Math.floor((T.rel[i] / dur) * HX_BUCKETS));
+    (spark[id] || (spark[id] = new Array(HX_BUCKETS).fill(0)))[b]++;
+    if (e.type === 'message.sent') msgs[id] = (msgs[id] || 0) + 1;
+  });
+  const phases = runFacts(T).phases.map((p) => ({ name: p.name, ms: Math.max(0, p.end - p.start) }));
+  return { dur, spark, msgs, phases };
+}
+// the report as Markdown, for the web host to save (the board cannot download files)
+function hxReportMd(R, runName) {
+  const lines = ['# ' + R.title, '', '**' + R.status + '** · ' + runName, ''];
+  if (R.summary) lines.push(R.summary, '');
+  for (const k of R.kpis) lines.push('- ' + k.label + ': ' + k.value);
+  if (R.doc) lines.push('', '## ' + R.docPath, '', R.doc);
+  if (R.results.length) { lines.push('', '## Wyniki zespołu', ''); for (const r of R.results) lines.push('- **' + r.who + '** — ' + r.text); }
+  return lines.join('\n') + '\n';
+}
 const HX_LANE_W = 96; const HX_LANE_H = 16; const HX_LANE_HEAD = 18;
 const HX_MARK = { good: '#8CFFB4', bad: '#FF5A6A', talk: '#D6BEFF', file: '#9FE3FF', tool: 'rgba(201,210,236,0.55)', x: 'rgba(201,210,236,0.3)' };
+const hxTabsFor = (bp) => (bp === 'xl' ? ['code', 'talk', 'files', 'ins'] : bp === 'm' ? ['code', 'talk', 'files', 'log', 'ins'] : ['code', 'talk', 'files', 'log', 'ins']);
+// the boot sequence covers the page from its first frame, unless the reader opened a run or asked for less motion
+const hxBootWanted = () => { try { return !hxReduce() && !(typeof location !== 'undefined' && /[?&]run=/.test(location.search)); } catch (e) { return false; } };
 const hxBp = (w) => (w >= 1180 ? 'xl' : w >= 720 ? 'm' : 's');
 const hxReduce = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } };
 
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { run: null, tick: 0, idx: -1, playing: true, speed: 1, sel: null, hl: null, focus: 'auto', follow: true, task: '', note: '', bp: 'xl', sheet: false, intro: true, report: false, boot: false };
-    this._v = null; this._T = null; this._F = null; this._lanes = []; this._sum = {}; this._custom = null; this._stopLive = null; this._lastPush = 0; this._auto = 'code';
+    this.state = { run: null, tick: 0, idx: -1, playing: true, speed: 1, sel: null, hl: null, focus: 'auto', follow: true, task: '', note: '', bp: 'xl', sheet: false, intro: true, report: false, boot: hxBootWanted() };
+    this._v = null; this._T = null; this._F = null; this._lanes = []; this._sum = {}; this._stats = {}; this._doingKey = -2; this._doing = {}; this._custom = null; this._stopLive = null; this._lastPush = 0; this._auto = 'code';
   }
 
   // opts: idle = show the run paused mid-way (behind the order card), keepIntro = leave the card open
@@ -35,6 +55,7 @@ class Component extends DCLogic {
       if (!ev || !ev.length || !this._v) return;
       const T = NW.createTimeline(ev);
       this._sum[run] = runSummary(T);
+      this._stats[run] = hxStats(T);
       this._T = T; this._F = runFacts(T);
       const v = this._v;
       v.setTimeline(T);
@@ -59,7 +80,7 @@ class Component extends DCLogic {
   // lanes: one row per agent over the whole run, phase bands behind, events as ticks
   drawLanes() {
     const T = this._T;
-    if (T && this._v) this._lanes = lanesOf(T, (id) => this._v.player.label(id));
+    if (T && this._v) this._lanes = lanesOf(T, (id) => this._v.player.label(id), (id) => this._v.player.colour(id));
     const c = typeof document !== 'undefined' && typeof document.getElementById === 'function' ? document.getElementById('hx-lanes') : null;
     if (!c || !c.getContext || !T) return;
     const W = c.clientWidth; const H = c.clientHeight;
@@ -133,7 +154,7 @@ class Component extends DCLogic {
     // run cards show length, team and files: read each run once
     HX_HOST.runs().forEach((r) => Promise.resolve(HX_HOST.load(r.id)).then((ev) => { if (ev && ev.length && !this._sum[r.id]) { this._sum[r.id] = runSummary(NW.createTimeline(ev)); this.setState({ tick: this.state.tick + 1 }); } }));
     const init = HX_HOST.initial ? HX_HOST.initial() : { id: (HX_HOST.runs()[0] || {}).id, intro: true };
-    if (init && init.intro !== false && !hxReduce()) { this.setState({ boot: true }); this._bootT = setTimeout(() => this.setState({ boot: false }), 3300); }
+    if (this.state.boot) this._bootT = setTimeout(() => this.setState({ boot: false }), 3300);
     if (init && init.id) this.open(init.id, null, init.intro === false ? {} : { idle: true, keepIntro: true });
   }
 
@@ -160,10 +181,17 @@ class Component extends DCLogic {
     const relOf = (i) => (T ? T.rel[i] : 0);
 
     // the last thing each agent did, in words
-    const doing = {};
-    if (T) for (let i = A.idx; i >= 0 && i > A.idx - 400; i--) { const e = T.events[i]; const id = e.agent || 'hermes'; if (!doing[id] && e.type !== 'agent.spawned') { const n = narrate(e, label); doing[id] = n.verb + (n.obj ? ' ' + n.obj : n.extra ? ' · ' + n.extra : ''); } }
+    // memo: the last action of each agent is recomputed only when the event index changes
+    if (T && this._doingKey !== A.idx) {
+      const doing = {};
+      for (let i = A.idx; i >= 0 && i > A.idx - 400; i--) { const e = T.events[i]; const id = e.agent || 'hermes'; if (!doing[id] && e.type !== 'agent.spawned') { const n = narrate(e, label); doing[id] = n.verb + (n.obj ? ' ' + n.obj : n.extra ? ' · ' + n.extra : ''); } }
+      this._doing = doing; this._doingKey = A.idx;
+    }
+    const st = this._stats[S.run];
+    const cur = st ? Math.min(HX_BUCKETS - 1, Math.floor((t / st.dur) * HX_BUCKETS)) : -1;
+    const bars = (id) => { const arr = st && st.spark[id] ? st.spark[id] : []; const max = Math.max(1, ...arr); return Array.from({ length: HX_BUCKETS }, (_, j) => { const n = j <= cur ? (arr[j] || 0) : 0; return { h: n ? Math.max(10, Math.round((n / max) * 100)) : 0, cur: j === cur }; }); };
     const team = St.team.map((a) => ({
-      name: a.name, role: a.role, doing: doing[a.id] || '', status: a.status, working: a.working, state: a.state, fresh: a.fresh,
+      name: a.name, role: a.role, doing: this._doing[a.id] || '', status: a.status, working: a.working, state: a.state, fresh: a.fresh, bars: bars(a.id),
       hl: S.hl === 'user:' + a.id, style: '--depth:' + a.depth + ';--c:' + a.colour + ';--sc:' + a.statusColour,
       pick: () => { if (v) v.select('user:' + a.id); },
       enter: () => { if (v) v.highlight('user:' + a.id); }, leave: () => { if (v) v.highlight(null); },
@@ -178,6 +206,8 @@ class Component extends DCLogic {
     }));
 
     // the narrator: the newest event as one sentence
+    const reactorState = runInfo.live ? 'live' : done ? 'done' : A.failed ? 'fail' : playing ? 'work' : 'idle';
+    const narLive = playing && S.speed <= 1 ? 'polite' : 'off';
     let nar = { who: 'Hermes', verb: 'czeka na zlecenie', obj: '', extra: '', colour: '#F2C14E', fresh: false, working: false };
     if (T && A.log.length) { const n = narrate(T.events[A.log[0].i], label); nar = { who: n.who, verb: n.verb, obj: n.obj, extra: n.extra, colour: n.colour, fresh: fresh(relOf(A.log[0].i)), working: playing && !done }; }
 
@@ -190,7 +220,12 @@ class Component extends DCLogic {
     const active = auto ? this._auto : S.focus;
 
     const counts = { code: St.code || St.term ? '●' : '', talk: String(talk.length), files: String(files.length), log: String(log.length), ins: '' };
-    const tabs = Object.keys(HX_TABS).map((id) => ({ name: HX_TABS[id][0], d: HX_TABS[id][1].slice(1), on: active === id, count: counts[id], pick: () => this.setState({ focus: id, sheet: bp === 's' ? true : S.sheet }) }));
+    const tabHidden = {}; const tabOn = {}; const tabPick = {}; const tabCount = {}; const tabName = {};
+    for (const id of Object.keys(HX_TAB_NAME)) {
+      const inLayout = hxTabsFor(bp).indexOf(id) >= 0;
+      tabHidden[id] = !inLayout; tabOn[id] = active === id; tabCount[id] = counts[id]; tabName[id] = HX_TAB_NAME[id];
+      tabPick[id] = () => this.setState({ focus: id, sheet: bp === 's' ? true : S.sheet });
+    }
 
     let code = { file: '', badge: '', badgeColor: '#7F8BB3', who: '', diff: '', lines: [] };
     if (St.code) { const c = St.code; code = { file: c.file, badge: c.created ? 'NOWY' : c.typing ? 'PISZE' : 'ZMIANA', badgeColor: c.created ? '#8CFFB4' : '#FFB48A', who: c.who, diff: '+' + c.add + (c.del ? ' −' + c.del : ''), lines: c.lines }; }
@@ -200,7 +235,11 @@ class Component extends DCLogic {
     const info = S.sel && v ? v.inspect(S.sel) : null;
     if (info) ins = { kind: info.kind === 'file' ? 'plik' : info.sub, status: info.status, label: info.label, sub: info.kind === 'file' ? info.sub : '', hasSub: info.kind === 'file', stats: info.stats.map(([k, val]) => ({ k, v: val })), events: info.events.map((e) => ({ time: mmss(e.rel), type: e.type + (e.who ? ' · ' + e.who : ''), text: e.text, color: e.type.indexOf('fail') >= 0 || e.type === 'error' ? '#FF8F9A' : e.type.indexOf('passed') >= 0 || e.type.indexOf('completed') >= 0 ? '#8CFFB4' : '#7F8BB3' })) };
     const R = A.report;
-    const report = { run: runInfo.name, status: R.status, statusColor: A.failed ? '#FF8F9A' : '#8CFFB4', title: R.title, summary: R.summary, kpis: R.kpis, hasDoc: !!R.doc, doc: R.doc, docPath: R.docPath, results: R.results };
+    const phaseTotal = st ? st.phases.reduce((n, p) => n + p.ms, 0) || 1 : 1;
+    const phaseBars = st ? st.phases.map((p) => ({ name: p.name, w: Math.round((p.ms / phaseTotal) * 100), txt: mmss(p.ms) })) : [];
+    const msgTotal = st ? Object.values(st.msgs).reduce((n, x) => n + x, 0) || 1 : 1;
+    const msgBars = st ? Object.keys(st.msgs).sort((a, b) => st.msgs[b] - st.msgs[a]).map((id) => ({ name: label(id), w: Math.round((st.msgs[id] / msgTotal) * 100), txt: String(st.msgs[id]) })) : [];
+    const report = { run: runInfo.name, status: R.status, statusColor: A.failed ? '#FF8F9A' : '#8CFFB4', title: R.title, summary: R.summary, kpis: R.kpis, hasDoc: !!R.doc, doc: R.doc, docPath: R.docPath, results: R.results, phaseBars, msgBars, hasPhases: phaseBars.length > 0, hasMsgs: msgBars.length > 0 };
 
     const matched = S.task && S.task !== F.title ? this.match(S.task) : null;
     const mname = matched ? (runs.find((r) => r.id === matched) || {}).name : '';
@@ -230,7 +269,7 @@ class Component extends DCLogic {
       chips, follow: S.follow,
       toggleFollow: () => { if (!v) return; const on = !S.follow; v.setFocus(on); this.setState({ follow: on }); },
       zoomIn: () => v && v.zoom(1.2), zoomOut: () => v && v.zoom(1 / 1.2), resetCam: () => { if (v) v.reset(); },
-      tabs, auto, toggleAuto: () => this.setState({ focus: auto ? active : 'auto' }),
+      tabHidden, tabOn, tabPick, tabCount, tabName, auto, toggleAuto: () => this.setState({ focus: auto ? active : 'auto' }),
       paneCode: active === 'code', paneTalk: active === 'talk', paneFiles: active === 'files', paneLog: active === 'log', paneIns: active === 'ins',
       hasCode: !!St.code, code, hasTerm: !!St.term, term, noCode: !St.code && !St.term, codeMeta: St.code ? St.code.who : '',
       talk, talkMeta: talk.length + ' wiad.', noTalk: !talk.length, files, filesMeta: files.length + ' plików', noFiles: !files.length,
@@ -267,6 +306,8 @@ class Component extends DCLogic {
         };
         rd.readAsText(f);
       },
+      reactorState, narLive, hasExport: !!HX_HOST.exportReport,
+      exportReport: () => { if (HX_HOST.exportReport) HX_HOST.exportReport(hxReportMd(R, runInfo.name), (R.title || 'raport') + '.md'); },
       reportOpen, report, closeReport: () => this.setState({ report: false }),
       replay: () => { if (!v) return; v.setTime(0); v.play(); this.setState({ report: false, playing: true, idx: -1 }); },
     };

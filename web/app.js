@@ -39,6 +39,13 @@ window.HX_HOST = {
     const u = new URL(location.href); u.searchParams.set('run', id); history.replaceState(null, '', u);
     return parseJsonl(txt).events;
   },
+  // the report leaves the page as a file (the canvas boards cannot download, so they do not offer it)
+  exportReport(md, name) {
+    const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: name.replace(/[\\/:*?"<>|]+/g, '-') });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
   live(id, cb) {
     const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/live?run=' + encodeURIComponent(id));
     let last = -Infinity;
@@ -63,6 +70,7 @@ if (params.get('compat') === '1' || params.get('chrome') === '0') {
   window.NW = { parseJsonl, createTimeline, createViewer, app: { runFacts, appState, matchTask, mmss, studioState, legendOf, cssRgb, narrate, lanesOf, runSummary } };
   const src = await (await fetch('/packages/ui/hermes.logic.js')).text();
   const Logic = new Function('NW', 'HX_HOST', 'DCLogic', src + '\nreturn Component;');
+  document.getElementById('splash')?.remove();
   mount(document.getElementById('app'), markup('height:100%'), (Base) => Logic(window.NW, window.HX_HOST, Base));
   setInterval(refresh, 5000);
   // Space plays / pauses, Escape closes the inspector

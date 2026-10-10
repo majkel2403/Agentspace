@@ -312,3 +312,28 @@ button.hx-row{cursor:pointer}button.hx-row:hover{background:rgba(232,236,248,.06
 @keyframes hx-bootout{to{opacity:0;visibility:hidden;filter:blur(10px) brightness(2)}}
 .hx[data-bp="s"] .hx-frame{display:none}
 .hx[data-bp="s"] .hx-steps .hx-step{clip-path:none;padding:0}
+
+/* ---- v2: activity sparklines, report bars, reactor by state, ready pulse, mobile sheet */
+.spark{display:flex;align-items:flex-end;gap:2px;height:18px;margin-top:5px;min-width:0}
+.spark i{flex:1 1 0;min-width:2px;height:0;background:var(--c);opacity:.38;border-radius:2px 2px 0 0;transition:height .3s var(--ease)}
+.spark i[data-cur="true"]{opacity:1;box-shadow:0 0 8px var(--c)}
+.bars{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.bar-row{display:grid;grid-template-columns:minmax(0,132px) minmax(0,1fr) auto;align-items:center;gap:10px;font-size:13px}
+.bar-row .bt{height:6px;border-radius:3px;background:rgba(51,214,255,.1);overflow:hidden}
+.bar-row .bt i{display:block;height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));box-shadow:0 0 10px rgba(51,214,255,.4);transition:width .6s var(--ease)}
+.bar-row .bv{font-size:12px;color:var(--dim);min-width:34px;text-align:right}
+.hx[data-state="work"] .hx-reactor .b{animation-duration:1.6s}
+.hx[data-state="work"] .hx-reactor .a{animation-duration:6s}
+.hx[data-state="live"] .hx-reactor .c{stroke:#ff6b7a;animation-duration:1.4s}
+.hx[data-state="live"] .hx-reactor .d{fill:#ff6b7a}
+.hx[data-state="done"] .hx-reactor .r{stroke:var(--ok)}
+.hx[data-state="done"] .hx-reactor .d{fill:var(--ok)}
+.hx[data-state="fail"] .hx-reactor .r{stroke:var(--bad)}
+.hx[data-state="fail"] .hx-reactor .d{fill:var(--bad)}
+.hx[data-state="idle"] .hx-reactor .a,.hx[data-state="idle"] .hx-reactor .b{animation-duration:22s}
+.hx .hx-btn[data-on="true"]{animation:hx-ping 2.2s ease-out 3}
+@keyframes hx-ping{0%{box-shadow:0 0 0 0 rgba(51,214,255,.55)}70%,100%{box-shadow:0 0 0 14px rgba(51,214,255,0)}}
+.hx[data-bp="s"] .hx-drawer{max-height:42vh}
+.hx-agent .spark{display:none}
+.hx[data-bp="xl"] .hx-agent .spark,.hx[data-bp="m"] .hx-agent .spark{display:flex}
+.hx-card .hx-eyebrow{padding-right:44px}

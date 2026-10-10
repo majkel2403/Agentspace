@@ -1,3 +1,4 @@
+import { gAgentColour, gHermesColour } from './colour.js';
 // Workflow events -> Gource-style actions (who touched which path, how) and avatar notes.
 // One stream feeds both our simulation and the adapter that writes a log for the real Gource,
 // so a side-by-side comparison shows the same history.
@@ -43,6 +44,12 @@ export function createActionStream() {
     t0: null,
   };
   const label = (id) => (S.users[id] ? S.users[id].label : id);
+  // colour by first appearance in the log: stable for the whole run, and the same in the scene, the timeline and the team
+  const colour = (id) => {
+    if (id === 'hermes') return gHermesColour();
+    const k = Object.keys(S.users).filter((u) => u !== 'hermes').indexOf(id);
+    return gAgentColour(k < 0 ? 0 : k);
+  };
   const userOf = (id) => {
     if (!S.users[id]) S.users[id] = { id, label: id.charAt(0).toUpperCase() + id.slice(1) };
     return id;
@@ -114,6 +121,7 @@ export function createActionStream() {
   };
   S.label = label;
   S.parent = (id) => (S.users[id] ? S.users[id].parent || null : null);
+  S.colour = colour;
   return S;
 }
 

@@ -23,7 +23,7 @@ for (const [w, h] of SIZES) {
   page.on('pageerror', (e) => errs.push(String(e)));
   await page.goto(base + '/?run=repo-fix', { waitUntil: 'load' });
   await page.waitForFunction(() => window.__NW && window.__NW.T && document.querySelector('.hx-step'), null, { timeout: 20000 }).catch(() => errs.push('app not ready'));
-  await page.evaluate(() => { window.__NW.pause(); window.__NW.setTime(100000); });
+  await page.evaluate(() => { window.__HXAPP.setState({ boot: false, intro: false }); window.__NW.pause(); window.__NW.setTime(100000); });
   { const x = await page.$('.hx-card [aria-label="Zamknij"]'); if (x) await x.click(); }
   await page.waitForTimeout(500);
   const states = [['code', null], ['talk', null], ['files', null], ['log', null], ['report', 'end']];

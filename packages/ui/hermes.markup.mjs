@@ -19,9 +19,17 @@ export const ICON = {
   panel: I('<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M14 5v14"/>'),
 };
 
+const HX_TAB_ICON = {
+  code: 'M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14',
+  talk: 'M4 5h16v11H9l-5 4z',
+  files: 'M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2.5h8A1.5 1.5 0 0 1 20.5 9.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z',
+  log: 'M5 6h14M5 12h14M5 18h9',
+  ins: 'M12 3v4M12 17v4M3 12h4M17 12h4M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+};
+// the panel tabs are fixed buttons (no data in SVG attributes): the logic only says which are shown and selected
 const tabs = `
       <div class="hx-dh" role="tablist" aria-label="Panel">
-        <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><button type="button" role="tab" class="hx-tab" aria-selected="{{tb.on}}" aria-label="{{tb.name}}" title="{{tb.name}}" onClick="{{tb.pick}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M{{tb.d}}"/></svg><span class="lbl">{{tb.name}}</span><span class="ct">{{tb.count}}</span></button></sc-for>
+${['code', 'talk', 'files', 'log', 'ins'].map((id) => `        <button type="button" role="tab" class="hx-tab" hidden="{{tabHidden.${id}}}" aria-selected="{{tabOn.${id}}}" aria-label="{{tabName.${id}}}" title="{{tabName.${id}}}" onClick="{{tabPick.${id}}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${HX_TAB_ICON[id]}"/></svg><span class="lbl">{{tabName.${id}}}</span><span class="ct">{{tabCount.${id}}}</span></button>`).join('\n')}
         <button type="button" class="hx-btn hx-auto" aria-pressed="{{auto}}" onClick="{{toggleAuto}}" title="Panel sam pokazuje to, co dzieje się teraz">Auto</button>
       </div>`;
 
@@ -116,9 +124,11 @@ const dossier = `
         <h2>{{report.title}}</h2>
         <p style="color:var(--mut);font-size:15px">{{report.summary}}</p>
         <ul class="hx-rk"><sc-for list="{{report.kpis}}" as="k" hint-placeholder-count="4"><li><span class="hx-cap">{{k.label}}</span><b>{{k.value}}</b></li></sc-for></ul>
+        <sc-if value="{{report.hasPhases}}" hint-placeholder-val="{{ false }}"><div class="bars"><span class="hx-cap">Czas faz</span><sc-for list="{{report.phaseBars}}" as="pb" hint-placeholder-count="4"><div class="bar-row"><span class="bl hx-ellip">{{pb.name}}</span><span class="bt"><i style="width:{{pb.w}}%"></i></span><span class="bv hx-mono">{{pb.txt}}</span></div></sc-for></div></sc-if>
+        <sc-if value="{{report.hasMsgs}}" hint-placeholder-val="{{ false }}"><div class="bars"><span class="hx-cap">Wiadomości według agenta</span><sc-for list="{{report.msgBars}}" as="mb" hint-placeholder-count="3"><div class="bar-row"><span class="bl hx-ellip">{{mb.name}}</span><span class="bt"><i style="width:{{mb.w}}%"></i></span><span class="bv hx-mono">{{mb.txt}}</span></div></sc-for></div></sc-if>
         <sc-if value="{{report.hasDoc}}" hint-placeholder-val="{{ false }}"><div><span class="hx-cap">{{report.docPath}}</span><div class="hx-doc" style="margin-top:6px"><pre>{{report.doc}}</pre></div></div></sc-if>
         <div><span class="hx-cap">Wyniki zespołu</span><sc-for list="{{report.results}}" as="rr" hint-placeholder-count="3"><div class="hx-ev"><b>{{rr.who}}</b><span style="color:var(--mut);margin-left:6px">— {{rr.text}}</span></div></sc-for></div>
-        <div class="hx-launch"><button type="button" class="hx-btn hx-pri" onClick="{{replay}}">${ICON.restart}Odtwórz jeszcze raz</button><button type="button" class="hx-btn" onClick="{{newOrder}}">${ICON.plus}Nowe zlecenie</button></div>
+        <div class="hx-launch"><button type="button" class="hx-btn hx-pri" onClick="{{replay}}">${ICON.restart}Odtwórz jeszcze raz</button><sc-if value="{{hasExport}}" hint-placeholder-val="{{ false }}"><button type="button" class="hx-btn" onClick="{{exportReport}}">${ICON.report}Eksport .md</button></sc-if><button type="button" class="hx-btn" onClick="{{newOrder}}">${ICON.plus}Nowe zlecenie</button></div>
       </section>
     </div>
   </sc-if>`;
@@ -143,7 +153,7 @@ const boot = `
 // rootStyle: the board gives the root its height; the web app lets it fill the page
 export function markup(rootStyle = '') {
   return `
-<div class="hx" id="hx-root" data-bp="{{bp}}" data-sheet="{{sheet}}" style="${rootStyle}">
+<div class="hx" id="hx-root" data-bp="{{bp}}" data-sheet="{{sheet}}" data-state="{{reactorState}}" style="${rootStyle}">
   <div class="hx-stage">
     <canvas id="hx-gl" class="hx-cv" aria-hidden="true"></canvas>
     <canvas id="hx-ov" class="hx-cv hx-ov" role="img" aria-label="{{sceneAria}}"></canvas>
@@ -173,7 +183,7 @@ export function markup(rootStyle = '') {
         <span class="hx-cap">Zespół · {{teamMeta}}</span>
         <ul class="hx-agents">
           <sc-for list="{{team}}" as="a" hint-placeholder-count="3">
-            <li><button type="button" class="hx-agent" data-hl="{{a.hl}}" data-fresh="{{a.fresh}}" style="{{a.style}}" title="{{a.name}}" onClick="{{a.pick}}" onMouseEnter="{{a.enter}}" onMouseLeave="{{a.leave}}"><span class="hx-orb" data-work="{{a.working}}" data-state="{{a.state}}"></span><span class="tx"><span class="nm"><b>{{a.name}}</b><sc-if value="{{a.fresh}}" hint-placeholder-val="{{ false }}"><span class="hx-new">NOWY</span></sc-if></span><span class="rl hx-ellip">{{a.role}}</span><span class="do hx-ellip">{{a.doing}}</span></span><span class="st">{{a.status}}</span></button></li>
+            <li><button type="button" class="hx-agent" data-hl="{{a.hl}}" data-fresh="{{a.fresh}}" style="{{a.style}}" title="{{a.name}}" onClick="{{a.pick}}" onMouseEnter="{{a.enter}}" onMouseLeave="{{a.leave}}"><span class="hx-orb" data-work="{{a.working}}" data-state="{{a.state}}"></span><span class="tx"><span class="nm"><b>{{a.name}}</b><sc-if value="{{a.fresh}}" hint-placeholder-val="{{ false }}"><span class="hx-new">NOWY</span></sc-if></span><span class="rl hx-ellip">{{a.role}}</span><span class="do hx-ellip">{{a.doing}}</span><span class="spark" aria-hidden="true"><sc-for list="{{a.bars}}" as="b" hint-placeholder-count="16"><i style="height:{{b.h}}%" data-cur="{{b.cur}}"></i></sc-for></span></span><span class="st">{{a.status}}</span></button></li>
           </sc-for>
         </ul>
         <sc-if value="{{hasPlan}}" hint-placeholder-val="{{ true }}">
@@ -199,7 +209,7 @@ ${panes}
     </aside>
 
     <footer class="hx-dock hx-glass">
-      <div class="hx-nar" data-fresh="{{nar.fresh}}" style="--c:{{nar.colour}}" aria-live="off">
+      <div class="hx-nar" data-fresh="{{nar.fresh}}" style="--c:{{nar.colour}}" aria-live="{{narLive}}">
         <span class="hx-orb" data-work="{{nar.working}}"></span>
         <div class="line"><span class="who">{{nar.who}}</span><span class="vb hx-ellip">{{nar.verb}}</span><span class="ob">{{nar.obj}}</span><span class="ex hx-ellip">{{nar.extra}}</span></div>
         <sc-if value="{{reportReady}}" hint-placeholder-val="{{ false }}"><button type="button" class="hx-btn hx-pri more" onClick="{{openReport}}">${ICON.report}Raport gotowy</button></sc-if>

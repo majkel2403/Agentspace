@@ -15,6 +15,15 @@ jobs:
       - run: npm test
       - name: Motion report (growth, camera, avatars, framing)
         run: npm run motion
+      - name: Jarvis relay adapter tests
+        run: node --test test/jarvis.test.mjs
+      - name: Layout check (six window sizes, five states, real browser)
+        run: |
+          npm i -g playwright@1.47.2
+          npx --yes playwright@1.47.2 install --with-deps chromium
+          PORT=4777 node server/server.mjs > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4777/ >/dev/null && break; sleep 1; done
+          PLAYWRIGHT_MODULE=$(npm root -g) node tools/layout-check.mjs
       - name: Demo runs are up to date with demo/make-demo.mjs
         run: npm run demo:build && git diff --exit-code demo/runs
       - name: Artifact boards are up to date with the core

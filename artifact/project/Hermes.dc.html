@@ -324,10 +324,35 @@ button.hx-row{cursor:pointer}button.hx-row:hover{background:rgba(232,236,248,.06
 @keyframes hx-bootout{to{opacity:0;visibility:hidden;filter:blur(10px) brightness(2)}}
 .hx[data-bp="s"] .hx-frame{display:none}
 .hx[data-bp="s"] .hx-steps .hx-step{clip-path:none;padding:0}
+
+/* ---- v2: activity sparklines, report bars, reactor by state, ready pulse, mobile sheet */
+.spark{display:flex;align-items:flex-end;gap:2px;height:18px;margin-top:5px;min-width:0}
+.spark i{flex:1 1 0;min-width:2px;height:0;background:var(--c);opacity:.38;border-radius:2px 2px 0 0;transition:height .3s var(--ease)}
+.spark i[data-cur="true"]{opacity:1;box-shadow:0 0 8px var(--c)}
+.bars{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.bar-row{display:grid;grid-template-columns:minmax(0,132px) minmax(0,1fr) auto;align-items:center;gap:10px;font-size:13px}
+.bar-row .bt{height:6px;border-radius:3px;background:rgba(51,214,255,.1);overflow:hidden}
+.bar-row .bt i{display:block;height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));box-shadow:0 0 10px rgba(51,214,255,.4);transition:width .6s var(--ease)}
+.bar-row .bv{font-size:12px;color:var(--dim);min-width:34px;text-align:right}
+.hx[data-state="work"] .hx-reactor .b{animation-duration:1.6s}
+.hx[data-state="work"] .hx-reactor .a{animation-duration:6s}
+.hx[data-state="live"] .hx-reactor .c{stroke:#ff6b7a;animation-duration:1.4s}
+.hx[data-state="live"] .hx-reactor .d{fill:#ff6b7a}
+.hx[data-state="done"] .hx-reactor .r{stroke:var(--ok)}
+.hx[data-state="done"] .hx-reactor .d{fill:var(--ok)}
+.hx[data-state="fail"] .hx-reactor .r{stroke:var(--bad)}
+.hx[data-state="fail"] .hx-reactor .d{fill:var(--bad)}
+.hx[data-state="idle"] .hx-reactor .a,.hx[data-state="idle"] .hx-reactor .b{animation-duration:22s}
+.hx .hx-btn[data-on="true"]{animation:hx-ping 2.2s ease-out 3}
+@keyframes hx-ping{0%{box-shadow:0 0 0 0 rgba(51,214,255,.55)}70%,100%{box-shadow:0 0 0 14px rgba(51,214,255,0)}}
+.hx[data-bp="s"] .hx-drawer{max-height:42vh}
+.hx-agent .spark{display:none}
+.hx[data-bp="xl"] .hx-agent .spark,.hx[data-bp="m"] .hx-agent .spark{display:flex}
+.hx-card .hx-eyebrow{padding-right:44px}
 </style>
 </helmet>
 
-<div class="hx" id="hx-root" data-bp="{{bp}}" data-sheet="{{sheet}}" style="height:100vh">
+<div class="hx" id="hx-root" data-bp="{{bp}}" data-sheet="{{sheet}}" data-state="{{reactorState}}" style="height:100vh">
   <div class="hx-stage">
     <canvas id="hx-gl" class="hx-cv" aria-hidden="true"></canvas>
     <canvas id="hx-ov" class="hx-cv hx-ov" role="img" aria-label="{{sceneAria}}"></canvas>
@@ -357,7 +382,7 @@ button.hx-row{cursor:pointer}button.hx-row:hover{background:rgba(232,236,248,.06
         <span class="hx-cap">Zespół · {{teamMeta}}</span>
         <ul class="hx-agents">
           <sc-for list="{{team}}" as="a" hint-placeholder-count="3">
-            <li><button type="button" class="hx-agent" data-hl="{{a.hl}}" data-fresh="{{a.fresh}}" style="{{a.style}}" title="{{a.name}}" onClick="{{a.pick}}" onMouseEnter="{{a.enter}}" onMouseLeave="{{a.leave}}"><span class="hx-orb" data-work="{{a.working}}" data-state="{{a.state}}"></span><span class="tx"><span class="nm"><b>{{a.name}}</b><sc-if value="{{a.fresh}}" hint-placeholder-val="{{ false }}"><span class="hx-new">NOWY</span></sc-if></span><span class="rl hx-ellip">{{a.role}}</span><span class="do hx-ellip">{{a.doing}}</span></span><span class="st">{{a.status}}</span></button></li>
+            <li><button type="button" class="hx-agent" data-hl="{{a.hl}}" data-fresh="{{a.fresh}}" style="{{a.style}}" title="{{a.name}}" onClick="{{a.pick}}" onMouseEnter="{{a.enter}}" onMouseLeave="{{a.leave}}"><span class="hx-orb" data-work="{{a.working}}" data-state="{{a.state}}"></span><span class="tx"><span class="nm"><b>{{a.name}}</b><sc-if value="{{a.fresh}}" hint-placeholder-val="{{ false }}"><span class="hx-new">NOWY</span></sc-if></span><span class="rl hx-ellip">{{a.role}}</span><span class="do hx-ellip">{{a.doing}}</span><span class="spark" aria-hidden="true"><sc-for list="{{a.bars}}" as="b" hint-placeholder-count="16"><i style="height:{{b.h}}%" data-cur="{{b.cur}}"></i></sc-for></span></span><span class="st">{{a.status}}</span></button></li>
           </sc-for>
         </ul>
         <sc-if value="{{hasPlan}}" hint-placeholder-val="{{ true }}">
@@ -380,7 +405,11 @@ button.hx-row{cursor:pointer}button.hx-row:hover{background:rgba(232,236,248,.06
     <aside class="hx-drawer hx-glass" aria-label="Panel roboczy">
 
       <div class="hx-dh" role="tablist" aria-label="Panel">
-        <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><button type="button" role="tab" class="hx-tab" aria-selected="{{tb.on}}" aria-label="{{tb.name}}" title="{{tb.name}}" onClick="{{tb.pick}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M{{tb.d}}"/></svg><span class="lbl">{{tb.name}}</span><span class="ct">{{tb.count}}</span></button></sc-for>
+        <button type="button" role="tab" class="hx-tab" hidden="{{tabHidden.code}}" aria-selected="{{tabOn.code}}" aria-label="{{tabName.code}}" title="{{tabName.code}}" onClick="{{tabPick.code}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/></svg><span class="lbl">{{tabName.code}}</span><span class="ct">{{tabCount.code}}</span></button>
+        <button type="button" role="tab" class="hx-tab" hidden="{{tabHidden.talk}}" aria-selected="{{tabOn.talk}}" aria-label="{{tabName.talk}}" title="{{tabName.talk}}" onClick="{{tabPick.talk}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="lbl">{{tabName.talk}}</span><span class="ct">{{tabCount.talk}}</span></button>
+        <button type="button" role="tab" class="hx-tab" hidden="{{tabHidden.files}}" aria-selected="{{tabOn.files}}" aria-label="{{tabName.files}}" title="{{tabName.files}}" onClick="{{tabPick.files}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2.5h8A1.5 1.5 0 0 1 20.5 9.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg><span class="lbl">{{tabName.files}}</span><span class="ct">{{tabCount.files}}</span></button>
+        <button type="button" role="tab" class="hx-tab" hidden="{{tabHidden.log}}" aria-selected="{{tabOn.log}}" aria-label="{{tabName.log}}" title="{{tabName.log}}" onClick="{{tabPick.log}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9"/></svg><span class="lbl">{{tabName.log}}</span><span class="ct">{{tabCount.log}}</span></button>
+        <button type="button" role="tab" class="hx-tab" hidden="{{tabHidden.ins}}" aria-selected="{{tabOn.ins}}" aria-label="{{tabName.ins}}" title="{{tabName.ins}}" onClick="{{tabPick.ins}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg><span class="lbl">{{tabName.ins}}</span><span class="ct">{{tabCount.ins}}</span></button>
         <button type="button" class="hx-btn hx-auto" aria-pressed="{{auto}}" onClick="{{toggleAuto}}" title="Panel sam pokazuje to, co dzieje się teraz">Auto</button>
       </div>
 
@@ -450,7 +479,7 @@ button.hx-row{cursor:pointer}button.hx-row:hover{background:rgba(232,236,248,.06
     </aside>
 
     <footer class="hx-dock hx-glass">
-      <div class="hx-nar" data-fresh="{{nar.fresh}}" style="--c:{{nar.colour}}" aria-live="off">
+      <div class="hx-nar" data-fresh="{{nar.fresh}}" style="--c:{{nar.colour}}" aria-live="{{narLive}}">
         <span class="hx-orb" data-work="{{nar.working}}"></span>
         <div class="line"><span class="who">{{nar.who}}</span><span class="vb hx-ellip">{{nar.verb}}</span><span class="ob">{{nar.obj}}</span><span class="ex hx-ellip">{{nar.extra}}</span></div>
         <sc-if value="{{reportReady}}" hint-placeholder-val="{{ false }}"><button type="button" class="hx-btn hx-pri more" onClick="{{openReport}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5v4h4"/><path d="M10 12h5M10 15.5h5"/></svg>Raport gotowy</button></sc-if>
@@ -496,9 +525,11 @@ button.hx-row{cursor:pointer}button.hx-row:hover{background:rgba(232,236,248,.06
         <h2>{{report.title}}</h2>
         <p style="color:var(--mut);font-size:15px">{{report.summary}}</p>
         <ul class="hx-rk"><sc-for list="{{report.kpis}}" as="k" hint-placeholder-count="4"><li><span class="hx-cap">{{k.label}}</span><b>{{k.value}}</b></li></sc-for></ul>
+        <sc-if value="{{report.hasPhases}}" hint-placeholder-val="{{ false }}"><div class="bars"><span class="hx-cap">Czas faz</span><sc-for list="{{report.phaseBars}}" as="pb" hint-placeholder-count="4"><div class="bar-row"><span class="bl hx-ellip">{{pb.name}}</span><span class="bt"><i style="width:{{pb.w}}%"></i></span><span class="bv hx-mono">{{pb.txt}}</span></div></sc-for></div></sc-if>
+        <sc-if value="{{report.hasMsgs}}" hint-placeholder-val="{{ false }}"><div class="bars"><span class="hx-cap">Wiadomości według agenta</span><sc-for list="{{report.msgBars}}" as="mb" hint-placeholder-count="3"><div class="bar-row"><span class="bl hx-ellip">{{mb.name}}</span><span class="bt"><i style="width:{{mb.w}}%"></i></span><span class="bv hx-mono">{{mb.txt}}</span></div></sc-for></div></sc-if>
         <sc-if value="{{report.hasDoc}}" hint-placeholder-val="{{ false }}"><div><span class="hx-cap">{{report.docPath}}</span><div class="hx-doc" style="margin-top:6px"><pre>{{report.doc}}</pre></div></div></sc-if>
         <div><span class="hx-cap">Wyniki zespołu</span><sc-for list="{{report.results}}" as="rr" hint-placeholder-count="3"><div class="hx-ev"><b>{{rr.who}}</b><span style="color:var(--mut);margin-left:6px">— {{rr.text}}</span></div></sc-for></div>
-        <div class="hx-launch"><button type="button" class="hx-btn hx-pri" onClick="{{replay}}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg>Odtwórz jeszcze raz</button><button type="button" class="hx-btn" onClick="{{newOrder}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nowe zlecenie</button></div>
+        <div class="hx-launch"><button type="button" class="hx-btn hx-pri" onClick="{{replay}}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg>Odtwórz jeszcze raz</button><sc-if value="{{hasExport}}" hint-placeholder-val="{{ false }}"><button type="button" class="hx-btn" onClick="{{exportReport}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5v4h4"/><path d="M10 12h5M10 15.5h5"/></svg>Eksport .md</button></sc-if><button type="button" class="hx-btn" onClick="{{newOrder}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nowe zlecenie</button></div>
       </section>
     </div>
   </sc-if>
@@ -708,6 +739,16 @@ function gUserColour(name) {
   return [(c[0] * 0.6 + 0.4) * 0.9, (c[1] * 0.6 + 0.4) * 0.9, (c[2] * 0.6 + 0.4) * 0.9];
 }
 
+// Agent colours come from a fixed order, not from a hash of the name: the first agent to appear in the log gets the
+// first slot, the next one the second, and so on. The slots are the dark-surface steps of the data-viz reference
+// palette, in the order that passes the validator (scripts/validate_palette.js: lightness band, adjacent CVD and
+// normal-vision separation, contrast on #03060f). Hermes is the orchestrator and always gold.
+const AGENT_HEX = ['#3987e5', '#199e70', '#9085e9', '#d95926', '#d55181'];
+const HERMES_HEX = '#F2C14E';
+const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+const gAgentColour = (k) => hexRgb(AGENT_HEX[k % AGENT_HEX.length]);
+const gHermesColour = () => hexRgb(HERMES_HEX);
+
 const gHex = (c) => '#' + c.map((v) => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, '0')).join('');
 // ---- gource/actions.js
 // Workflow events -> Gource-style actions (who touched which path, how) and avatar notes.
@@ -755,6 +796,12 @@ function createActionStream() {
     t0: null,
   };
   const label = (id) => (S.users[id] ? S.users[id].label : id);
+  // colour by first appearance in the log: stable for the whole run, and the same in the scene, the timeline and the team
+  const colour = (id) => {
+    if (id === 'hermes') return gHermesColour();
+    const k = Object.keys(S.users).filter((u) => u !== 'hermes').indexOf(id);
+    return gAgentColour(k < 0 ? 0 : k);
+  };
   const userOf = (id) => {
     if (!S.users[id]) S.users[id] = { id, label: id.charAt(0).toUpperCase() + id.slice(1) };
     return id;
@@ -826,6 +873,7 @@ function createActionStream() {
   };
   S.label = label;
   S.parent = (id) => (S.users[id] ? S.users[id].parent || null : null);
+  S.colour = colour;
   return S;
 }
 
@@ -1172,7 +1220,7 @@ function nameAlpha(interval, total) {
 }
 
 // ------------------------------------------------------------------------------------------- users
-function addUser(s, id, label, parentId) {
+function addUser(s, id, label, parentId, col) {
   const b = s.dirBounds;
   let x = b && (b.x1 - b.x0) * (b.y1 - b.y0) > 0 ? (b.x0 + b.x1) / 2 : 0;
   let y = b && (b.x1 - b.x0) * (b.y1 - b.y0) > 0 ? (b.y0 + b.y1) / 2 : 0;
@@ -1183,7 +1231,7 @@ function addUser(s, id, label, parentId) {
     x = s.users[pi].x + hv[0] * USER_SIZE * 1.5; y = s.users[pi].y + hv[1] * USER_SIZE * 1.5;
   }
   const u = {
-    i: s.users.length, id, label, col: gUserColour(label), x, y, px: x, py: y, ax: 0, ay: 0, vx0: 0, vy0: 0, elapsed: 0, last: 0,
+    i: s.users.length, id, label, col: col || gUserColour(label), x, y, px: x, py: y, ax: 0, ay: 0, vx0: 0, vy0: 0, elapsed: 0, last: 0,
     actInt: 0.2, nameInt: NAME_TIME, pending: [], active: [], tool: '', toolT: -1, toolState: '', flagT: -1, flag: '', dead: false,
     want: PERSONAL, doneT: -1,
   };
@@ -1471,7 +1519,7 @@ function processAction(s, ctx, a) {
 }
 function userFor(s, ctx, id) {
   let ui = s.userById[id];
-  if (ui === undefined || s.users[ui].dead) ui = addUser(s, id, ctx.label(id), ctx.parent ? ctx.parent(id) : null).i;
+  if (ui === undefined || s.users[ui].dead) ui = addUser(s, id, ctx.label(id), ctx.parent ? ctx.parent(id) : null, ctx.colour ? ctx.colour(id) : null).i;
   return s.users[ui];
 }
 function queueAction(s, ctx, user, fi, kind, ev) {
@@ -1745,7 +1793,7 @@ const clone = typeof structuredClone === 'function' ? structuredClone : (o) => J
 
 function createPlayer(opts) {
   const P = { aspect: (opts && opts.aspect) || 16 / 9, autoRotate: !(opts && opts.autoRotate === false), focus: !!(opts && opts.focus), events: [], t0: null, stream: null, cps: [], cur: null, bake: null };
-  const ctx = () => ({ actions: P.stream.actions, notes: P.stream.notes, label: P.stream.label, parent: P.stream.parent });
+  const ctx = () => ({ actions: P.stream.actions, notes: P.stream.notes, label: P.stream.label, parent: P.stream.parent, colour: P.stream.colour });
   let C = null;
 
   function reset() {
@@ -1833,6 +1881,7 @@ function createPlayer(opts) {
   };
   P.actions = () => P.stream.actions;
   P.label = (id) => P.stream.label(id);
+  P.colour = (id) => P.stream.colour(id);
   return P;
 }
 // ---- gource/frame.js
@@ -3038,10 +3087,10 @@ function narrate(ev, label) {
 
 const markKind = (e) => (isBad(e.type) ? 'bad' : isGood(e.type) ? 'good' : e.type === 'message.sent' ? 'talk' : e.type.indexOf('file.') === 0 || e.type === 'resource.written' ? 'file' : e.type.indexOf('tool.') === 0 ? 'tool' : 'x');
 // one lane per agent: when it lived (spawn..completion) and its events, for the timeline
-function lanesOf(T, label) {
+function lanesOf(T, label, colour) {
   const order = []; const map = new Map();
   const lane = (id) => {
-    if (!map.has(id)) { const l = { id, name: label(id), colour: gHex(gUserColour(label(id))), from: null, to: null, marks: [] }; map.set(id, l); order.push(l); }
+    if (!map.has(id)) { const l = { id, name: label(id), colour: gHex(colour ? colour(id) : [1, 1, 1]), from: null, to: null, marks: [] }; map.set(id, l); order.push(l); }
     return map.get(id);
   };
   lane('hermes');
@@ -3117,7 +3166,7 @@ function createViewer(opts) {
       for (const a of acts) { if (!paths.has(a.ev)) paths.set(a.ev, []); paths.get(a.ev).push(a.path); }
       pathsKey = acts.length;
     }
-    return { label: (id) => v.player.label(id), colour: (id) => gUserColour(v.player.label(id)), pathsOfEv: (i) => paths.get(i) || [] };
+    return { label: (id) => v.player.label(id), colour: (id) => v.player.colour(id), pathsOfEv: (i) => paths.get(i) || [] };
   };
   v.setTimeline = (T) => {
     if (v.T && v.T.listeners) v.T.listeners.delete(onAppend);
@@ -3269,23 +3318,43 @@ const HX_HOST = {
 // Everything the panels show comes from NW.app (the event log), so the scene and the interface stay in step.
 const HX_SPEEDS = [0.25, 1, 4, 10];
 const { runFacts, appState, matchTask, mmss, studioState, legendOf, narrate, lanesOf, runSummary } = NW.app;
-const HX_TABS = {
-  code: ['Kod', 'M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14'],
-  talk: ['Rozmowy', 'M4 5h16v11H9l-5 4z'],
-  files: ['Pliki', 'M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2.5h8A1.5 1.5 0 0 1 20.5 9.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z'],
-  log: ['Dziennik', 'M5 6h14M5 12h14M5 18h9'],
-  ins: ['Inspektor', 'M12 3v4M12 17v4M3 12h4M17 12h4M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'],
-};
+const HX_BUCKETS = 16;
+const HX_TAB_NAME = { code: 'Kod', talk: 'Rozmowy', files: 'Pliki', log: 'Dziennik', ins: 'Inspektor' };
+// one pass over the log: activity per agent in 16 slices of the run (sparklines), messages per agent, phase lengths
+function hxStats(T) {
+  const dur = Math.max(1, T.duration);
+  const spark = {}; const msgs = {};
+  T.events.forEach((e, i) => {
+    const id = e.agent || 'hermes';
+    const b = Math.min(HX_BUCKETS - 1, Math.floor((T.rel[i] / dur) * HX_BUCKETS));
+    (spark[id] || (spark[id] = new Array(HX_BUCKETS).fill(0)))[b]++;
+    if (e.type === 'message.sent') msgs[id] = (msgs[id] || 0) + 1;
+  });
+  const phases = runFacts(T).phases.map((p) => ({ name: p.name, ms: Math.max(0, p.end - p.start) }));
+  return { dur, spark, msgs, phases };
+}
+// the report as Markdown, for the web host to save (the board cannot download files)
+function hxReportMd(R, runName) {
+  const lines = ['# ' + R.title, '', '**' + R.status + '** · ' + runName, ''];
+  if (R.summary) lines.push(R.summary, '');
+  for (const k of R.kpis) lines.push('- ' + k.label + ': ' + k.value);
+  if (R.doc) lines.push('', '## ' + R.docPath, '', R.doc);
+  if (R.results.length) { lines.push('', '## Wyniki zespołu', ''); for (const r of R.results) lines.push('- **' + r.who + '** — ' + r.text); }
+  return lines.join('\n') + '\n';
+}
 const HX_LANE_W = 96; const HX_LANE_H = 16; const HX_LANE_HEAD = 18;
 const HX_MARK = { good: '#8CFFB4', bad: '#FF5A6A', talk: '#D6BEFF', file: '#9FE3FF', tool: 'rgba(201,210,236,0.55)', x: 'rgba(201,210,236,0.3)' };
+const hxTabsFor = (bp) => (bp === 'xl' ? ['code', 'talk', 'files', 'ins'] : bp === 'm' ? ['code', 'talk', 'files', 'log', 'ins'] : ['code', 'talk', 'files', 'log', 'ins']);
+// the boot sequence covers the page from its first frame, unless the reader opened a run or asked for less motion
+const hxBootWanted = () => { try { return !hxReduce() && !(typeof location !== 'undefined' && /[?&]run=/.test(location.search)); } catch (e) { return false; } };
 const hxBp = (w) => (w >= 1180 ? 'xl' : w >= 720 ? 'm' : 's');
 const hxReduce = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } };
 
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { run: null, tick: 0, idx: -1, playing: true, speed: 1, sel: null, hl: null, focus: 'auto', follow: true, task: '', note: '', bp: 'xl', sheet: false, intro: true, report: false, boot: false };
-    this._v = null; this._T = null; this._F = null; this._lanes = []; this._sum = {}; this._custom = null; this._stopLive = null; this._lastPush = 0; this._auto = 'code';
+    this.state = { run: null, tick: 0, idx: -1, playing: true, speed: 1, sel: null, hl: null, focus: 'auto', follow: true, task: '', note: '', bp: 'xl', sheet: false, intro: true, report: false, boot: hxBootWanted() };
+    this._v = null; this._T = null; this._F = null; this._lanes = []; this._sum = {}; this._stats = {}; this._doingKey = -2; this._doing = {}; this._custom = null; this._stopLive = null; this._lastPush = 0; this._auto = 'code';
   }
 
   // opts: idle = show the run paused mid-way (behind the order card), keepIntro = leave the card open
@@ -3296,6 +3365,7 @@ class Component extends DCLogic {
       if (!ev || !ev.length || !this._v) return;
       const T = NW.createTimeline(ev);
       this._sum[run] = runSummary(T);
+      this._stats[run] = hxStats(T);
       this._T = T; this._F = runFacts(T);
       const v = this._v;
       v.setTimeline(T);
@@ -3320,7 +3390,7 @@ class Component extends DCLogic {
   // lanes: one row per agent over the whole run, phase bands behind, events as ticks
   drawLanes() {
     const T = this._T;
-    if (T && this._v) this._lanes = lanesOf(T, (id) => this._v.player.label(id));
+    if (T && this._v) this._lanes = lanesOf(T, (id) => this._v.player.label(id), (id) => this._v.player.colour(id));
     const c = typeof document !== 'undefined' && typeof document.getElementById === 'function' ? document.getElementById('hx-lanes') : null;
     if (!c || !c.getContext || !T) return;
     const W = c.clientWidth; const H = c.clientHeight;
@@ -3394,7 +3464,7 @@ class Component extends DCLogic {
     // run cards show length, team and files: read each run once
     HX_HOST.runs().forEach((r) => Promise.resolve(HX_HOST.load(r.id)).then((ev) => { if (ev && ev.length && !this._sum[r.id]) { this._sum[r.id] = runSummary(NW.createTimeline(ev)); this.setState({ tick: this.state.tick + 1 }); } }));
     const init = HX_HOST.initial ? HX_HOST.initial() : { id: (HX_HOST.runs()[0] || {}).id, intro: true };
-    if (init && init.intro !== false && !hxReduce()) { this.setState({ boot: true }); this._bootT = setTimeout(() => this.setState({ boot: false }), 3300); }
+    if (this.state.boot) this._bootT = setTimeout(() => this.setState({ boot: false }), 3300);
     if (init && init.id) this.open(init.id, null, init.intro === false ? {} : { idle: true, keepIntro: true });
   }
 
@@ -3421,10 +3491,17 @@ class Component extends DCLogic {
     const relOf = (i) => (T ? T.rel[i] : 0);
 
     // the last thing each agent did, in words
-    const doing = {};
-    if (T) for (let i = A.idx; i >= 0 && i > A.idx - 400; i--) { const e = T.events[i]; const id = e.agent || 'hermes'; if (!doing[id] && e.type !== 'agent.spawned') { const n = narrate(e, label); doing[id] = n.verb + (n.obj ? ' ' + n.obj : n.extra ? ' · ' + n.extra : ''); } }
+    // memo: the last action of each agent is recomputed only when the event index changes
+    if (T && this._doingKey !== A.idx) {
+      const doing = {};
+      for (let i = A.idx; i >= 0 && i > A.idx - 400; i--) { const e = T.events[i]; const id = e.agent || 'hermes'; if (!doing[id] && e.type !== 'agent.spawned') { const n = narrate(e, label); doing[id] = n.verb + (n.obj ? ' ' + n.obj : n.extra ? ' · ' + n.extra : ''); } }
+      this._doing = doing; this._doingKey = A.idx;
+    }
+    const st = this._stats[S.run];
+    const cur = st ? Math.min(HX_BUCKETS - 1, Math.floor((t / st.dur) * HX_BUCKETS)) : -1;
+    const bars = (id) => { const arr = st && st.spark[id] ? st.spark[id] : []; const max = Math.max(1, ...arr); return Array.from({ length: HX_BUCKETS }, (_, j) => { const n = j <= cur ? (arr[j] || 0) : 0; return { h: n ? Math.max(10, Math.round((n / max) * 100)) : 0, cur: j === cur }; }); };
     const team = St.team.map((a) => ({
-      name: a.name, role: a.role, doing: doing[a.id] || '', status: a.status, working: a.working, state: a.state, fresh: a.fresh,
+      name: a.name, role: a.role, doing: this._doing[a.id] || '', status: a.status, working: a.working, state: a.state, fresh: a.fresh, bars: bars(a.id),
       hl: S.hl === 'user:' + a.id, style: '--depth:' + a.depth + ';--c:' + a.colour + ';--sc:' + a.statusColour,
       pick: () => { if (v) v.select('user:' + a.id); },
       enter: () => { if (v) v.highlight('user:' + a.id); }, leave: () => { if (v) v.highlight(null); },
@@ -3439,6 +3516,8 @@ class Component extends DCLogic {
     }));
 
     // the narrator: the newest event as one sentence
+    const reactorState = runInfo.live ? 'live' : done ? 'done' : A.failed ? 'fail' : playing ? 'work' : 'idle';
+    const narLive = playing && S.speed <= 1 ? 'polite' : 'off';
     let nar = { who: 'Hermes', verb: 'czeka na zlecenie', obj: '', extra: '', colour: '#F2C14E', fresh: false, working: false };
     if (T && A.log.length) { const n = narrate(T.events[A.log[0].i], label); nar = { who: n.who, verb: n.verb, obj: n.obj, extra: n.extra, colour: n.colour, fresh: fresh(relOf(A.log[0].i)), working: playing && !done }; }
 
@@ -3451,7 +3530,12 @@ class Component extends DCLogic {
     const active = auto ? this._auto : S.focus;
 
     const counts = { code: St.code || St.term ? '●' : '', talk: String(talk.length), files: String(files.length), log: String(log.length), ins: '' };
-    const tabs = Object.keys(HX_TABS).map((id) => ({ name: HX_TABS[id][0], d: HX_TABS[id][1].slice(1), on: active === id, count: counts[id], pick: () => this.setState({ focus: id, sheet: bp === 's' ? true : S.sheet }) }));
+    const tabHidden = {}; const tabOn = {}; const tabPick = {}; const tabCount = {}; const tabName = {};
+    for (const id of Object.keys(HX_TAB_NAME)) {
+      const inLayout = hxTabsFor(bp).indexOf(id) >= 0;
+      tabHidden[id] = !inLayout; tabOn[id] = active === id; tabCount[id] = counts[id]; tabName[id] = HX_TAB_NAME[id];
+      tabPick[id] = () => this.setState({ focus: id, sheet: bp === 's' ? true : S.sheet });
+    }
 
     let code = { file: '', badge: '', badgeColor: '#7F8BB3', who: '', diff: '', lines: [] };
     if (St.code) { const c = St.code; code = { file: c.file, badge: c.created ? 'NOWY' : c.typing ? 'PISZE' : 'ZMIANA', badgeColor: c.created ? '#8CFFB4' : '#FFB48A', who: c.who, diff: '+' + c.add + (c.del ? ' −' + c.del : ''), lines: c.lines }; }
@@ -3461,7 +3545,11 @@ class Component extends DCLogic {
     const info = S.sel && v ? v.inspect(S.sel) : null;
     if (info) ins = { kind: info.kind === 'file' ? 'plik' : info.sub, status: info.status, label: info.label, sub: info.kind === 'file' ? info.sub : '', hasSub: info.kind === 'file', stats: info.stats.map(([k, val]) => ({ k, v: val })), events: info.events.map((e) => ({ time: mmss(e.rel), type: e.type + (e.who ? ' · ' + e.who : ''), text: e.text, color: e.type.indexOf('fail') >= 0 || e.type === 'error' ? '#FF8F9A' : e.type.indexOf('passed') >= 0 || e.type.indexOf('completed') >= 0 ? '#8CFFB4' : '#7F8BB3' })) };
     const R = A.report;
-    const report = { run: runInfo.name, status: R.status, statusColor: A.failed ? '#FF8F9A' : '#8CFFB4', title: R.title, summary: R.summary, kpis: R.kpis, hasDoc: !!R.doc, doc: R.doc, docPath: R.docPath, results: R.results };
+    const phaseTotal = st ? st.phases.reduce((n, p) => n + p.ms, 0) || 1 : 1;
+    const phaseBars = st ? st.phases.map((p) => ({ name: p.name, w: Math.round((p.ms / phaseTotal) * 100), txt: mmss(p.ms) })) : [];
+    const msgTotal = st ? Object.values(st.msgs).reduce((n, x) => n + x, 0) || 1 : 1;
+    const msgBars = st ? Object.keys(st.msgs).sort((a, b) => st.msgs[b] - st.msgs[a]).map((id) => ({ name: label(id), w: Math.round((st.msgs[id] / msgTotal) * 100), txt: String(st.msgs[id]) })) : [];
+    const report = { run: runInfo.name, status: R.status, statusColor: A.failed ? '#FF8F9A' : '#8CFFB4', title: R.title, summary: R.summary, kpis: R.kpis, hasDoc: !!R.doc, doc: R.doc, docPath: R.docPath, results: R.results, phaseBars, msgBars, hasPhases: phaseBars.length > 0, hasMsgs: msgBars.length > 0 };
 
     const matched = S.task && S.task !== F.title ? this.match(S.task) : null;
     const mname = matched ? (runs.find((r) => r.id === matched) || {}).name : '';
@@ -3491,7 +3579,7 @@ class Component extends DCLogic {
       chips, follow: S.follow,
       toggleFollow: () => { if (!v) return; const on = !S.follow; v.setFocus(on); this.setState({ follow: on }); },
       zoomIn: () => v && v.zoom(1.2), zoomOut: () => v && v.zoom(1 / 1.2), resetCam: () => { if (v) v.reset(); },
-      tabs, auto, toggleAuto: () => this.setState({ focus: auto ? active : 'auto' }),
+      tabHidden, tabOn, tabPick, tabCount, tabName, auto, toggleAuto: () => this.setState({ focus: auto ? active : 'auto' }),
       paneCode: active === 'code', paneTalk: active === 'talk', paneFiles: active === 'files', paneLog: active === 'log', paneIns: active === 'ins',
       hasCode: !!St.code, code, hasTerm: !!St.term, term, noCode: !St.code && !St.term, codeMeta: St.code ? St.code.who : '',
       talk, talkMeta: talk.length + ' wiad.', noTalk: !talk.length, files, filesMeta: files.length + ' plików', noFiles: !files.length,
@@ -3528,6 +3616,8 @@ class Component extends DCLogic {
         };
         rd.readAsText(f);
       },
+      reactorState, narLive, hasExport: !!HX_HOST.exportReport,
+      exportReport: () => { if (HX_HOST.exportReport) HX_HOST.exportReport(hxReportMd(R, runInfo.name), (R.title || 'raport') + '.md'); },
       reportOpen, report, closeReport: () => this.setState({ report: false }),
       replay: () => { if (!v) return; v.setTime(0); v.play(); this.setState({ report: false, playing: true, idx: -1 }); },
     };

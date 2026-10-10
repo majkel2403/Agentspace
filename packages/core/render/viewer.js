@@ -10,7 +10,6 @@ import { drawText, formatDate } from '../gource/text.js';
 import { inspect } from '../gource/inspect.js';
 import { storyAt } from '../gource/story.js';
 import { drawStory } from '../gource/cards.js';
-import { gUserColour } from '../gource/colour.js';
 
 const BG0 = [0.1, 0.1, 0.1];
 export const TAIL_MS = 6000;
@@ -54,7 +53,7 @@ export function createViewer(opts) {
       for (const a of acts) { if (!paths.has(a.ev)) paths.set(a.ev, []); paths.get(a.ev).push(a.path); }
       pathsKey = acts.length;
     }
-    return { label: (id) => v.player.label(id), colour: (id) => gUserColour(v.player.label(id)), pathsOfEv: (i) => paths.get(i) || [] };
+    return { label: (id) => v.player.label(id), colour: (id) => v.player.colour(id), pathsOfEv: (i) => paths.get(i) || [] };
   };
   v.setTimeline = (T) => {
     if (v.T && v.T.listeners) v.T.listeners.delete(onAppend);

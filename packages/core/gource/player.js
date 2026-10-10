@@ -13,7 +13,7 @@ const clone = typeof structuredClone === 'function' ? structuredClone : (o) => J
 
 export function createPlayer(opts) {
   const P = { aspect: (opts && opts.aspect) || 16 / 9, autoRotate: !(opts && opts.autoRotate === false), focus: !!(opts && opts.focus), events: [], t0: null, stream: null, cps: [], cur: null, bake: null };
-  const ctx = () => ({ actions: P.stream.actions, notes: P.stream.notes, label: P.stream.label, parent: P.stream.parent });
+  const ctx = () => ({ actions: P.stream.actions, notes: P.stream.notes, label: P.stream.label, parent: P.stream.parent, colour: P.stream.colour });
   let C = null;
 
   function reset() {
@@ -101,5 +101,6 @@ export function createPlayer(opts) {
   };
   P.actions = () => P.stream.actions;
   P.label = (id) => P.stream.label(id);
+  P.colour = (id) => P.stream.colour(id);
   return P;
 }

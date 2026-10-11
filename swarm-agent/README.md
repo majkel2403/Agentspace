@@ -1,4 +1,8 @@
-# Rój · centrum agentów
+# Ul · plaster agentów
+
+Wersja 4 (Ul): plik to komórka **plastra miodu**. Im więcej rój dotknął pliku, tym wyższa i bardziej złota komórka;
+pszczoły-agenci (królowa i zespół) lecą nad plastrem i zostawiają ślady. Klawisz `V` przełącza na poprzedni widok,
+**Krajobraz uwagi**. Wersja 3 (krajobraz) jest opisana poniżej.
 
 Wersja 3: zamiast chmury agentów nad płaszczyzną — **krajobraz uwagi**. Im więcej rój dotknął pliku, tym wyższe
 wzgórze w tym miejscu; ślady dronów pokazują, gdzie latały w ostatnich sekundach; a kamera-reżyser sama prowadzi do
@@ -28,7 +32,7 @@ pojawienia się pliku. Te przejścia są funkcją czasu logu, więc też są pow
 npm install          # ws (serwer LIVE) i three (scena 3D)
 npm start            # http://127.0.0.1:4777   (PORT=… zmienia port)
 npm run demo:build   # odbudowa nagranych przebiegów z demo/make-swarm.mjs
-npm test             # 22 testy: zdarzenia, model, układ, serwer, narracja, teren
+npm test             # 26 testów: zdarzenia, model, układ, serwer, narracja, teren, plaster
 npm run smoke       # przeglądarka: odtwarza przebieg, klika agenta i plik (wymaga Playwright; URL=… i PLAYWRIGHT_MODULE=…)
 ```
 
@@ -41,6 +45,7 @@ npm run smoke       # przeglądarka: odtwarza przebieg, klika agenta i plik (wym
 | Układ | `src/layout.js` | miejsca folderów i plików, liczone z pełnej listy ścieżek przebiegu (drzewo nie „skacze”) |
 | Kolory | `src/palette.js` | królowa zawsze różowa, pozostali w kolejności pojawiania się; ta sama funkcja w scenie i na pulpicie |
 | Scena | `src/scene.js` | Three.js: teren uwagi, foldery, pliki, drony ze śladami, wiązki (działania), łuki (wiadomości), kamera i reżyser |
+| Plaster | `src/hive.js` | komórki plastra: każdy plik w najbliższej wolnej komórce heksagonalnej (deterministycznie) |
 | Teren | `src/terrain.js` | wysokość terenu z liczby dotknięć plików (czysta funkcja) i skala barw |
 | Narracja | `src/story.js` | podpis z dziennika, lista momentów kluczowych, skoki między nimi |
 | Dźwięk | `src/sound.js` | krótkie tony dla zdarzeń, grane tylko w przód przy odtwarzaniu |
@@ -66,7 +71,8 @@ npm run smoke       # przeglądarka: odtwarza przebieg, klika agenta i plik (wym
 - **Momenty** (`N` / `P`) — skok do następnej albo poprzedniej porażki testu, zatwierdzenia, uwagi, końca.
 - **Dźwięk** (`M`) — krótki ton dla każdego zdarzenia, gdy zegar je mija. Wyłączony domyślnie; włączenie wymaga kliknięcia (przeglądarka).
 - **Kurtyna** — po otwarciu przebiegu na chwilę pokazuje zlecenie i liczbę agentów.
-- Klawisze: spacja odtwarzanie, `F` śledzenie, `D` reżyser, `M` dźwięk, `N`/`P` momenty, `Esc` zamknięcie inspektora.
+- **Plaster** (domyślnie, `V` przełącza na krajobraz) — komórka na każdy plik; złota i wysoka, gdy była dotykana.
+- Klawisze: spacja odtwarzanie, `F` śledzenie, `D` reżyser, `M` dźwięk, `V` widok, `N`/`P` momenty, `Esc` zamknięcie inspektora.
 
 ## Format zdarzeń
 

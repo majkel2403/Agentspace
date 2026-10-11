@@ -24,7 +24,7 @@ export function heightField(files, box, n = 72) {
 // a colour for a height, from the ground (dark plum) through violet to the accent pink and hot yellow
 export function heightColour(v) {
   const t = Math.min(1, Math.max(0, v));
-  const stops = [[0.03, 0.02, 0.06], [0.28, 0.12, 0.45], [1, 0.18, 0.43], [1, 0.82, 0.4]];
+  const stops = [[0.08, 0.05, 0.02], [0.42, 0.27, 0.1], [1, 0.69, 0.13], [1, 0.95, 0.7]];
   const k = t * (stops.length - 1); const i = Math.min(stops.length - 2, Math.floor(k)); const f = k - i;
   return stops[i].map((c, j) => c + (stops[i + 1][j] - c) * f);
 }

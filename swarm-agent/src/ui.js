@@ -20,7 +20,7 @@ export function headerHTML(st, v) {
   const status = v.live ? 'na żywo' : st.failed ? 'błąd' : st.done ? 'zakończony' : st.now > 0 ? 'w toku' : 'gotowy';
   const cls = v.live ? 'live' : st.failed ? 'failed' : st.done ? 'done' : 'run';
   return `
-    <div class="brand"><span class="mark"></span><div><b>ROJ</b><small>centrum agentów</small></div></div>
+    <div class="brand"><span class="mark"></span><div><b>UL</b><small>plaster agentów</small></div></div>
     <div class="task"><span class="eyebrow">zlecenie</span><div class="title">${esc(st.task || v.run || 'brak przebiegu')}</div></div>
     <span class="pill ${cls}">${esc(status)}</span>
     <div class="clock" id="clock">${clockHTML(v)}</div>
@@ -28,6 +28,7 @@ export function headerHTML(st, v) {
       <button data-act="play" class="btn ${v.playing ? 'on' : ''}" title="Odtwórz / pauza (spacja)">${v.playing ? 'Pauza' : 'Odtwórz'}</button>
       ${[0.5, 1, 2, 4].map((s) => `<button data-act="speed" data-v="${s}" class="btn sm ${v.speed === s ? 'on' : ''}">${s}×</button>`).join('')}
       <button data-act="follow" class="btn ${v.follow ? 'on' : ''}" title="Kamera podąża za pracą (F)">Śledź</button>
+      <button data-act="view" class="btn" title="Ul (plaster miodu) i Krajobraz uwagi (V)">${v.mode === 'land' ? 'Widok: krajobraz' : 'Widok: ul'}</button>
       <button data-act="director" class="btn ${v.director ? 'on' : ''}" title="Reżyser: kamera sama prowadzi do tego, kto teraz działa (D)">Reżyser</button>
       <button data-act="sound" class="btn ${v.sound ? 'on' : ''}" title="Dźwięk zdarzeń (M)">${v.sound ? 'Dźwięk: wł.' : 'Dźwięk: wył.'}</button>
       <button data-act="reset" class="btn" title="Cały rój w kadrze">Dopasuj</button>

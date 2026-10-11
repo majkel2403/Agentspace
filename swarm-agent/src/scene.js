@@ -7,6 +7,7 @@ import { locate } from './layout.js';
 import { QUEEN } from './model.js';
 import { colourOf } from './palette.js';
 import { heightField, heightColour } from './terrain.js';
+import { hiveCells, CELL } from './hive.js';
 
 const APPEAR_S = 0.7;     // a new file or folder grows to full size in this many log seconds
 const WALK_S = 1.1;       // an agent walks to its next place in this many log seconds
@@ -16,9 +17,12 @@ const HOT_S = 1.6;        // a file stays bright this long after a touch
 const LABEL_S = 4;        // a file name is shown this long after a touch
 const TRAIL_S = 12;       // a drone's trail shows where it flew in the last this many log seconds
 const TERRAIN_N = 72;     // grid of the landscape of attention
+const HIVE_Y = 4;         // the comb lies just above the ground
+const HONEY = [0.42, 0.29, 0.12]; // an untouched cell: wax
+const GOLD = [1, 0.69, 0.13];     // a well-worked cell
 
-const FILE_COLOUR = { idle: '#6f7fb0', read: '#8fd8ff', created: '#3ddc97', modified: '#ffb547', deleted: '#ff5470' };
-const TONE_COLOUR = { assign: '#ff2e6e', question: '#ffd166', answer: '#9ad4ff', result: '#3ddc97', handoff: '#a66bff', critique: '#ff8a5c', revision: '#ffb547', approve: '#7cf5b8' };
+const FILE_COLOUR = { idle: '#8c7456', read: '#ffe49a', created: '#9be36b', modified: '#ffd166', deleted: '#ff5a3c' };
+const TONE_COLOUR = { assign: '#ffb020', question: '#ffd166', answer: '#9ad4ff', result: '#9be36b', handoff: '#e8b26b', critique: '#ff9a4a', revision: '#ffd166', approve: '#c6f08a' };
 const ease = (x) => { const t = Math.min(1, Math.max(0, x)); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
 const easeBack = (x) => { const t = Math.min(1, Math.max(0, x)); const c = 1.4; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
 const hashN = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return ((h >>> 0) % 1000) / 1000; };
@@ -41,10 +45,10 @@ function labelSprite(text, colour, size = 15) {
 export function createScene(container, { onPick } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.setClearColor(0x07040d, 1);
+  renderer.setClearColor(0x120b04, 1);
   container.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x07040d, 0.00045);
+  scene.fog = new THREE.FogExp2(0x120b04, 0.00045);
   const camera = new THREE.PerspectiveCamera(48, 1, 1, 8000);
   camera.position.set(0, 330, 470);
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -53,9 +57,13 @@ export function createScene(container, { onPick } = {}) {
   scene.add(new THREE.AmbientLight(0xffffff, 0.55));
   const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(-200, 400, 200); scene.add(sun);
 
-  const dirGroup = new THREE.Group(); const fileGroup = new THREE.Group();
+  const dirGroup = new THREE.Group(); const fileGroup = new THREE.Group(); const labelGroup = new THREE.Group(); const hiveGroup = new THREE.Group();
   const agentGroup = new THREE.Group(); const fxGroup = new THREE.Group();
-  scene.add(dirGroup, fileGroup, agentGroup, fxGroup);
+  scene.add(dirGroup, fileGroup, agentGroup, fxGroup, labelGroup, hiveGroup);
+  // the two views: 'hive' (the honeycomb of files) or 'land' (folders and the landscape of attention)
+  let mode = 'hive'; let cellMap = null; let cellPaths = []; let hiveMesh = null; let rawLayout = null;
+  const hexGeometry = new THREE.CylinderGeometry(CELL * 0.9, CELL * 0.9, 1, 6, 1); hexGeometry.rotateY(Math.PI / 6);
+  const dummy = new THREE.Object3D();
 
   const mats = new Map();
   const mat = (colour, emissive = 0, opacity = 1) => {
@@ -77,8 +85,9 @@ export function createScene(container, { onPick } = {}) {
 
   // the layout is rebuilt when the set of places changes (live runs): folders and files become meshes once
   function setLayout(L) {
-    layout = L;
-    clearGroup(dirGroup); clearGroup(fileGroup); clearGroup(agentGroup); clearGroup(fxGroup);
+    layout = L; rawLayout = L;
+    clearGroup(dirGroup); clearGroup(fileGroup); clearGroup(agentGroup); clearGroup(fxGroup); clearGroup(labelGroup);
+    if (hiveMesh) { hiveGroup.remove(hiveMesh); hiveMesh.dispose(); hiveMesh = null; }
     dirMeshes = new Map(); files = []; fileLabels = new Map(); agentMeshes = new Map(); posCache = new Map(); known = -1;
     for (const d of L.dirs.values()) {
       const m = new THREE.Mesh(sphere, mat(hashColour(d.key), 0.35));
@@ -92,6 +101,11 @@ export function createScene(container, { onPick } = {}) {
       m.userData = { kind: 'file', path: f.path };
       fileGroup.add(m); files.push({ path: f.path, mesh: m, dir: f.dir });
     }
+    cellMap = hiveCells((path) => L.files.get(path), [...L.files.keys()]);
+    cellPaths = [...L.files.keys()].filter((path) => cellMap.has(path)).sort();
+    hiveMesh = new THREE.InstancedMesh(hexGeometry, new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0.05, emissive: 0x2a1500, emissiveIntensity: 0.5 }), Math.max(1, cellPaths.length));
+    hiveMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    hiveGroup.add(hiveMesh);
     edges = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x6d5aa0, transparent: true, opacity: 0.45 }));
     dirGroup.add(edges);
     // the landscape under the workspace: a grid over the box the files span, raised by attention
@@ -166,6 +180,11 @@ export function createScene(container, { onPick } = {}) {
   }
 
   // where an agent stands: next to the file, or next to its own colleague, or by its parent when idle
+  // where a file is drawn: its cell in the comb, or its place in the landscape
+  function fileAt(path) {
+    if (mode === 'hive') { const c = cellMap && cellMap.get(path); return c ? { x: c.x, y: HIVE_Y, z: c.z } : null; }
+    return layout.files.get(path) || null;
+  }
   function home(a, st) {
     const p = a.parent && st.agents.get(a.parent);
     const base = a.parent === QUEEN || !p ? { x: 0, y: 14, z: 0 } : agentWhere(p, st);
@@ -174,8 +193,8 @@ export function createScene(container, { onPick } = {}) {
   }
   function keyPlace(key, st, self) {
     if (!key) return null;
-    const f = layout.files.get(key);
-    if (f) return { x: f.x, y: f.y + 9, z: f.z };
+    const f = fileAt(key);
+    if (f) return { x: f.x, y: f.y + (mode === 'hive' ? 6 : 9), z: f.z };
     const other = st.agents.get(key);
     if (other && other.id !== self.id) return home(other, st);
     return null;
@@ -212,10 +231,44 @@ export function createScene(container, { onPick } = {}) {
   }
 
   let lastSt = null;
+  function updateHive(st) {
+    if (!hiveMesh) return;
+    const now = st.now;
+    cellPaths.forEach((path, i) => {
+      const c = cellMap.get(path); const s = st.files.get(path);
+      dummy.position.set(c.x, HIVE_Y, c.z);
+      if (!s) { dummy.scale.set(0.0001, 0.0001, 0.0001); }
+      else {
+        const grow = easeBack((now - s.knownAt) / APPEAR_S);
+        const worked = Math.min(1, s.touches / 8);
+        const h = Math.max(0.2, grow * (0.8 + Math.min(4, Math.sqrt(s.touches)) * 1.3));
+        dummy.scale.set(Math.max(0.0001, grow), h, Math.max(0.0001, grow));
+        const hot = s.lastT >= 0 && now - s.lastT < HOT_S;
+        const base = s.state === 'deleted' ? [1, 0.35, 0.24] : [HONEY[0] + (GOLD[0] - HONEY[0]) * worked, HONEY[1] + (GOLD[1] - HONEY[1]) * worked, HONEY[2] + (GOLD[2] - HONEY[2]) * worked];
+        const k = hot ? 1.35 : 1;
+        const isSel = selected === 'file:' + path;
+        hiveMesh.setColorAt(i, new THREE.Color(isSel ? 1 : Math.min(1, base[0] * k), isSel ? 1 : Math.min(1, base[1] * k), isSel ? 1 : Math.min(1, base[2] * k)));
+      }
+      dummy.updateMatrix(); hiveMesh.setMatrixAt(i, dummy.matrix);
+    });
+    hiveMesh.instanceMatrix.needsUpdate = true;
+    if (hiveMesh.instanceColor) hiveMesh.instanceColor.needsUpdate = true;
+  }
+  function setMode(m) {
+    if (m === mode || !rawLayout) { mode = m; return; }
+    mode = m;
+    terrain.visible = m === 'land'; dirGroup.visible = m === 'land'; fileGroup.visible = m === 'land';
+    hiveGroup.visible = m === 'hive';
+    if (m === 'hive') { camera.position.set(0, 420, 330); controls.target.set(0, 0, 0); }
+    else { camera.position.set(0, 330, 470); controls.target.set(0, 0, 0); }
+    setLayout(rawLayout); // the places of the agents and the trails follow the new view
+  }
   function update(st) {
     lastSt = st;
     updateTree(st);
     updateTerrain(st);
+    updateHive(st);
+    terrain.visible = mode === 'land'; dirGroup.visible = mode === 'land'; fileGroup.visible = mode === 'land';
     const now = st.now;
     // files: grow in when first known, colour by their state, bright while recently touched
     for (const f of files) {
@@ -247,11 +300,11 @@ export function createScene(container, { onPick } = {}) {
     for (const act of st.actions) {
       const age = now - act.t;
       if (age < 0 || age > BEAM_S) continue;
-      const a = st.agents.get(act.agent); const f = layout.files.get(act.path);
+      const a = st.agents.get(act.agent); const f = fileAt(act.path);
       if (!a || !f) continue;
       const A = agentWhere(a, st);
       const colour = FILE_COLOUR[act.kind] || FILE_COLOUR.read;
-      fxGroup.add(fxLines([new THREE.Vector3(A.x, A.y, A.z), new THREE.Vector3(f.x, f.y + 9, f.z)], colour, 1 - age / BEAM_S));
+      fxGroup.add(fxLines([new THREE.Vector3(A.x, A.y, A.z), new THREE.Vector3(f.x, f.y + (mode === 'hive' ? 6 : 9), f.z)], colour, 1 - age / BEAM_S));
     }
     for (const a of st.agents.values()) {
       const pts = [];
@@ -282,9 +335,10 @@ export function createScene(container, { onPick } = {}) {
     }
     for (const path of named) {
       let sp = fileLabels.get(path);
-      const L = layout.files.get(path);
-      if (!sp) { sp = labelSprite(path.split('/').pop(), '#e6dcff', 11); fileLabels.set(path, sp); fileGroup.add(sp); }
-      sp.position.set(L.x, L.y + 14, L.z); sp.visible = true;
+      const L = fileAt(path);
+      if (!L) continue;
+      if (!sp) { sp = labelSprite(path.split('/').pop(), '#f6e6c4', 11); fileLabels.set(path, sp); labelGroup.add(sp); }
+      sp.position.set(L.x, L.y + (mode === 'hive' ? 16 : 14), L.z); sp.visible = true;
     }
     for (const [path, sp] of fileLabels) if (!named.has(path)) sp.visible = false;
   }
@@ -297,6 +351,13 @@ export function createScene(container, { onPick } = {}) {
     ray.setFromCamera(ndc, camera);
     const targets = [];
     for (const g of agentMeshes.values()) targets.push(g.userData.body);
+    if (mode === 'hive' && hiveMesh) {
+      targets.push(hiveMesh);
+      const agent = ray.intersectObjects(targets, false)[0];
+      if (!agent) return null;
+      if (agent.object === hiveMesh) return agent.instanceId != null && cellPaths[agent.instanceId] ? 'file:' + cellPaths[agent.instanceId] : null;
+      return 'agent:' + agent.object.userData.id;
+    }
     for (const f of files) if (f.mesh.scale.x > 0.5) targets.push(f.mesh);
     const hit = ray.intersectObjects(targets, false)[0];
     if (!hit) return null;
@@ -330,7 +391,7 @@ export function createScene(container, { onPick } = {}) {
   window.addEventListener('resize', resize);
   resize();
   return {
-    setLayout, update, frame, resize, pick,
+    setLayout, update, frame, resize, pick, setMode, get mode() { return mode; },
     setSelected(id) { selected = id; },
     // where an agent is right now (the director and the caption use it)
     positionOf(id) { const a = lastSt && lastSt.agents.get(id); return a ? agentWhere(a, lastSt) : null; },

@@ -141,7 +141,7 @@ function tick(now) {
     if (app.dirty || now - app.uiAt > 200) {
       app.uiAt = now; const forced = app.dirty; app.dirty = false; force = forced;
       const v = view(end);
-      v.director = app.director; v.sound = sound.on; v.caption = app.caption;
+      v.director = app.director; v.sound = sound.on; v.caption = app.caption; v.mode = app.scene.mode;
       v.nextMoment = stepMoment(app.moments, app.t, 1); v.prevMoment = stepMoment(app.moments, app.t, -1);
       paint('#top', headerHTML(st, v));
       paint('#roster', rosterHTML(st, v));
@@ -161,6 +161,11 @@ function view(end) {
 }
 
 // jumps to the next or previous key moment (the clock stops there so the reader can look)
+function toggleView() {
+  app.mode = app.scene.mode === 'hive' ? 'land' : 'hive';
+  app.scene.setMode(app.mode);
+  app.dirty = true;
+}
 function jump(dir) {
   if (!app.replay) return;
   const m = stepMoment(app.moments, app.t, dir);
@@ -177,6 +182,7 @@ function act(el, e) {
   else if (k === 'agent') { app.selected = 'agent:' + el.dataset.id; app.tab = 'ins'; }
   else if (k === 'file') { app.selected = 'file:' + el.dataset.id; app.tab = 'ins'; }
   else if (k === 'director') app.director = !app.director;
+  else if (k === 'view') toggleView();
   else if (k === 'sound') sound.toggle();
   else if (k === 'moment') jump(Number(el.dataset.v));
   app.dirty = true; // redrawn on the next frame, even under the pointer
@@ -199,6 +205,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { app.selected = null; app.dirty = true; }
   if (e.key === 'f') { app.follow = !app.follow; app.scene.setFollow(app.follow); app.dirty = true; }
   if (e.key === 'd') { app.director = !app.director; app.dirty = true; }
+  if (e.key === 'v') toggleView();
   if (e.key === 'm') { sound.toggle(); app.dirty = true; }
   if (e.key === 'n') jump(1);
   if (e.key === 'p') jump(-1);
@@ -208,5 +215,6 @@ app.scene = createScene($('#stage'), {
   onPick: (id) => { if (id) { app.selected = id; app.tab = 'ins'; } else app.selected = null; app.dirty = true; },
 });
 app.scene.setFollow(true);
+app.mode = 'hive';
 requestAnimationFrame(tick);
 loadRuns().catch((err) => { $('#stage').insertAdjacentHTML('beforeend', '<p class="hint">Nie udało się wczytać przebiegów: ' + String(err && err.message || err) + '</p>'); });

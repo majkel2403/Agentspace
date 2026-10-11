@@ -1,47 +1,49 @@
-{"ts":1791280800000,"run":"swarm-zwiad","type":"task.started","text":"Zbadaj sześć źródeł o protokole i zbuduj wspólną mapę."}
-{"ts":1791280801000,"run":"swarm-zwiad","type":"queen.reasoning","text":"Dzielę źródła między zwiadowców; porównanie robią programiści, wynik składam ja.","tokens":520,"step":0}
-{"ts":1791280802000,"run":"swarm-zwiad","type":"planner.step","steps":["Zebranie źródeł","Porównanie","Mapa i raport"],"step":0}
-{"ts":1791280804000,"run":"swarm-zwiad","type":"agent.spawned","agent":"scout-a","parent":"queen","label":"Zwiadowca A","text":"źródła 1–2"}
-{"ts":1791280804400,"run":"swarm-zwiad","type":"agent.spawned","agent":"scout-b","parent":"queen","label":"Zwiadowca B","text":"źródła 3–4"}
-{"ts":1791280804800,"run":"swarm-zwiad","type":"agent.spawned","agent":"scout-c","parent":"queen","label":"Zwiadowca C","text":"źródła 5–6"}
-{"ts":1791280805500,"run":"swarm-zwiad","type":"agent.spawned","agent":"worker-a","parent":"queen","label":"Programista A","text":"porównanie"}
-{"ts":1791280805900,"run":"swarm-zwiad","type":"agent.spawned","agent":"worker-b","parent":"queen","label":"Programista B","text":"mapa"}
-{"ts":1791280806300,"run":"swarm-zwiad","type":"agent.spawned","agent":"critic","parent":"queen","label":"Recenzent","text":"sprawdza wnioski"}
-{"ts":1791280808000,"run":"swarm-zwiad","type":"message.sent","agent":"queen","to":"scout-a","tone":"assign","task":"Źródła 1–2","text":"Przeczytaj i streść."}
-{"ts":1791280808300,"run":"swarm-zwiad","type":"message.sent","agent":"queen","to":"scout-b","tone":"assign","task":"Źródła 3–4","text":"Przeczytaj i streść."}
-{"ts":1791280808600,"run":"swarm-zwiad","type":"message.sent","agent":"queen","to":"scout-c","tone":"assign","task":"Źródła 5–6","text":"Przeczytaj i streść."}
-{"ts":1791280810000,"run":"swarm-zwiad","type":"tool.started","agent":"scout-a","tool":"web_search","text":"szukam źródeł"}
-{"ts":1791280810600,"run":"swarm-zwiad","type":"tool.started","agent":"scout-b","tool":"web_search","text":"szukam źródeł"}
-{"ts":1791280811200,"run":"swarm-zwiad","type":"tool.completed","agent":"scout-a","tool":"web_search","text":"2 źródła"}
-{"ts":1791280811200,"run":"swarm-zwiad","type":"tool.started","agent":"scout-c","tool":"web_search","text":"szukam źródeł"}
-{"ts":1791280811800,"run":"swarm-zwiad","type":"tool.completed","agent":"scout-b","tool":"web_search","text":"2 źródła"}
-{"ts":1791280812000,"run":"swarm-zwiad","type":"resource.read","agent":"scout-a","resource":".github/ISSUE_TEMPLATE/bug_report.md","text":"czytam"}
-{"ts":1791280812400,"run":"swarm-zwiad","type":"tool.completed","agent":"scout-c","tool":"web_search","text":"2 źródła"}
-{"ts":1791280812600,"run":"swarm-zwiad","type":"resource.read","agent":"scout-b","resource":".github/PULL_REQUEST_TEMPLATE.md","text":"czytam"}
-{"ts":1791280813000,"run":"swarm-zwiad","type":"resource.read","agent":"scout-a","resource":".github/ISSUE_TEMPLATE/feature_request.md","text":"czytam"}
-{"ts":1791280813200,"run":"swarm-zwiad","type":"resource.read","agent":"scout-c","resource":"CONTRIBUTING.md","text":"czytam"}
-{"ts":1791280813600,"run":"swarm-zwiad","type":"resource.read","agent":"scout-b","resource":"CHANGELOG.md","text":"czytam"}
-{"ts":1791280814200,"run":"swarm-zwiad","type":"resource.read","agent":"scout-c","resource":"README.md","text":"czytam"}
-{"ts":1791280814500,"run":"swarm-zwiad","type":"message.sent","agent":"scout-a","to":"queen","tone":"result","text":"Streszczenie gotowe: 2 źródeł."}
-{"ts":1791280815000,"run":"swarm-zwiad","type":"result.returned","agent":"scout-a","text":"Streszczenie 1 z 3"}
-{"ts":1791280815100,"run":"swarm-zwiad","type":"message.sent","agent":"scout-b","to":"queen","tone":"result","text":"Streszczenie gotowe: 4 źródeł."}
-{"ts":1791280815600,"run":"swarm-zwiad","type":"result.returned","agent":"scout-b","text":"Streszczenie 2 z 3"}
-{"ts":1791280815700,"run":"swarm-zwiad","type":"message.sent","agent":"scout-c","to":"queen","tone":"result","text":"Streszczenie gotowe: 6 źródeł."}
-{"ts":1791280816200,"run":"swarm-zwiad","type":"result.returned","agent":"scout-c","text":"Streszczenie 3 z 3"}
-{"ts":1791280820000,"run":"swarm-zwiad","type":"message.sent","agent":"worker-a","to":"scout-a","tone":"question","text":"Które źródło mówi o czasie oczekiwania?"}
-{"ts":1791280821000,"run":"swarm-zwiad","type":"message.sent","agent":"scout-a","to":"worker-a","tone":"answer","text":"Źródło 2, sekcja o heartbeat."}
-{"ts":1791280822500,"run":"swarm-zwiad","type":"file.created","agent":"worker-a","resource":"raport/porownanie.md","content":"# Porównanie\n| źródło | czas oczekiwania |\n|---|---|","text":"tabela porównania"}
-{"ts":1791280824000,"run":"swarm-zwiad","type":"file.modified","agent":"worker-b","resource":"raport/mapa.md","patch":"+ mapa połączeń: klient → transport → serwer","text":"mapa połączeń"}
-{"ts":1791280826000,"run":"swarm-zwiad","type":"message.sent","agent":"worker-b","to":"critic","tone":"handoff","text":"Tabela i mapa gotowe."}
-{"ts":1791280827500,"run":"swarm-zwiad","type":"message.sent","agent":"critic","to":"worker-a","tone":"critique","text":"Dodaj źródło dla wartości domyślnej."}
-{"ts":1791280829000,"run":"swarm-zwiad","type":"file.modified","agent":"worker-a","resource":"raport/porownanie.md","patch":"+ domyślnie 25 s (źródło 4)","text":"uzupełnienie"}
-{"ts":1791280830500,"run":"swarm-zwiad","type":"message.sent","agent":"critic","to":"queen","tone":"approve","text":"Wnioski zgodne ze źródłami."}
-{"ts":1791280832000,"run":"swarm-zwiad","type":"agent.completed","agent":"scout-a"}
-{"ts":1791280832000,"run":"swarm-zwiad","type":"agent.completed","agent":"scout-b"}
-{"ts":1791280832000,"run":"swarm-zwiad","type":"agent.completed","agent":"scout-c"}
-{"ts":1791280832000,"run":"swarm-zwiad","type":"agent.completed","agent":"worker-a"}
-{"ts":1791280832000,"run":"swarm-zwiad","type":"agent.completed","agent":"worker-b"}
-{"ts":1791280832000,"run":"swarm-zwiad","type":"agent.completed","agent":"critic"}
-{"ts":1791280833000,"run":"swarm-zwiad","type":"file.created","agent":"queen","resource":"raport/raport.md","content":"# Raport roju\nMapa, porównanie, wnioski.","text":"raport końcowy"}
-{"ts":1791280834000,"run":"swarm-zwiad","type":"result.returned","agent":"queen","text":"Raport gotowy: mapa, tabela i wnioski ze wszystkich źródeł."}
-{"ts":1791280835000,"run":"swarm-zwiad","type":"task.completed","text":"Zebrano i porównano sześć źródeł."}
+{"ts":1791280800000,"type":"run.started","text":"Zbadaj sześć źródeł o protokole i zbuduj wspólną mapę."}
+{"ts":1791280801000,"type":"queen.thought","text":"Dzielę źródła między zwiadowców; porównanie robią programiści, wynik składam ja."}
+{"ts":1791280802000,"type":"plan.updated","steps":["Zebranie źródeł","Porównanie","Mapa i raport"],"step":0}
+{"ts":1791280804000,"type":"agent.spawned","agent":"scout-a","parent":"queen","label":"Zwiadowca A","role":"Zwiadowca","text":"źródła 1–2"}
+{"ts":1791280804400,"type":"agent.spawned","agent":"scout-b","parent":"queen","label":"Zwiadowca B","role":"Zwiadowca","text":"źródła 3–4"}
+{"ts":1791280804800,"type":"agent.spawned","agent":"scout-c","parent":"queen","label":"Zwiadowca C","role":"Zwiadowca","text":"źródła 5–6"}
+{"ts":1791280805500,"type":"agent.spawned","agent":"worker-a","parent":"queen","label":"Programista A","role":"Programista","text":"porównanie"}
+{"ts":1791280805900,"type":"agent.spawned","agent":"worker-b","parent":"queen","label":"Programista B","role":"Programista","text":"mapa"}
+{"ts":1791280806300,"type":"agent.spawned","agent":"critic","parent":"queen","label":"Recenzent","role":"Recenzent","text":"sprawdza wnioski"}
+{"ts":1791280808000,"type":"message.sent","from":"queen","to":"scout-a","tone":"assign","task":"Źródła 1–2","text":"Przeczytaj i streść."}
+{"ts":1791280808300,"type":"message.sent","from":"queen","to":"scout-b","tone":"assign","task":"Źródła 3–4","text":"Przeczytaj i streść."}
+{"ts":1791280808600,"type":"message.sent","from":"queen","to":"scout-c","tone":"assign","task":"Źródła 5–6","text":"Przeczytaj i streść."}
+{"ts":1791280810000,"type":"tool.started","agent":"scout-a","tool":"web_search","command":"szukam źródeł"}
+{"ts":1791280810600,"type":"tool.started","agent":"scout-b","tool":"web_search","command":"szukam źródeł"}
+{"ts":1791280811200,"type":"tool.finished","agent":"scout-a","tool":"web_search","ok":true,"text":"2 źródła"}
+{"ts":1791280811200,"type":"tool.started","agent":"scout-c","tool":"web_search","command":"szukam źródeł"}
+{"ts":1791280811800,"type":"tool.finished","agent":"scout-b","tool":"web_search","ok":true,"text":"2 źródła"}
+{"ts":1791280812000,"type":"file.read","agent":"scout-a","path":".github/ISSUE_TEMPLATE/bug_report.md"}
+{"ts":1791280812400,"type":"tool.finished","agent":"scout-c","tool":"web_search","ok":true,"text":"2 źródła"}
+{"ts":1791280812600,"type":"file.read","agent":"scout-b","path":".github/PULL_REQUEST_TEMPLATE.md"}
+{"ts":1791280813000,"type":"file.read","agent":"scout-a","path":".github/ISSUE_TEMPLATE/feature_request.md"}
+{"ts":1791280813200,"type":"file.read","agent":"scout-c","path":"CONTRIBUTING.md"}
+{"ts":1791280813600,"type":"file.read","agent":"scout-b","path":"CHANGELOG.md"}
+{"ts":1791280814200,"type":"file.read","agent":"scout-c","path":"README.md"}
+{"ts":1791280814500,"type":"message.sent","from":"scout-a","to":"queen","tone":"result","text":"Streszczenie gotowe: 2 źródeł."}
+{"ts":1791280815000,"type":"result","agent":"scout-a","text":"Streszczenie 1 z 3"}
+{"ts":1791280815100,"type":"message.sent","from":"scout-b","to":"queen","tone":"result","text":"Streszczenie gotowe: 4 źródeł."}
+{"ts":1791280815600,"type":"result","agent":"scout-b","text":"Streszczenie 2 z 3"}
+{"ts":1791280815700,"type":"message.sent","from":"scout-c","to":"queen","tone":"result","text":"Streszczenie gotowe: 6 źródeł."}
+{"ts":1791280816200,"type":"result","agent":"scout-c","text":"Streszczenie 3 z 3"}
+{"ts":1791280820000,"type":"plan.updated","steps":["Zebranie źródeł","Porównanie","Mapa i raport"],"step":1}
+{"ts":1791280820500,"type":"message.sent","from":"worker-a","to":"scout-a","tone":"question","text":"Które źródło mówi o czasie oczekiwania?"}
+{"ts":1791280821000,"type":"message.sent","from":"scout-a","to":"worker-a","tone":"answer","text":"Źródło 2, sekcja o heartbeat."}
+{"ts":1791280822500,"type":"file.write","agent":"worker-a","path":"raport/porownanie.md","action":"created","lines":3}
+{"ts":1791280824000,"type":"file.write","agent":"worker-b","path":"raport/mapa.md","action":"modified","lines":1}
+{"ts":1791280826000,"type":"message.sent","from":"worker-b","to":"critic","tone":"handoff","text":"Tabela i mapa gotowe."}
+{"ts":1791280827500,"type":"message.sent","from":"critic","to":"worker-a","tone":"critique","text":"Dodaj źródło dla wartości domyślnej."}
+{"ts":1791280829000,"type":"file.write","agent":"worker-a","path":"raport/porownanie.md","action":"modified","lines":1}
+{"ts":1791280830500,"type":"message.sent","from":"critic","to":"queen","tone":"approve","text":"Wnioski zgodne ze źródłami."}
+{"ts":1791280832000,"type":"plan.updated","steps":["Zebranie źródeł","Porównanie","Mapa i raport"],"step":2}
+{"ts":1791280833000,"type":"agent.finished","agent":"scout-a"}
+{"ts":1791280833000,"type":"agent.finished","agent":"scout-b"}
+{"ts":1791280833000,"type":"agent.finished","agent":"scout-c"}
+{"ts":1791280833000,"type":"agent.finished","agent":"worker-a"}
+{"ts":1791280833000,"type":"agent.finished","agent":"worker-b"}
+{"ts":1791280833000,"type":"agent.finished","agent":"critic"}
+{"ts":1791280834000,"type":"file.write","agent":"queen","path":"raport/raport.md","action":"created","lines":2}
+{"ts":1791280835000,"type":"result","agent":"queen","text":"Raport gotowy: mapa, tabela i wnioski ze wszystkich źródeł."}
+{"ts":1791280836000,"type":"run.completed","text":"Zebrano i porównano sześć źródeł."}

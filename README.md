@@ -182,6 +182,10 @@ Zapisuje pary obrazów (Gource po lewej, nasz renderer po prawej) i miarę SSIM 
 - `adapters/jarvis.mjs` + `tools/jarvis-relay.mjs` — zadania Hermesa z Jarvisa (Telegram, cron, konsola) jako przebiegi
   na żywo: przekaźnik czyta strumień mostu (`/bridge/events`, zdarzenia `agent`) i wysyła je do serwera. Uruchomienie:
   `JARVIS_BRIDGE_TOKEN=… AGENTSPACE_URL=http://127.0.0.1:4777 node tools/jarvis-relay.mjs`. Test: `test/jarvis.test.mjs`.
+- Animacja kamery: zoom jest rozłożony na klatki (cel przesuwa się, widok go goni, zakotwiczony na tym samym punkcie),
+  a „Śledź pracę” i „Dopasuj” zwalniają kamerę płynnie zamiast skoku. Scena nie jest rysowana, gdy widok miasta
+  ją zasłania; piksele są ograniczone do 1,5× (gęste drzewo nie zyskuje na większej rozdzielczości).
+- Dotyk: cele dotykowe mają co najmniej 40 px (44 px na ekranach dotykowych); wąski układ ma ikony zamiast etykiet.
 - Wygląd (styl JEV Desk, plik `packages/ui/hermes.css`): śliwkowo-czarne tło z różową poświatą, szklane panele,
   różowy akcent Hermesa, cyfry i zegar w szeryfowym Fraunces, etykiety w JetBrains Mono, tekst w Space Grotesk.
   Kolory agentów są z palety walidowanej na tle `#05030a` (`scripts/validate_palette.js`).

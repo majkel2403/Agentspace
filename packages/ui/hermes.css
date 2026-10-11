@@ -335,3 +335,26 @@ button.hx-row{cursor:pointer}button.hx-row:hover{background:rgba(232,236,248,.06
 .hx [hidden]{display:none!important}
 .hx-cam{flex-wrap:wrap;justify-content:flex-end;max-width:min(640px,calc(100% - 16px))}
 .hx-cv.hx-ov{cursor:grab;touch-action:none}
+
+/* ---- v4: touch targets (40 px and up), narrow-layout fit, phase strip on phones */
+.hx-btn{min-height:40px}
+.hx-tab{min-height:40px}
+.hx-ico{width:44px;min-width:44px}
+.hx-run{min-height:46px}
+.hx-agent{min-height:52px}
+.hx-seg .hx-btn{min-height:38px}
+.hx-cam .hx-btn{min-height:40px}
+.hx[data-bp="m"] .hx-cam .lbl,.hx[data-bp="m"] .hx-auto .lbl{display:none}
+.hx[data-bp="m"] .hx-cam .hx-btn{padding:0 10px}
+.hx[data-bp="m"] .hx-dh{gap:0}
+.hx[data-bp="m"] .hx-dh .hx-tab{min-width:40px;padding:0 6px}
+.hx[data-bp="m"] .hx-auto{min-width:40px;padding:0;width:40px}
+.hx[data-bp="s"]{--top-h:76px}
+.hx[data-bp="s"] .hx-steps{min-height:8px}
+.hx-runs{scroll-snap-type:x proximity;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.hx[data-bp="s"] .hx-rail-b{scroll-snap-type:x proximity;-webkit-mask-image:linear-gradient(90deg,#000 90%,transparent);mask-image:linear-gradient(90deg,#000 90%,transparent)}
+.hx[data-bp="s"] .hx-agent{scroll-snap-align:start}
+@media (pointer:coarse){.hx-btn,.hx-tab{min-height:44px}.hx-ico{width:46px;min-width:46px}}
+.hx-cam .hx-seg .hx-btn,.hx-seg .hx-btn{min-height:40px}
+.hx-tab{min-width:40px}
+.hx-seg{padding:3px}

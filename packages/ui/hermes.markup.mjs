@@ -30,7 +30,7 @@ const HX_TAB_ICON = {
 const tabs = `
       <div class="hx-dh" role="tablist" aria-label="Panel">
 ${['code', 'talk', 'files', 'log', 'ins'].map((id) => `        <button type="button" role="tab" class="hx-tab" hidden="{{tabHidden.${id}}}" aria-selected="{{tabOn.${id}}}" aria-label="{{tabName.${id}}}" title="{{tabName.${id}}}" onClick="{{tabPick.${id}}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${HX_TAB_ICON[id]}"/></svg><span class="lbl">{{tabName.${id}}}</span><span class="ct">{{tabCount.${id}}}</span></button>`).join('\n')}
-        <button type="button" class="hx-btn hx-auto" aria-pressed="{{auto}}" onClick="{{toggleAuto}}" title="Panel sam pokazuje to, co dzieje się teraz">Auto</button>
+        <button type="button" class="hx-btn hx-auto" aria-pressed="{{auto}}" onClick="{{toggleAuto}}" aria-label="Auto: panel sam pokazuje to, co dzieje się teraz" title="Panel sam pokazuje to, co dzieje się teraz"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/></svg><span class="lbl">Auto</span></button>
       </div>`;
 
 const panes = `

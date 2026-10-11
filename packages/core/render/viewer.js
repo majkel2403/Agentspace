@@ -3,7 +3,7 @@
 //   const v = createViewer({ gl: canvas, overlay: canvas2 })
 //   v.setTimeline(T); v.setTime(ms); v.play(); v.setSpeed(4); v.setLive(true); v.onSelect = (id, info) => {}
 import { createPlayer } from '../gource/player.js';
-import { buildFrame } from '../gource/frame.js';
+import { buildFrame, blendEase } from '../gource/frame.js';
 import { createGL } from '../gource/gl.js';
 import { createC2D } from '../gource/c2d.js';
 import { drawText, formatDate } from '../gource/text.js';
@@ -36,15 +36,18 @@ export function createViewer(opts) {
   // the camera: follows the work until the reader moves or zooms (then `free` holds centre and scale, and only the
   // "follow" switch or "fit" gives the work back); fill and node scale make the structures read at a glance
   const cam = { zoom: 1, panX: 0, panY: 0, free: null, fill: opts.fill != null ? opts.fill : 1.25, node: opts.nodeScale != null ? opts.nodeScale : 1.5 };
-  const freeze = () => { if (!cam.free && F) cam.free = { cx: F.V.cx, cy: F.V.cy, K: F.V.K }; };
+  const freeze = () => { if (!cam.free && F) cam.free = { cx: F.V.cx, cy: F.V.cy, K: F.V.K, tx: F.V.cx, ty: F.V.cy, tk: F.V.K }; };
+  // hand the camera back to the work: the current view becomes the start of an eased blend
+  const release = () => { if (F && cam.free) cam.blend = { cx: cam.free.cx, cy: cam.free.cy, K: cam.free.K, t0: performance.now() }; cam.free = null; };
   const zoomAt = (factor, px, py) => {
     if (!F) return;
     freeze();
-    const K0 = cam.free.K; const K1 = Math.max(F.V.K * 0.05, Math.min(F.V.K * 400, K0 * factor));
+    // zoom is eased: the target moves now, the view follows it in render(), anchored on the same point
+    const K0 = cam.free.tk; const K1 = Math.max(F.V.K * 0.05, Math.min(F.V.K * 400, K0 * factor));
     // the world point under the pointer stays under the pointer
     const ox = F.V.sx(F.V.cx); const oy = F.V.sy(F.V.cy);
     const wx = cam.free.cx + (px - ox) / K0; const wy = cam.free.cy + (py - oy) / K0;
-    cam.free.K = K1; cam.free.cx = wx - (px - ox) / K1; cam.free.cy = wy - (py - oy) / K1;
+    cam.free.tk = K1; cam.free.tx = wx - (px - ox) / K1; cam.free.ty = wy - (py - oy) / K1;
   };
   v.setBubbles = (on) => { opts.bubbles = !!on; };
   v.following = () => !cam.free;
@@ -86,7 +89,7 @@ export function createViewer(opts) {
   // follow the work on / off: the camera is part of the simulation, so the history is re-run with the new mode
   v.setFocus = (on) => {
     opts.focus = !!on;
-    cam.free = null;
+    if (!on) freeze(); else release();
     v.player = createPlayer({ aspect: aspectNow(), autoRotate: opts.autoRotate, focus: !!on });
     if (v.T) v.player.load(v.T.events);
   };
@@ -96,7 +99,9 @@ export function createViewer(opts) {
   v.zoom = (k) => { if (F) zoomAt(k, F.V.sx(F.V.cx), F.V.sy(F.V.cy)); };
   v.zoomAt = zoomAt;
   v.freeze = freeze;
-  v.reset = () => { cam.free = null; cam.zoom = 1; cam.panX = 0; cam.panY = 0; v.select(null); };
+  v.reset = () => { release(); cam.zoom = 1; cam.panX = 0; cam.panY = 0; v.select(null); };
+  v.suspended = false;
+  v.suspend = (on) => { v.suspended = !!on; };
   v.select = (id) => { v.sel = id; if (v.onSelect) v.onSelect(id, id ? v.inspect(id) : null); };
   v.inspect = (id) => inspect(v.player, v.T, id, v.t / 1000);
   v.frame = () => F;
@@ -120,15 +125,23 @@ export function createViewer(opts) {
         if (v.t >= v.T.duration + TAIL_MS) { v.t = v.T.duration + TAIL_MS; v.playing = false; }
       }
     }
-    render(dt, false);
+    if (!v.suspended) render(dt, false);
     if (v.onTick) v.onTick(v);
   }
 
   function render(dt, sync) {
+    // a free camera eases toward its zoom target (frame-rate independent); renderAt(sync) stays exact
+    if (!sync && cam.free && cam.free.tk) {
+      const a = 1 - Math.exp(-Math.min(0.1, dt) * 12);
+      cam.free.cx += (cam.free.tx - cam.free.cx) * a; cam.free.cy += (cam.free.ty - cam.free.cy) * a;
+      cam.free.K = Math.exp(Math.log(cam.free.K) + (Math.log(cam.free.tk) - Math.log(cam.free.K)) * a);
+    }
+    if (cam.blend && blendEase(cam.blend) >= 1) cam.blend = null;
     const W = glc.clientWidth;
     const H = glc.clientHeight;
     if (W < 20 || H < 20 || !v.T) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // the tree is dense at any zoom: a pixel ratio above 1.5 costs fill rate without showing more of it
+    const dpr = Math.min(window.devicePixelRatio || 1, opts.maxDpr || 1.5);
     if (ovc.width !== Math.round(W * dpr) || ovc.height !== Math.round(H * dpr)) { ovc.width = Math.round(W * dpr); ovc.height = Math.round(H * dpr); }
     // the camera framing depends on the aspect ratio: re-run the history when it changes a lot (debounced)
     const asp = aspectOf(W, H);
@@ -194,7 +207,7 @@ export function createViewer(opts) {
     if (drag) {
       const dx = e.clientX - drag.x; const dy = e.clientY - drag.y;
       drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (drag.moved > 4 && F) { freeze(); cam.free.cx -= dx / cam.free.K; cam.free.cy -= dy / cam.free.K; }
+      if (drag.moved > 4 && F) { freeze(); cam.free.cx -= dx / cam.free.K; cam.free.cy -= dy / cam.free.K; cam.free.tx = cam.free.cx; cam.free.ty = cam.free.cy; cam.free.tk = cam.free.K; }
     } else {
       const r = rect();
       const h = pick(e.clientX - r.left, e.clientY - r.top);

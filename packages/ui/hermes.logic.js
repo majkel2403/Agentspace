@@ -77,7 +77,12 @@ class Component extends DCLogic {
 
   // the city view: the same workspace drawn as a city; a building picked there opens in the inspector
   cityPick(path) { this.setState({ sel: 'city:' + path, focus: 'ins' }); if (this._v) this._v.select(null); }
-  showView(view) { this.setState({ view, sel: null }); if (view === 'city' && this._city) this._city.fit(); }
+  showView(view) {
+    // the tree is not drawn while the city is on: its GPU work would be hidden behind the city anyway
+    if (this._v) this._v.suspend(view === 'city');
+    this.setState({ view, sel: null });
+    if (view === 'city' && this._city) this._city.fit();
+  }
   toggleBubbles() { const on = !this.state.bubbles; if (this._v) this._v.setBubbles(on); this.setState({ bubbles: on }); }
 
   match(text) { return matchTask(text, HX_HOST.runs().map((r) => r.id)); }
@@ -134,7 +139,7 @@ class Component extends DCLogic {
     const gl = document.getElementById('hx-gl');
     const ov = document.getElementById('hx-ov');
     if (!gl || !ov) return;
-    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Space Grotesk', 'Inter', sans-serif", fontScale: 1.12, nodeScale: 1.6, fill: 1.3, bubbles: false });
+    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Space Grotesk', 'Inter', sans-serif", fontScale: 1.12, nodeScale: 1.6, fill: 1.3, bubbles: false, maxDpr: 1.5 });
     const cityCv = document.getElementById('hx-city');
     if (cityCv && NW.createCity) { this._city = NW.createCity(cityCv); this._city.onPick = (path) => this.cityPick(path); }
     if (typeof window !== 'undefined') { window.__NW = this._v; window.__HXAPP = this; if (window.__HM_TEST) window.__HM_TEST.logic = this; }

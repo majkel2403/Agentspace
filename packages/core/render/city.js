@@ -109,7 +109,8 @@ function cityLayout(root) {
 
 export function createCity(canvas) {
   const ctx = canvas.getContext('2d');
-  const cam = { cx: WORLD_W / 2, cy: WORLD_H / 2, K: 1, free: false };
+  const cam = { cx: WORLD_W / 2, cy: WORLD_H / 2, K: 1, free: false, tx: 0, ty: 0, tk: 0, blend: null };
+  let lastNow = performance.now();
   const pointers = new Map();
   let drag = null; let pinch = null; let model = null; let lay = null; let layKey = ''; let W = 0; let H = 0; let dpr = 1;
   // the screen area the city fills: the stage minus the panels around it (insets), so nothing starts under a panel
@@ -119,20 +120,36 @@ export function createCity(canvas) {
   const api = { onPick: null, hover: null, free: false };
 
   const autoK = () => { const a = area(); return Math.min(a.wf / (WORLD_W + 40), a.hf / (WORLD_H + 40)); };
+  // the auto view is the whole city; after the reader zooms or pans, the view eases back into it (fit) instead of snapping
   const view = () => {
-    if (!cam.free) { const K = autoK(); return { cx: WORLD_W / 2, cy: WORLD_H / 2, K }; }
+    if (!cam.free) {
+      const K = autoK(); const auto = { cx: WORLD_W / 2, cy: WORLD_H / 2, K };
+      if (cam.blend) {
+        const x = Math.min(1, (performance.now() - cam.blend.t0) / 700); const f = 1 - Math.pow(1 - x, 3);
+        if (x >= 1) cam.blend = null;
+        return { cx: cam.blend ? cam.blend.cx + (auto.cx - cam.blend.cx) * f : auto.cx, cy: cam.blend ? cam.blend.cy + (auto.cy - cam.blend.cy) * f : auto.cy,
+          K: cam.blend ? Math.exp(Math.log(cam.blend.K) + (Math.log(auto.K) - Math.log(cam.blend.K)) * f) : auto.K };
+      }
+      return auto;
+    }
     return cam;
   };
   const toWorld = (px, py) => { const v = view(); const a = area(); return { x: v.cx + (px - a.ox) / v.K, y: v.cy + (py - a.oy) / v.K }; };
-  const ensureFree = () => { if (!cam.free) { const v = view(); cam.cx = v.cx; cam.cy = v.cy; cam.K = v.K; cam.free = true; api.free = true; } };
+  const ensureFree = () => { if (!cam.free) { const v = view(); cam.cx = v.cx; cam.cy = v.cy; cam.K = v.K; cam.tx = v.cx; cam.ty = v.cy; cam.tk = v.K; cam.blend = null; cam.free = true; api.free = true; } };
+  // zoom is eased: the target moves now and the view follows it in draw(), anchored on the same world point
   const zoomAt = (factor, px, py) => {
     ensureFree();
     const a = autoK();
     const before = toWorld(px, py);
-    cam.K = cityClamp(cam.K * factor, a * 0.2, a * 80);
-    const A = area(); cam.cx = before.x - (px - A.ox) / cam.K; cam.cy = before.y - (py - A.oy) / cam.K;
+    const K = cityClamp(cam.tk * factor, a * 0.2, a * 80);
+    const A = area();
+    cam.tk = K; cam.tx = before.x - (px - A.ox) / K; cam.ty = before.y - (py - A.oy) / K;
   };
-  const fit = () => { cam.free = false; api.free = false; };
+  // back to the whole city: the current view becomes the start of an eased blend
+  const fit = () => {
+    if (cam.free) cam.blend = { cx: cam.cx, cy: cam.cy, K: cam.K, t0: performance.now() };
+    cam.free = false; api.free = false;
+  };
 
   const hitBlock = (px, py) => {
     if (!lay) return null;
@@ -170,7 +187,7 @@ export function createCity(canvas) {
     if (drag && pointers.has(e.pointerId)) {
       const dx = p.x - drag.x; const dy = p.y - drag.y;
       drag.x = p.x; drag.y = p.y; drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (drag.moved > 4) { ensureFree(); cam.cx -= dx / cam.K; cam.cy -= dy / cam.K; }
+      if (drag.moved > 4) { ensureFree(); cam.cx -= dx / cam.K; cam.cy -= dy / cam.K; cam.tx = cam.cx; cam.ty = cam.cy; cam.tk = cam.K; }
     }
     const b = hitBlock(p.x, p.y);
     api.hover = b ? b.file.path : null;
@@ -209,6 +226,13 @@ export function createCity(canvas) {
     if (!lay || key !== layKey) { lay = cityLayout(cityTree(model.files)); layKey = key; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#03060f'; ctx.fillRect(0, 0, W, H);
+    // ease a free camera toward its zoom target (frame-rate independent)
+    const now = performance.now(); const dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
+    if (cam.free && cam.tk) {
+      const k = 1 - Math.exp(-dt * 12);
+      cam.cx += (cam.tx - cam.cx) * k; cam.cy += (cam.ty - cam.cy) * k;
+      cam.K = Math.exp(Math.log(cam.K) + (Math.log(cam.tk) - Math.log(cam.K)) * k);
+    }
     const v = view(); const K = v.K; const A = area();
     const sx = (x) => A.ox + (x - v.cx) * K; const sy = (y) => A.oy + (y - v.cy) * K;
     // a soft grid on the ground, so the city has a scale when zoomed in

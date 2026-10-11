@@ -7,6 +7,12 @@ import { ACTION_COLOUR } from './actions.js';
 const lerp = (a, b, k) => a + (b - a) * k;
 
 // camera: Gource looks straight down with a 90° vertical field of view, so the visible world height is 2·distance
+// eases 0..1 over 0.7 s of wall time from the moment the blend started (a presentation effect, never simulated)
+const BLEND_MS = 700;
+export function blendEase(b) {
+  const x = Math.min(1, Math.max(0, (performance.now() - b.t0) / BLEND_MS));
+  return 1 - Math.pow(1 - x, 3);
+}
 export function view(s, k, W, H, user, inset) {
   const c = s.cam;
   // the scene is framed inside the free area between panels (insets), like Gource framing its whole window
@@ -18,6 +24,14 @@ export function view(s, k, W, H, user, inset) {
   if (user && user.free) {
     // a free camera (the reader moved or zoomed): it no longer follows the work until "follow" is switched on again
     cx = user.free.cx; cy = user.free.cy; K = user.free.K;
+  } else if (user && user.blend) {
+    // handing the camera back to the work: ease from where the reader left it (UI-only, not part of the simulation)
+    const z = camDistance(lerp(c.pex, c.ex, k), lerp(c.pey, c.ey, k), aspect) * (user.zoom || 1);
+    const ax = lerp(c.px, c.x, k); const ay = lerp(c.py, c.y, k);
+    const aK = (Math.max(40, H - Tp - B) / 2) / Math.max(1, z) * ((user.fill) || 1);
+    const f = blendEase(user.blend);
+    cx = ax + (user.blend.cx - ax) * (1 - f); cy = ay + (user.blend.cy - ay) * (1 - f);
+    K = Math.exp(Math.log(aK) + (Math.log(user.blend.K) - Math.log(aK)) * (1 - f));
   } else {
     const z = camDistance(lerp(c.pex, c.ex, k), lerp(c.pey, c.ey, k), aspect) * (user ? user.zoom : 1);
     cx = lerp(c.px, c.x, k) + (user ? user.panX : 0);

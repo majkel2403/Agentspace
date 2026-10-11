@@ -347,6 +347,29 @@ button.hx-row{cursor:pointer}button.hx-row:hover{background:rgba(232,236,248,.06
 .hx [hidden]{display:none!important}
 .hx-cam{flex-wrap:wrap;justify-content:flex-end;max-width:min(640px,calc(100% - 16px))}
 .hx-cv.hx-ov{cursor:grab;touch-action:none}
+
+/* ---- v4: touch targets (40 px and up), narrow-layout fit, phase strip on phones */
+.hx-btn{min-height:40px}
+.hx-tab{min-height:40px}
+.hx-ico{width:44px;min-width:44px}
+.hx-run{min-height:46px}
+.hx-agent{min-height:52px}
+.hx-seg .hx-btn{min-height:38px}
+.hx-cam .hx-btn{min-height:40px}
+.hx[data-bp="m"] .hx-cam .lbl,.hx[data-bp="m"] .hx-auto .lbl{display:none}
+.hx[data-bp="m"] .hx-cam .hx-btn{padding:0 10px}
+.hx[data-bp="m"] .hx-dh{gap:0}
+.hx[data-bp="m"] .hx-dh .hx-tab{min-width:40px;padding:0 6px}
+.hx[data-bp="m"] .hx-auto{min-width:40px;padding:0;width:40px}
+.hx[data-bp="s"]{--top-h:76px}
+.hx[data-bp="s"] .hx-steps{min-height:8px}
+.hx-runs{scroll-snap-type:x proximity;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.hx[data-bp="s"] .hx-rail-b{scroll-snap-type:x proximity;-webkit-mask-image:linear-gradient(90deg,#000 90%,transparent);mask-image:linear-gradient(90deg,#000 90%,transparent)}
+.hx[data-bp="s"] .hx-agent{scroll-snap-align:start}
+@media (pointer:coarse){.hx-btn,.hx-tab{min-height:44px}.hx-ico{width:46px;min-width:46px}}
+.hx-cam .hx-seg .hx-btn,.hx-seg .hx-btn{min-height:40px}
+.hx-tab{min-width:40px}
+.hx-seg{padding:3px}
 </style>
 </helmet>
 
@@ -411,7 +434,7 @@ button.hx-row{cursor:pointer}button.hx-row:hover{background:rgba(232,236,248,.06
         <button type="button" role="tab" class="hx-tab" hidden="{{tabHidden.files}}" aria-selected="{{tabOn.files}}" aria-label="{{tabName.files}}" title="{{tabName.files}}" onClick="{{tabPick.files}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2.5h8A1.5 1.5 0 0 1 20.5 9.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg><span class="lbl">{{tabName.files}}</span><span class="ct">{{tabCount.files}}</span></button>
         <button type="button" role="tab" class="hx-tab" hidden="{{tabHidden.log}}" aria-selected="{{tabOn.log}}" aria-label="{{tabName.log}}" title="{{tabName.log}}" onClick="{{tabPick.log}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9"/></svg><span class="lbl">{{tabName.log}}</span><span class="ct">{{tabCount.log}}</span></button>
         <button type="button" role="tab" class="hx-tab" hidden="{{tabHidden.ins}}" aria-selected="{{tabOn.ins}}" aria-label="{{tabName.ins}}" title="{{tabName.ins}}" onClick="{{tabPick.ins}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg><span class="lbl">{{tabName.ins}}</span><span class="ct">{{tabCount.ins}}</span></button>
-        <button type="button" class="hx-btn hx-auto" aria-pressed="{{auto}}" onClick="{{toggleAuto}}" title="Panel sam pokazuje to, co dzieje się teraz">Auto</button>
+        <button type="button" class="hx-btn hx-auto" aria-pressed="{{auto}}" onClick="{{toggleAuto}}" aria-label="Auto: panel sam pokazuje to, co dzieje się teraz" title="Panel sam pokazuje to, co dzieje się teraz"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/></svg><span class="lbl">Auto</span></button>
       </div>
 
       <sc-if value="{{paneCode}}" hint-placeholder-val="{{ true }}">
@@ -1893,6 +1916,12 @@ function createPlayer(opts) {
 const lerp = (a, b, k) => a + (b - a) * k;
 
 // camera: Gource looks straight down with a 90° vertical field of view, so the visible world height is 2·distance
+// eases 0..1 over 0.7 s of wall time from the moment the blend started (a presentation effect, never simulated)
+const BLEND_MS = 700;
+function blendEase(b) {
+  const x = Math.min(1, Math.max(0, (performance.now() - b.t0) / BLEND_MS));
+  return 1 - Math.pow(1 - x, 3);
+}
 function view(s, k, W, H, user, inset) {
   const c = s.cam;
   // the scene is framed inside the free area between panels (insets), like Gource framing its whole window
@@ -1904,6 +1933,14 @@ function view(s, k, W, H, user, inset) {
   if (user && user.free) {
     // a free camera (the reader moved or zoomed): it no longer follows the work until "follow" is switched on again
     cx = user.free.cx; cy = user.free.cy; K = user.free.K;
+  } else if (user && user.blend) {
+    // handing the camera back to the work: ease from where the reader left it (UI-only, not part of the simulation)
+    const z = camDistance(lerp(c.pex, c.ex, k), lerp(c.pey, c.ey, k), aspect) * (user.zoom || 1);
+    const ax = lerp(c.px, c.x, k); const ay = lerp(c.py, c.y, k);
+    const aK = (Math.max(40, H - Tp - B) / 2) / Math.max(1, z) * ((user.fill) || 1);
+    const f = blendEase(user.blend);
+    cx = ax + (user.blend.cx - ax) * (1 - f); cy = ay + (user.blend.cy - ay) * (1 - f);
+    K = Math.exp(Math.log(aK) + (Math.log(user.blend.K) - Math.log(aK)) * (1 - f));
   } else {
     const z = camDistance(lerp(c.pex, c.ex, k), lerp(c.pey, c.ey, k), aspect) * (user ? user.zoom : 1);
     cx = lerp(c.px, c.x, k) + (user ? user.panX : 0);
@@ -3240,7 +3277,8 @@ function cityLayout(root) {
 
 function createCity(canvas) {
   const ctx = canvas.getContext('2d');
-  const cam = { cx: WORLD_W / 2, cy: WORLD_H / 2, K: 1, free: false };
+  const cam = { cx: WORLD_W / 2, cy: WORLD_H / 2, K: 1, free: false, tx: 0, ty: 0, tk: 0, blend: null };
+  let lastNow = performance.now();
   const pointers = new Map();
   let drag = null; let pinch = null; let model = null; let lay = null; let layKey = ''; let W = 0; let H = 0; let dpr = 1;
   // the screen area the city fills: the stage minus the panels around it (insets), so nothing starts under a panel
@@ -3250,20 +3288,36 @@ function createCity(canvas) {
   const api = { onPick: null, hover: null, free: false };
 
   const autoK = () => { const a = area(); return Math.min(a.wf / (WORLD_W + 40), a.hf / (WORLD_H + 40)); };
+  // the auto view is the whole city; after the reader zooms or pans, the view eases back into it (fit) instead of snapping
   const view = () => {
-    if (!cam.free) { const K = autoK(); return { cx: WORLD_W / 2, cy: WORLD_H / 2, K }; }
+    if (!cam.free) {
+      const K = autoK(); const auto = { cx: WORLD_W / 2, cy: WORLD_H / 2, K };
+      if (cam.blend) {
+        const x = Math.min(1, (performance.now() - cam.blend.t0) / 700); const f = 1 - Math.pow(1 - x, 3);
+        if (x >= 1) cam.blend = null;
+        return { cx: cam.blend ? cam.blend.cx + (auto.cx - cam.blend.cx) * f : auto.cx, cy: cam.blend ? cam.blend.cy + (auto.cy - cam.blend.cy) * f : auto.cy,
+          K: cam.blend ? Math.exp(Math.log(cam.blend.K) + (Math.log(auto.K) - Math.log(cam.blend.K)) * f) : auto.K };
+      }
+      return auto;
+    }
     return cam;
   };
   const toWorld = (px, py) => { const v = view(); const a = area(); return { x: v.cx + (px - a.ox) / v.K, y: v.cy + (py - a.oy) / v.K }; };
-  const ensureFree = () => { if (!cam.free) { const v = view(); cam.cx = v.cx; cam.cy = v.cy; cam.K = v.K; cam.free = true; api.free = true; } };
+  const ensureFree = () => { if (!cam.free) { const v = view(); cam.cx = v.cx; cam.cy = v.cy; cam.K = v.K; cam.tx = v.cx; cam.ty = v.cy; cam.tk = v.K; cam.blend = null; cam.free = true; api.free = true; } };
+  // zoom is eased: the target moves now and the view follows it in draw(), anchored on the same world point
   const zoomAt = (factor, px, py) => {
     ensureFree();
     const a = autoK();
     const before = toWorld(px, py);
-    cam.K = cityClamp(cam.K * factor, a * 0.2, a * 80);
-    const A = area(); cam.cx = before.x - (px - A.ox) / cam.K; cam.cy = before.y - (py - A.oy) / cam.K;
+    const K = cityClamp(cam.tk * factor, a * 0.2, a * 80);
+    const A = area();
+    cam.tk = K; cam.tx = before.x - (px - A.ox) / K; cam.ty = before.y - (py - A.oy) / K;
   };
-  const fit = () => { cam.free = false; api.free = false; };
+  // back to the whole city: the current view becomes the start of an eased blend
+  const fit = () => {
+    if (cam.free) cam.blend = { cx: cam.cx, cy: cam.cy, K: cam.K, t0: performance.now() };
+    cam.free = false; api.free = false;
+  };
 
   const hitBlock = (px, py) => {
     if (!lay) return null;
@@ -3301,7 +3355,7 @@ function createCity(canvas) {
     if (drag && pointers.has(e.pointerId)) {
       const dx = p.x - drag.x; const dy = p.y - drag.y;
       drag.x = p.x; drag.y = p.y; drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (drag.moved > 4) { ensureFree(); cam.cx -= dx / cam.K; cam.cy -= dy / cam.K; }
+      if (drag.moved > 4) { ensureFree(); cam.cx -= dx / cam.K; cam.cy -= dy / cam.K; cam.tx = cam.cx; cam.ty = cam.cy; cam.tk = cam.K; }
     }
     const b = hitBlock(p.x, p.y);
     api.hover = b ? b.file.path : null;
@@ -3340,6 +3394,13 @@ function createCity(canvas) {
     if (!lay || key !== layKey) { lay = cityLayout(cityTree(model.files)); layKey = key; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#03060f'; ctx.fillRect(0, 0, W, H);
+    // ease a free camera toward its zoom target (frame-rate independent)
+    const now = performance.now(); const dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
+    if (cam.free && cam.tk) {
+      const k = 1 - Math.exp(-dt * 12);
+      cam.cx += (cam.tx - cam.cx) * k; cam.cy += (cam.ty - cam.cy) * k;
+      cam.K = Math.exp(Math.log(cam.K) + (Math.log(cam.tk) - Math.log(cam.K)) * k);
+    }
     const v = view(); const K = v.K; const A = area();
     const sx = (x) => A.ox + (x - v.cx) * K; const sy = (y) => A.oy + (y - v.cy) * K;
     // a soft grid on the ground, so the city has a scale when zoomed in
@@ -3460,15 +3521,18 @@ function createViewer(opts) {
   // the camera: follows the work until the reader moves or zooms (then `free` holds centre and scale, and only the
   // "follow" switch or "fit" gives the work back); fill and node scale make the structures read at a glance
   const cam = { zoom: 1, panX: 0, panY: 0, free: null, fill: opts.fill != null ? opts.fill : 1.25, node: opts.nodeScale != null ? opts.nodeScale : 1.5 };
-  const freeze = () => { if (!cam.free && F) cam.free = { cx: F.V.cx, cy: F.V.cy, K: F.V.K }; };
+  const freeze = () => { if (!cam.free && F) cam.free = { cx: F.V.cx, cy: F.V.cy, K: F.V.K, tx: F.V.cx, ty: F.V.cy, tk: F.V.K }; };
+  // hand the camera back to the work: the current view becomes the start of an eased blend
+  const release = () => { if (F && cam.free) cam.blend = { cx: cam.free.cx, cy: cam.free.cy, K: cam.free.K, t0: performance.now() }; cam.free = null; };
   const zoomAt = (factor, px, py) => {
     if (!F) return;
     freeze();
-    const K0 = cam.free.K; const K1 = Math.max(F.V.K * 0.05, Math.min(F.V.K * 400, K0 * factor));
+    // zoom is eased: the target moves now, the view follows it in render(), anchored on the same point
+    const K0 = cam.free.tk; const K1 = Math.max(F.V.K * 0.05, Math.min(F.V.K * 400, K0 * factor));
     // the world point under the pointer stays under the pointer
     const ox = F.V.sx(F.V.cx); const oy = F.V.sy(F.V.cy);
     const wx = cam.free.cx + (px - ox) / K0; const wy = cam.free.cy + (py - oy) / K0;
-    cam.free.K = K1; cam.free.cx = wx - (px - ox) / K1; cam.free.cy = wy - (py - oy) / K1;
+    cam.free.tk = K1; cam.free.tx = wx - (px - ox) / K1; cam.free.ty = wy - (py - oy) / K1;
   };
   v.setBubbles = (on) => { opts.bubbles = !!on; };
   v.following = () => !cam.free;
@@ -3510,7 +3574,7 @@ function createViewer(opts) {
   // follow the work on / off: the camera is part of the simulation, so the history is re-run with the new mode
   v.setFocus = (on) => {
     opts.focus = !!on;
-    cam.free = null;
+    if (!on) freeze(); else release();
     v.player = createPlayer({ aspect: aspectNow(), autoRotate: opts.autoRotate, focus: !!on });
     if (v.T) v.player.load(v.T.events);
   };
@@ -3520,7 +3584,9 @@ function createViewer(opts) {
   v.zoom = (k) => { if (F) zoomAt(k, F.V.sx(F.V.cx), F.V.sy(F.V.cy)); };
   v.zoomAt = zoomAt;
   v.freeze = freeze;
-  v.reset = () => { cam.free = null; cam.zoom = 1; cam.panX = 0; cam.panY = 0; v.select(null); };
+  v.reset = () => { release(); cam.zoom = 1; cam.panX = 0; cam.panY = 0; v.select(null); };
+  v.suspended = false;
+  v.suspend = (on) => { v.suspended = !!on; };
   v.select = (id) => { v.sel = id; if (v.onSelect) v.onSelect(id, id ? v.inspect(id) : null); };
   v.inspect = (id) => inspect(v.player, v.T, id, v.t / 1000);
   v.frame = () => F;
@@ -3544,15 +3610,23 @@ function createViewer(opts) {
         if (v.t >= v.T.duration + TAIL_MS) { v.t = v.T.duration + TAIL_MS; v.playing = false; }
       }
     }
-    render(dt, false);
+    if (!v.suspended) render(dt, false);
     if (v.onTick) v.onTick(v);
   }
 
   function render(dt, sync) {
+    // a free camera eases toward its zoom target (frame-rate independent); renderAt(sync) stays exact
+    if (!sync && cam.free && cam.free.tk) {
+      const a = 1 - Math.exp(-Math.min(0.1, dt) * 12);
+      cam.free.cx += (cam.free.tx - cam.free.cx) * a; cam.free.cy += (cam.free.ty - cam.free.cy) * a;
+      cam.free.K = Math.exp(Math.log(cam.free.K) + (Math.log(cam.free.tk) - Math.log(cam.free.K)) * a);
+    }
+    if (cam.blend && blendEase(cam.blend) >= 1) cam.blend = null;
     const W = glc.clientWidth;
     const H = glc.clientHeight;
     if (W < 20 || H < 20 || !v.T) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // the tree is dense at any zoom: a pixel ratio above 1.5 costs fill rate without showing more of it
+    const dpr = Math.min(window.devicePixelRatio || 1, opts.maxDpr || 1.5);
     if (ovc.width !== Math.round(W * dpr) || ovc.height !== Math.round(H * dpr)) { ovc.width = Math.round(W * dpr); ovc.height = Math.round(H * dpr); }
     // the camera framing depends on the aspect ratio: re-run the history when it changes a lot (debounced)
     const asp = aspectOf(W, H);
@@ -3618,7 +3692,7 @@ function createViewer(opts) {
     if (drag) {
       const dx = e.clientX - drag.x; const dy = e.clientY - drag.y;
       drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (drag.moved > 4 && F) { freeze(); cam.free.cx -= dx / cam.free.K; cam.free.cy -= dy / cam.free.K; }
+      if (drag.moved > 4 && F) { freeze(); cam.free.cx -= dx / cam.free.K; cam.free.cy -= dy / cam.free.K; cam.free.tx = cam.free.cx; cam.free.ty = cam.free.cy; cam.free.tk = cam.free.K; }
     } else {
       const r = rect();
       const h = pick(e.clientX - r.left, e.clientY - r.top);
@@ -3735,7 +3809,12 @@ class Component extends DCLogic {
 
   // the city view: the same workspace drawn as a city; a building picked there opens in the inspector
   cityPick(path) { this.setState({ sel: 'city:' + path, focus: 'ins' }); if (this._v) this._v.select(null); }
-  showView(view) { this.setState({ view, sel: null }); if (view === 'city' && this._city) this._city.fit(); }
+  showView(view) {
+    // the tree is not drawn while the city is on: its GPU work would be hidden behind the city anyway
+    if (this._v) this._v.suspend(view === 'city');
+    this.setState({ view, sel: null });
+    if (view === 'city' && this._city) this._city.fit();
+  }
   toggleBubbles() { const on = !this.state.bubbles; if (this._v) this._v.setBubbles(on); this.setState({ bubbles: on }); }
 
   match(text) { return matchTask(text, HX_HOST.runs().map((r) => r.id)); }
@@ -3792,7 +3871,7 @@ class Component extends DCLogic {
     const gl = document.getElementById('hx-gl');
     const ov = document.getElementById('hx-ov');
     if (!gl || !ov) return;
-    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Space Grotesk', 'Inter', sans-serif", fontScale: 1.12, nodeScale: 1.6, fill: 1.3, bubbles: false });
+    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Space Grotesk', 'Inter', sans-serif", fontScale: 1.12, nodeScale: 1.6, fill: 1.3, bubbles: false, maxDpr: 1.5 });
     const cityCv = document.getElementById('hx-city');
     if (cityCv && NW.createCity) { this._city = NW.createCity(cityCv); this._city.onPick = (path) => this.cityPick(path); }
     if (typeof window !== 'undefined') { window.__NW = this._v; window.__HXAPP = this; if (window.__HM_TEST) window.__HM_TEST.logic = this; }

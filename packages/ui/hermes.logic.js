@@ -99,9 +99,9 @@ class Component extends DCLogic {
     (this._F ? this._F.phases : []).forEach((p, k) => {
       g.fillStyle = k % 2 ? 'rgba(60,78,150,0.16)' : 'rgba(60,78,150,0.06)';
       g.fillRect(X(p.start), 0, Math.max(1, X(p.end) - X(p.start)), H);
-      if (k) { g.fillStyle = 'rgba(242,193,78,0.35)'; g.fillRect(X(p.start), 0, 1, H); }
+      if (k) { g.fillStyle = 'rgba(255,46,110,0.35)'; g.fillRect(X(p.start), 0, 1, H); }
       g.fillStyle = k % 2 ? 'rgba(169,180,214,0.8)' : 'rgba(127,139,179,0.8)';
-      g.font = '500 12px "IBM Plex Mono", monospace';
+      g.font = '500 12px "JetBrains Mono", monospace';
       g.fillText(String(k + 1).padStart(2, '0'), X(p.start) + 4, 12);
     });
     this._lanes.forEach((l, i) => {
@@ -134,7 +134,7 @@ class Component extends DCLogic {
     const gl = document.getElementById('hx-gl');
     const ov = document.getElementById('hx-ov');
     if (!gl || !ov) return;
-    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Rajdhani', 'Inter', sans-serif", fontScale: 1.12, nodeScale: 1.6, fill: 1.3, bubbles: false });
+    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Space Grotesk', 'Inter', sans-serif", fontScale: 1.12, nodeScale: 1.6, fill: 1.3, bubbles: false });
     const cityCv = document.getElementById('hx-city');
     if (cityCv && NW.createCity) { this._city = NW.createCity(cityCv); this._city.onPick = (path) => this.cityPick(path); }
     if (typeof window !== 'undefined') { window.__NW = this._v; window.__HXAPP = this; if (window.__HM_TEST) window.__HM_TEST.logic = this; }
@@ -217,7 +217,7 @@ class Component extends DCLogic {
     // the narrator: the newest event as one sentence
     const reactorState = runInfo.live ? 'live' : done ? 'done' : A.failed ? 'fail' : playing ? 'work' : 'idle';
     const narLive = playing && S.speed <= 1 ? 'polite' : 'off';
-    let nar = { who: 'Hermes', verb: 'czeka na zlecenie', obj: '', extra: '', colour: '#F2C14E', fresh: false, working: false };
+    let nar = { who: 'Hermes', verb: 'czeka na zlecenie', obj: '', extra: '', colour: '#FF2E6E', fresh: false, working: false };
     if (T && A.log.length) { const n = narrate(T.events[A.log[0].i], label); nar = { who: n.who, verb: n.verb, obj: n.obj, extra: n.extra, colour: n.colour, fresh: fresh(relOf(A.log[0].i)), working: playing && !done }; }
 
     // the director: the drawer follows the action — code being written or a command running, a conversation, else the log
@@ -253,7 +253,7 @@ class Component extends DCLogic {
     const matched = S.task && S.task !== F.title ? this.match(S.task) : null;
     const mname = matched ? (runs.find((r) => r.id === matched) || {}).name : '';
     const statusText = runInfo.live ? 'LIVE' : done ? 'zakończony' : A.failed ? 'błąd' : t > 0 ? (playing ? 'w toku' : 'pauza') : 'gotowy';
-    const statusColor = runInfo.live ? '#FF6B7A' : done ? '#8CFFB4' : A.failed ? '#FF8F9A' : playing && t > 0 ? '#F2C14E' : '#A9B4D6';
+    const statusColor = runInfo.live ? '#FF6B7A' : done ? '#8CFFB4' : A.failed ? '#FF8F9A' : playing && t > 0 ? '#FF2E6E' : '#A9B4D6';
     const sumLine = (id) => { const s = this._sum[id]; return s ? mmss(s.dur) + ' · ' + s.agents + ' agentów · ' + s.files + ' plików' : ''; };
     const runRows = runs.map((r) => ({ name: r.name, active: S.run === r.id, meta: r.live ? 'LIVE · ' + sumLine(r.id) : sumLine(r.id) || r.meta || '', pick: () => this.open(r.id) }));
     if (this._custom) runRows.push({ name: 'Własny log', active: S.run === 'custom', meta: sumLine('custom') || 'plik', pick: () => this.open('custom') });

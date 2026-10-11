@@ -55,9 +55,9 @@ export function gUserColour(name) {
 // Agent colours come from a fixed order, not from a hash of the name: the first agent to appear in the log gets the
 // first slot, the next one the second, and so on. The slots are the dark-surface steps of the data-viz reference
 // palette, in the order that passes the validator (scripts/validate_palette.js: lightness band, adjacent CVD and
-// normal-vision separation, contrast on #03060f). Hermes is the orchestrator and always gold.
-export const AGENT_HEX = ['#3987e5', '#199e70', '#9085e9', '#d95926', '#d55181'];
-export const HERMES_HEX = '#F2C14E';
+// normal-vision separation, contrast on #05030a). Hermes is the orchestrator and always the desk pink.
+export const AGENT_HEX = ['#3987e5', '#d95926', '#199e70', '#9085e9', '#c98500'];
+export const HERMES_HEX = '#FF2E6E';
 const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
 export const gAgentColour = (k) => hexRgb(AGENT_HEX[k % AGENT_HEX.length]);
 export const gHermesColour = () => hexRgb(HERMES_HEX);

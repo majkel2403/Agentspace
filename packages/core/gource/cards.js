@@ -8,7 +8,7 @@ import { TONE_COLOUR } from './actions.js';
 const MONO = "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
 const SANS = "'Inter', FreeSans, 'Helvetica Neue', Arial, sans-serif";
 // the Hermes palette (night dispatch room): ink panels, hairlines, gold for Hermes and the current step
-const C = { text: '#E8ECF8', mut: '#A3AED0', gold: '#F2C14E' };
+const C = { text: '#E8ECF8', mut: '#A3AED0', gold: '#FF2E6E' };
 const crgb = (c, a) => 'rgba(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ',' + (a == null ? 1 : Math.max(0, Math.min(1, a))).toFixed(3) + ')';
 const ease = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
 function rrect(ctx, x, y, w, h, r) {

@@ -4,7 +4,7 @@ import { gHex } from "./gource/colour.js";
 // to the closest recorded run. Pure functions; the views only lay them out.
 
 export const TONES = {
-  assign: ['zlecenie', '#F2C14E'], question: ['pytanie', '#7CC4FF'], answer: ['odpowiedź', '#D6BEFF'], handoff: ['przekazanie', '#D6BEFF'],
+  assign: ['zlecenie', '#FF2E6E'], question: ['pytanie', '#A9A6FF'], answer: ['odpowiedź', '#D6BEFF'], handoff: ['przekazanie', '#D6BEFF'],
   critique: ['krytyka', '#FF8F9A'], revision: ['poprawka', '#FFB48A'], approve: ['akceptacja', '#34D3BE'], result: ['wynik', '#FFE7A8'], brief: ['brief', '#E8ECF8'],
 };
 // keywords that match a typed order to a recorded run (the demo has no live model behind it)
@@ -18,7 +18,7 @@ export const RUN_KEYWORDS = {
 const normText = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l');
 export const isBad = (type) => type.indexOf('fail') >= 0 || type === 'error';
 export const isGood = (type) => type.indexOf('passed') >= 0 || type.indexOf('completed') >= 0;
-export const eventColour = (type) => (isBad(type) ? '#FF5A6A' : isGood(type) ? '#7CFF9A' : type === 'agent.spawned' ? '#F2C14E' : type === 'message.sent' ? '#D6BEFF' : type.indexOf('file.') === 0 || type === 'workspace.scanned' ? '#9FE3FF' : '#2A3560');
+export const eventColour = (type) => (isBad(type) ? '#FF5A6A' : isGood(type) ? '#7CFF9A' : type === 'agent.spawned' ? '#FF2E6E' : type === 'message.sent' ? '#D6BEFF' : type.indexOf('file.') === 0 || type === 'workspace.scanned' ? '#9FE3FF' : '#2A3560');
 export const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 const eventText = (e) => e.text || e.resource || e.command || e.tool || e.name || '';
 const WRITE = /^file\.(created|modified|deleted)$|^resource\.written$/;
@@ -71,7 +71,7 @@ export function appState(T, facts, t, label, actions) {
     const fill = t >= p.end ? 100 : t <= p.start ? 0 : Math.round(((t - p.start) / Math.max(1, p.end - p.start)) * 100);
     const cur = t >= p.start && t < p.end;
     const num = String(k + 1).padStart(2, '0');
-    return { num, name: p.name, cur, fill, label: cur ? num + ' ' + p.name : num, colour: cur ? '#F2C14E' : fill >= 100 ? '#C5CEE8' : '#5C6894' };
+    return { num, name: p.name, cur, fill, label: cur ? num + ' ' + p.name : num, colour: cur ? '#FF2E6E' : fill >= 100 ? '#C5CEE8' : '#5C6894' };
   });
   const spawned = upto.filter((e) => e.type === 'agent.spawned').length;
   const spawnedAll = ev.filter((e) => e.type === 'agent.spawned').length;
@@ -130,7 +130,7 @@ export function appState(T, facts, t, label, actions) {
 
 // ---- the studio panels (team, plan, code, terminal) and the scene legend, from the story (story.js) and the frame
 const CODE_KW = new Set('const let var function return if else for while do switch case break continue new this class extends import export from default async await try catch finally throw typeof instanceof in of null undefined true false private public protected readonly static interface type void describe it expect before after beforeEach afterEach'.split(' '));
-export const CODE_COLOURS = { kw: '#C9A2FF', str: '#B8E986', com: '#7F8BB3', num: '#FFAD7A', fn: '#7FD3FF', code: '#D9E1F2', head: '#F2C14E' };
+export const CODE_COLOURS = { kw: '#C9A2FF', str: '#B8E986', com: '#7F8BB3', num: '#FFAD7A', fn: '#7FD3FF', code: '#D9E1F2', head: '#FF2E6E' };
 export const cssRgb = (c, a) => (c ? 'rgba(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ',' + (a == null ? 1 : a) + ')' : '#A3AED0');
 
 // a code line as coloured tokens (JS/TS-like; markdown headings)
@@ -217,10 +217,10 @@ export function narrate(ev, label) {
   const diff = ev.content != null ? '+' + lineCount(ev.content) : ev.patch != null ? '+' + String(ev.patch).split('\n').filter((l) => l[0] === '+').length + ' −' + String(ev.patch).split('\n').filter((l) => l[0] === '-').length : '';
   const o = (verb, obj, extra, colour) => ({ whoId, who, verb, obj: obj || '', extra: extra || '', colour: colour || '#E8ECF8' });
   switch (ev.type) {
-    case 'task.started': return o('przyjmuje zlecenie', '', ev.text, '#F2C14E');
-    case 'planner.step': return o('planuje', '', ev.text, '#F2C14E');
+    case 'task.started': return o('przyjmuje zlecenie', '', ev.text, '#FF2E6E');
+    case 'planner.step': return o('planuje', '', ev.text, '#FF2E6E');
     case 'hermes.reasoning': return o('myśli', '', ev.text, '#C5CEE8');
-    case 'agent.spawned': return o('tworzy agenta', ev.label || label(ev.agent), ev.text, '#F2C14E');
+    case 'agent.spawned': return o('tworzy agenta', ev.label || label(ev.agent), ev.text, '#FF2E6E');
     case 'agent.completed': return o('kończy pracę', '', ev.text, '#8CFFB4');
     case 'agent.failed': return o('zawodzi', '', ev.text, '#FF8F9A');
     case 'agent.waiting': return o('czeka', '', ev.text, '#FFC979');
@@ -232,8 +232,8 @@ export function narrate(ev, label) {
     case 'file.created': return o('tworzy', file, diff, '#7CFF9A');
     case 'file.modified': case 'resource.written': return o('zmienia', file, diff, '#FFB48A');
     case 'file.deleted': return o('usuwa', file, '', '#FF5A6A');
-    case 'file.read': case 'resource.read': return o('czyta', file, '', '#7CC4FF');
-    case 'workspace.scanned': return o('skanuje przestrzeń roboczą', '', ev.text, '#7CC4FF');
+    case 'file.read': case 'resource.read': return o('czyta', file, '', '#A9A6FF');
+    case 'workspace.scanned': return o('skanuje przestrzeń roboczą', '', ev.text, '#A9A6FF');
     case 'tool.started': return o('uruchamia', ev.tool || '', ev.command, '#C5CEE8');
     case 'tool.completed': return o('kończy', ev.tool || '', '', '#8CFFB4');
     case 'tool.failed': return o('ma błąd w', ev.tool || '', ev.text, '#FF8F9A');

@@ -182,6 +182,9 @@ Zapisuje pary obrazów (Gource po lewej, nasz renderer po prawej) i miarę SSIM 
 - `adapters/jarvis.mjs` + `tools/jarvis-relay.mjs` — zadania Hermesa z Jarvisa (Telegram, cron, konsola) jako przebiegi
   na żywo: przekaźnik czyta strumień mostu (`/bridge/events`, zdarzenia `agent`) i wysyła je do serwera. Uruchomienie:
   `JARVIS_BRIDGE_TOKEN=… AGENTSPACE_URL=http://127.0.0.1:4777 node tools/jarvis-relay.mjs`. Test: `test/jarvis.test.mjs`.
+- Wygląd (styl JEV Desk, plik `packages/ui/hermes.css`): śliwkowo-czarne tło z różową poświatą, szklane panele,
+  różowy akcent Hermesa, cyfry i zegar w szeryfowym Fraunces, etykiety w JetBrains Mono, tekst w Space Grotesk.
+  Kolory agentów są z palety walidowanej na tle `#05030a` (`scripts/validate_palette.js`).
 - Kolory agentów są stałe i zależą od kolejności pojawiania się w logu (paleta z walidatorem `dataviz`, tryb ciemny);
   Hermes ma zawsze złoto. Mini-wykresy aktywności w szynie zespołu i słupki czasu faz / wiadomości w raporcie liczy
   `hxStats` z tego samego logu. Raport można zapisać jako `.md` w wersji webowej (tablice kanwy nie pobierają plików).

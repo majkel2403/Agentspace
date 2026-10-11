@@ -212,7 +212,7 @@ export function createCity(canvas) {
     const v = view(); const K = v.K; const A = area();
     const sx = (x) => A.ox + (x - v.cx) * K; const sy = (y) => A.oy + (y - v.cy) * K;
     // a soft grid on the ground, so the city has a scale when zoomed in
-    ctx.strokeStyle = 'rgba(51,214,255,0.05)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,46,110,0.05)'; ctx.lineWidth = 1;
     const step = 40 * K;
     if (step > 6) {
       const ox = (sx(0) % step + step) % step; const oy = (sy(0) % step + step) % step;

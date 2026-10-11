@@ -5,7 +5,7 @@
 const I = (d, size = 16) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 export const ICON = {
   reactor: '<svg class="hx-reactor" viewBox="0 0 32 32" aria-hidden="true"><circle class="r a" cx="16" cy="16" r="14"/><circle class="r b" cx="16" cy="16" r="10"/><circle class="r c" cx="16" cy="16" r="6.5"/><circle class="d" cx="16" cy="16" r="2.6"/></svg>',
-  mark: '<svg viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="#F2C14E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="16" r="5"/><path d="M11 15C8 14.5 5.5 12.8 3.5 9.5"/><path d="M11 18C8.5 18.2 6 17.5 4 15.5"/><path d="M21 15C24 14.5 26.5 12.8 28.5 9.5"/><path d="M21 18C23.5 18.2 26 17.5 28 15.5"/><path d="M16 21v7"/></svg>',
+  mark: '<svg viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="#FF2E6E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="16" r="5"/><path d="M11 15C8 14.5 5.5 12.8 3.5 9.5"/><path d="M11 18C8.5 18.2 6 17.5 4 15.5"/><path d="M21 15C24 14.5 26.5 12.8 28.5 9.5"/><path d="M21 18C23.5 18.2 26 17.5 28 15.5"/><path d="M16 21v7"/></svg>',
   play: '<svg viewBox="0 0 24 24" width="20" height="20" fill="#1A1300" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>',
   pause: '<svg viewBox="0 0 24 24" width="20" height="20" fill="#1A1300" aria-hidden="true"><rect x="6.5" y="5.5" width="4" height="13" rx="1"/><rect x="13.5" y="5.5" width="4" height="13" rx="1"/></svg>',
   go: '<svg viewBox="0 0 24 24" width="18" height="18" fill="#1A1300" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>',

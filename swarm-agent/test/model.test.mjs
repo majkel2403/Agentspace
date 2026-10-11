@@ -54,3 +54,10 @@ test('a message is in the state from its time on, and an agent stands by the fil
   const st = R.at(21.8);
   assert.equal(st.agents.get('worker-a').at.endsWith('transport.ts'), true);
 });
+
+test('an agent keeps the trail of where it stood, in time order', () => {
+  const st = createReplay(load('swarm-refaktor')).at(45);
+  const w = st.agents.get('worker-a');
+  assert.ok(w.path.length >= 3);
+  assert.ok(w.path.every((p, i) => i === 0 || p.t >= w.path[i - 1].t));
+});

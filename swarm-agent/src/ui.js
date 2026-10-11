@@ -27,7 +27,9 @@ export function headerHTML(st, v) {
     <div class="ctl">
       <button data-act="play" class="btn ${v.playing ? 'on' : ''}" title="Odtwórz / pauza (spacja)">${v.playing ? 'Pauza' : 'Odtwórz'}</button>
       ${[0.5, 1, 2, 4].map((s) => `<button data-act="speed" data-v="${s}" class="btn sm ${v.speed === s ? 'on' : ''}">${s}×</button>`).join('')}
-      <button data-act="follow" class="btn ${v.follow ? 'on' : ''}" title="Kamera podąża za pracą">Śledź</button>
+      <button data-act="follow" class="btn ${v.follow ? 'on' : ''}" title="Kamera podąża za pracą (F)">Śledź</button>
+      <button data-act="director" class="btn ${v.director ? 'on' : ''}" title="Reżyser: kamera sama prowadzi do tego, kto teraz działa (D)">Reżyser</button>
+      <button data-act="sound" class="btn ${v.sound ? 'on' : ''}" title="Dźwięk zdarzeń (M)">${v.sound ? 'Dźwięk: wł.' : 'Dźwięk: wył.'}</button>
       <button data-act="reset" class="btn" title="Cały rój w kadrze">Dopasuj</button>
     </div>
     <label class="runpick"><span>przebieg</span><select data-act="run">${v.runs.map((r) => `<option value="${esc(r.id)}" ${r.id === v.run ? 'selected' : ''}>${esc(r.title)}${r.source === 'live' ? ' · na żywo' : ''}</option>`).join('')}</select></label>`;
@@ -108,8 +110,14 @@ function inspectorHTML(st, v, events) {
     <h4>historia</h4>${hist.length ? `<ul class="hist">${hist.map((e) => `<li><time>${clock((e.ts - events[0].ts) / 1000)}</time> ${esc(e.type)} · ${esc(labelOf(st, e.agent))}${e.action ? ' · ' + esc(e.action) : ''}</li>`).join('')}</ul>` : '<p class="empty">brak zdarzeń</p>'}</div>`;
 }
 
-export function timelineHTML(v, events) {
+export function timelineHTML(v, events, moments = []) {
+  const next = v.nextMoment; const prev = v.prevMoment;
+  const jump = `<div class="moments">
+    <button class="btn sm" data-act="moment" data-v="-1" ${prev ? '' : 'disabled'} title="Poprzedni moment (P)">‹ ${prev ? esc(prev.kind) + ' · ' + clock(prev.t) : 'moment'}</button>
+    <span class="now">${v.caption ? esc(v.caption.text) : ''}</span>
+    <button class="btn sm" data-act="moment" data-v="1" ${next ? '' : 'disabled'} title="Następny moment (N)">${next ? esc(next.kind) + ' · ' + clock(next.t) : 'moment'} ›</button>
+  </div>`;
   const marks = events.filter((e) => ['test', 'file.write', 'run.completed', 'run.failed', 'agent.finished'].includes(e.type))
     .map((e) => { const p = v.duration ? (e.ts - events[0].ts) / 1000 / v.duration * 100 : 0; return `<i class="mk ${esc(e.type.replace('.', '-'))}" style="left:${p.toFixed(2)}%"></i>`; }).join('');
-  return `<div class="scrub"><input type="range" min="0" max="${v.duration.toFixed(3)}" step="0.05" value="${v.t.toFixed(3)}" data-act="seek" aria-label="Czas przebiegu"><div class="marks">${marks}</div></div>`;
+  return `${jump}<div class="scrub"><input type="range" min="0" max="${v.duration.toFixed(3)}" step="0.05" value="${v.t.toFixed(3)}" data-act="seek" aria-label="Czas przebiegu"><div class="marks">${marks}</div></div>`;
 }

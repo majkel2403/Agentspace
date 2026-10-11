@@ -126,3 +126,14 @@ code, pre, small.path, .log code, .hist { font-family: var(--mono); }
   .roster { max-height: 320px; }
   .stage { min-height: 52vh; }
 }
+
+/* story bar: moments to jump to and the caption of what is happening now */
+.moments { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.moments .now { flex: 1; min-width: 0; color: #e4dcf7; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn:disabled { opacity: .35; cursor: default; }
+
+/* opening card: the task, for a few seconds when a run opens */
+.curtain { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; background: radial-gradient(ellipse at center, rgba(7, 4, 13, .35), rgba(7, 4, 13, .92)); pointer-events: none; opacity: 0; transition: opacity .6s ease; }
+.curtain.on { opacity: 1; }
+.curtain b { font: 700 clamp(22px, 3.4vw, 40px) var(--serif); max-width: 80%; margin: 0 auto; line-height: 1.15; }
+.curtain small { color: var(--dim); font-family: var(--mono); letter-spacing: .08em; }

@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { locate } from './layout.js';
 import { QUEEN } from './model.js';
 import { colourOf } from './palette.js';
+import { heightField, heightColour } from './terrain.js';
 
 const APPEAR_S = 0.7;     // a new file or folder grows to full size in this many log seconds
 const WALK_S = 1.1;       // an agent walks to its next place in this many log seconds
@@ -13,6 +14,8 @@ const BEAM_S = 1.2;       // a beam lives this long after the action
 const ARC_S = 2.4;        // a message arc stays this long
 const HOT_S = 1.6;        // a file stays bright this long after a touch
 const LABEL_S = 4;        // a file name is shown this long after a touch
+const TRAIL_S = 12;       // a drone's trail shows where it flew in the last this many log seconds
+const TERRAIN_N = 72;     // grid of the landscape of attention
 
 const FILE_COLOUR = { idle: '#6f7fb0', read: '#8fd8ff', created: '#3ddc97', modified: '#ffb547', deleted: '#ff5470' };
 const TONE_COLOUR = { assign: '#ff2e6e', question: '#ffd166', answer: '#9ad4ff', result: '#3ddc97', handoff: '#a66bff', critique: '#ff8a5c', revision: '#ffb547', approve: '#7cf5b8' };
@@ -65,6 +68,8 @@ export function createScene(container, { onPick } = {}) {
   let layout = null; let files = []; let dirMeshes = new Map(); let edges = null; let agentMeshes = new Map();
   let fileLabels = new Map(); let selected = null; let follow = true;
   let known = -1; let dirFirst = new Map();
+  let terrain = null; let terrainKey = ''; let box = null;
+  let director = null; // a point the camera glides to when the director is on (presentation only)
   let posCache = new Map();
   const colourOfAgent = (id, st) => colourOf(id, st ? st.order : []);
 
@@ -89,6 +94,48 @@ export function createScene(container, { onPick } = {}) {
     }
     edges = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x6d5aa0, transparent: true, opacity: 0.45 }));
     dirGroup.add(edges);
+    // the landscape under the workspace: a grid over the box the files span, raised by attention
+    const xs = [...L.files.values()].map((f) => f.x); const zs = [...L.files.values()].map((f) => f.z);
+    const pad = 70;
+    box = xs.length ? { x0: Math.min(...xs) - pad, x1: Math.max(...xs) + pad, z0: Math.min(...zs) - pad, z1: Math.max(...zs) + pad } : { x0: -200, x1: 200, z0: -200, z1: 200 };
+    if (terrain) { terrain.geometry.dispose(); terrain.material.dispose(); scene.remove(terrain); }
+    const N = TERRAIN_N; const g = new THREE.BufferGeometry();
+    const pos = new Float32Array(N * N * 3); const col = new Float32Array(N * N * 3);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const o = (j * N + i) * 3;
+      pos[o] = box.x0 + (box.x1 - box.x0) * i / (N - 1); pos[o + 1] = -12; pos[o + 2] = box.z0 + (box.z1 - box.z0) * j / (N - 1);
+    }
+    const idx = [];
+    for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) {
+      const a = j * N + i; const b = a + 1; const c = a + N; const d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+    g.setIndex(idx);
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    terrain = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+    terrainKey = ''; scene.add(terrain);
+  }
+  // the land follows the touches: a hill grows at every file the swarm has touched, as often as the log says
+  function updateTerrain(st) {
+    if (!terrain) return;
+    let total = 0; const pts = [];
+    for (const f of layout.files.values()) {
+      const s = st.files.get(f.path); const t = s ? s.touches : 0;
+      total += t; pts.push({ x: f.x, z: f.z, touches: t });
+    }
+    const key = total + ':' + st.files.size;
+    if (key === terrainKey) return;
+    terrainKey = key;
+    const h = heightField(pts, box, TERRAIN_N);
+    let peak = 1; for (let i = 0; i < h.length; i++) if (h[i] > peak) peak = h[i];
+    const pos = terrain.geometry.attributes.position; const col = terrain.geometry.attributes.color;
+    for (let i = 0; i < h.length; i++) {
+      const v = h[i] / peak;
+      pos.array[i * 3 + 1] = -12 + h[i] * 3.2;
+      const c = heightColour(v); col.array[i * 3] = c[0]; col.array[i * 3 + 1] = c[1]; col.array[i * 3 + 2] = c[2];
+    }
+    pos.needsUpdate = true; col.needsUpdate = true;
   }
   function hashColour(key) { const h = hashN(key); return `hsl(${Math.round(300 + h * 60)} 70% ${Math.round(62 + hashN(key + 'l') * 12)}%)`; }
 
@@ -164,8 +211,11 @@ export function createScene(container, { onPick } = {}) {
     return new THREE.Line(geo, new THREE.LineBasicMaterial({ color: colour, transparent: true, opacity, depthWrite: false }));
   }
 
+  let lastSt = null;
   function update(st) {
+    lastSt = st;
     updateTree(st);
+    updateTerrain(st);
     const now = st.now;
     // files: grow in when first known, colour by their state, bright while recently touched
     for (const f of files) {
@@ -202,6 +252,16 @@ export function createScene(container, { onPick } = {}) {
       const A = agentWhere(a, st);
       const colour = FILE_COLOUR[act.kind] || FILE_COLOUR.read;
       fxGroup.add(fxLines([new THREE.Vector3(A.x, A.y, A.z), new THREE.Vector3(f.x, f.y + 9, f.z)], colour, 1 - age / BEAM_S));
+    }
+    for (const a of st.agents.values()) {
+      const pts = [];
+      for (const q of a.path) {
+        if (now - q.t > TRAIL_S || now - q.t < 0) continue;
+        const place = keyPlace(q.key, st, a) || home(a, st);
+        pts.push(new THREE.Vector3(place.x, place.y, place.z));
+      }
+      const cur = agentWhere(a, st);
+      if (pts.length) { pts.push(new THREE.Vector3(cur.x, cur.y, cur.z)); fxGroup.add(fxLines(pts, colourOfAgent(a.id, st), 0.55)); }
     }
     for (const m of st.messages) {
       const age = now - m.t;
@@ -252,7 +312,13 @@ export function createScene(container, { onPick } = {}) {
   }
   // follow: the camera eases its target toward the work (presentation only, not part of the log)
   function frame(st, dt) {
-    if (follow && st) {
+    if (director && st) {
+      // the director glides to the point it was given, keeping the reader's distance and angle
+      const k = 1 - Math.exp(-dt * 1.6);
+      const want = new THREE.Vector3(director.x, director.y, director.z);
+      const step = want.clone().sub(controls.target).multiplyScalar(k);
+      controls.target.add(step); camera.position.add(step);
+    } else if (follow && st) {
       let x = 0; let y = 0; let z = 0; let n = 0;
       for (const a of st.agents.values()) { if (a.status !== 'working' && a.id !== QUEEN) continue; const p = agentWhere(a, st); x += p.x; y += p.y; z += p.z; n++; }
       if (n) { const k = 1 - Math.exp(-dt * 2); controls.target.lerp(new THREE.Vector3(x / n, y / n, z / n), k); }
@@ -266,6 +332,10 @@ export function createScene(container, { onPick } = {}) {
   return {
     setLayout, update, frame, resize, pick,
     setSelected(id) { selected = id; },
+    // where an agent is right now (the director and the caption use it)
+    positionOf(id) { const a = lastSt && lastSt.agents.get(id); return a ? agentWhere(a, lastSt) : null; },
+    setDirector(p) { director = p || null; },
+    get directing() { return !!director; },
     setFollow(on) { follow = !!on; },
     get follow() { return follow; },
     resetView() { controls.target.set(0, 0, 0); camera.position.set(0, 330, 470); },

@@ -1,5 +1,10 @@
 # Rój · centrum agentów
 
+Wersja 3: zamiast chmury agentów nad płaszczyzną — **krajobraz uwagi**. Im więcej rój dotknął pliku, tym wyższe
+wzgórze w tym miejscu; ślady dronów pokazują, gdzie latały w ostatnich sekundach; a kamera-reżyser sama prowadzi do
+tego, kto teraz pracuje. Podpis na scenie i skoki między momentami (porażka testu, zatwierdzenie, koniec) powstają
+z dziennika zdarzeń.
+
 Aplikacja do obserwowania i prowadzenia roju agentów AI. **Królowa** (orkiestrator) rozbija zlecenie i przydziela
 części zwiadowcom, programistom, recenzentowi i testerowi. Agenci rozmawiają, czytają i zmieniają pliki, uruchamiają
 testy. Całość widać w scenie 3D i na pulpicie: rozmowy, plan, pliki, testy, dziennik i inspektor. Przebieg można
@@ -23,7 +28,7 @@ pojawienia się pliku. Te przejścia są funkcją czasu logu, więc też są pow
 npm install          # ws (serwer LIVE) i three (scena 3D)
 npm start            # http://127.0.0.1:4777   (PORT=… zmienia port)
 npm run demo:build   # odbudowa nagranych przebiegów z demo/make-swarm.mjs
-npm test             # 16 testów: zdarzenia, model, układ, serwer
+npm test             # 22 testy: zdarzenia, model, układ, serwer, narracja, teren
 npm run smoke       # przeglądarka: odtwarza przebieg, klika agenta i plik (wymaga Playwright; URL=… i PLAYWRIGHT_MODULE=…)
 ```
 
@@ -35,7 +40,10 @@ npm run smoke       # przeglądarka: odtwarza przebieg, klika agenta i plik (wym
 | Model | `src/model.js` | `applyEvent` (jedyne miejsce, gdzie log zmienia stan) i `createReplay` (stan w czasie `t`, z pamięcią podręczną) |
 | Układ | `src/layout.js` | miejsca folderów i plików, liczone z pełnej listy ścieżek przebiegu (drzewo nie „skacze”) |
 | Kolory | `src/palette.js` | królowa zawsze różowa, pozostali w kolejności pojawiania się; ta sama funkcja w scenie i na pulpicie |
-| Scena | `src/scene.js` | Three.js: foldery, pliki, agenci, wiązki (działania), łuki (wiadomości), kamera |
+| Scena | `src/scene.js` | Three.js: teren uwagi, foldery, pliki, drony ze śladami, wiązki (działania), łuki (wiadomości), kamera i reżyser |
+| Teren | `src/terrain.js` | wysokość terenu z liczby dotknięć plików (czysta funkcja) i skala barw |
+| Narracja | `src/story.js` | podpis z dziennika, lista momentów kluczowych, skoki między nimi |
+| Dźwięk | `src/sound.js` | krótkie tony dla zdarzeń, grane tylko w przód przy odtwarzaniu |
 | Pulpit | `src/ui.js` | HTML z (stanu, widoku): pasek górny, zespół, zakładki, oś czasu |
 | Aplikacja | `src/app.js` | zegar logu, odtwarzanie, przewijanie, LIVE przez WebSocket, kliknięcia |
 | Serwer | `server/server.mjs`, `server/store.mjs` | przebiegi (REST), zapis zdarzeń z walidacją, WebSocket `/live`, pliki statyczne |
@@ -49,6 +57,16 @@ npm run smoke       # przeglądarka: odtwarza przebieg, klika agenta i plik (wym
 - **Testy** — wynik każdego testu i fragment wyjścia przy porażce.
 - **Dziennik** — ostatnie zdarzenia do chwili `t`, surowo.
 - **Inspektor** — po kliknięciu agenta (scena, zespół, rozmowa) albo pliku: jego stan i historia.
+
+## Co można robić
+
+- **Teren uwagi** — wzgórza rosną, gdy plik jest dotykany (czytany, zmieniany, tworzony). Gorące miejsca to to, nad czym rój pracował.
+- **Ślady** — każdy dron zostawia linię tam, gdzie stał w ostatnich 12 sekundach przebiegu.
+- **Reżyser** (`D`) — kamera płynnie podąża za tym, kto ostatnio działał, zachowując odległość i kąt.
+- **Momenty** (`N` / `P`) — skok do następnej albo poprzedniej porażki testu, zatwierdzenia, uwagi, końca.
+- **Dźwięk** (`M`) — krótki ton dla każdego zdarzenia, gdy zegar je mija. Wyłączony domyślnie; włączenie wymaga kliknięcia (przeglądarka).
+- **Kurtyna** — po otwarciu przebiegu na chwilę pokazuje zlecenie i liczbę agentów.
+- Klawisze: spacja odtwarzanie, `F` śledzenie, `D` reżyser, `M` dźwięk, `N`/`P` momenty, `Esc` zamknięcie inspektora.
 
 ## Format zdarzeń
 

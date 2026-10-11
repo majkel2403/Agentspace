@@ -5,11 +5,22 @@ import { createReplay } from './model.js';
 import { buildLayout } from './layout.js';
 import { createScene } from './scene.js';
 import { headerHTML, rosterHTML, deckHTML, timelineHTML, clockHTML } from './ui.js';
+import { keyMoments, caption, stepMoment } from './story.js';
+import { createSound } from './sound.js';
+
+const sound = createSound();
+// the last event at or before t (binary search; the log is sorted)
+function lastIndexAt(events, t0, t) {
+  let lo = 0; let hi = events.length; const lim = t0 + t * 1000;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (events[m].ts <= lim) lo = m + 1; else hi = m; }
+  return lo - 1;
+}
 
 const $ = (s) => document.querySelector(s);
 const app = {
   runs: [], run: null, replay: null, layout: null, pathCount: -1, t: 0, playing: false, speed: 1, follow: true,
   live: false, ws: null, tab: 'msgs', selected: null, scene: null, uiAt: 0, dirty: true,
+  director: false, moments: [], momentsFor: -1, soundT: -1, dirAgent: null, dirAt: 0,
 };
 const SKIP_TAIL = 2; // the clock keeps running this many seconds after the last event, then stops
 // a panel is redrawn only when its content changed, and not while the pointer is over it (a button under the pointer
@@ -56,12 +67,24 @@ async function openRun(id) {
   const { events, bad } = parseJsonl(text);
   if (bad.length) console.warn('skipped lines', bad);
   app.replay = createReplay(events);
-  app.run = id; app.t = 0; app.playing = false; app.selected = null; app.pathCount = -1;
+  app.run = id; app.t = 0; app.playing = false; app.selected = null; app.pathCount = -1; app.soundT = -1; app.momentsFor = -1;
   history.replaceState(null, '', '?run=' + encodeURIComponent(id));
   rebuildLayout();
   const info = app.runs.find((r) => r.id === id);
   if (info && info.source === 'live') connect(id);
   app.dirty = true;
+  showCurtain(id);
+}
+
+// the opening card: the task and who takes part, for a few seconds before the clock starts
+function showCurtain(id) {
+  const el = $('#curtain'); if (!el || !app.replay) return;
+  const st = app.replay.at(0);
+  $('#curtain-task').textContent = st.task || id;
+  $('#curtain-who').textContent = (app.replay.events.some((e) => e.type === 'scan') ? 'przestrzeń roboczą: ' : '') + st.order.length + ' agentów w roju';
+  el.classList.remove('off'); el.classList.add('on');
+  clearTimeout(app.curtainTimer);
+  app.curtainTimer = setTimeout(() => { el.classList.remove('on'); el.classList.add('off'); }, 2600);
 }
 
 // LIVE: new events are appended as they arrive; the clock follows the head while live and follow is on
@@ -90,17 +113,40 @@ function tick(now) {
       app.t += dt * app.speed;
       if (app.t >= end + SKIP_TAIL) { app.t = end + SKIP_TAIL; app.playing = false; app.dirty = true; }
     }
-    const st = app.replay.at(Math.min(app.t, end + SKIP_TAIL));
+    const at = Math.min(app.t, end + SKIP_TAIL);
+    const st = app.replay.at(at);
+    const evs = app.replay.events;
+    // sound: the events the clock has just passed (never when scrubbing back)
+    if (sound.on && app.playing && app.soundT >= 0 && app.t > app.soundT && app.t - app.soundT < 1) {
+      let k = 0;
+      for (let i = lastIndexAt(evs, app.replay.t0, app.soundT) + 1; i < evs.length && (evs[i].ts - app.replay.t0) / 1000 <= app.t && k < 8; i++, k++) sound.play(evs[i], k);
+    }
+    app.soundT = app.t;
+    // the director: the camera goes to whoever acted last (never a cut: it glides there)
+    if (app.director) {
+      if (now - app.dirAt > 900) {
+        app.dirAt = now;
+        const i = lastIndexAt(evs, app.replay.t0, at);
+        const e = i >= 0 ? evs[i] : null;
+        const who = e && (e.agent || e.from);
+        if (who) app.dirAgent = who;
+      }
+      app.scene.setDirector(app.dirAgent ? app.scene.positionOf(app.dirAgent) : null);
+    } else app.scene.setDirector(null);
+    if (app.moments.length === 0 || app.momentsFor !== evs.length) { app.moments = keyMoments(evs); app.momentsFor = evs.length; }
+    app.caption = caption(evs, app.replay.t0, at, st);
     app.scene.setSelected(app.selected);
     app.scene.update(st);
     app.scene.frame(st, dt);
     if (app.dirty || now - app.uiAt > 200) {
       app.uiAt = now; const forced = app.dirty; app.dirty = false; force = forced;
       const v = view(end);
+      v.director = app.director; v.sound = sound.on; v.caption = app.caption;
+      v.nextMoment = stepMoment(app.moments, app.t, 1); v.prevMoment = stepMoment(app.moments, app.t, -1);
       paint('#top', headerHTML(st, v));
       paint('#roster', rosterHTML(st, v));
       paint('#deck', deckHTML(st, v, app.replay.events));
-      paint('#scrub', timelineHTML(v, app.replay.events));
+      paint('#scrub', timelineHTML(v, app.replay.events, app.moments));
       force = false;
       const c = $('#clock'); if (c) c.innerHTML = clockHTML(v);
     }
@@ -114,6 +160,12 @@ function view(end) {
   return { run: app.run, runs: app.runs, live: app.live, playing: app.playing, speed: app.speed, follow: app.follow, t: Math.min(app.t, end), duration: end, tab: app.tab, selected: app.selected };
 }
 
+// jumps to the next or previous key moment (the clock stops there so the reader can look)
+function jump(dir) {
+  if (!app.replay) return;
+  const m = stepMoment(app.moments, app.t, dir);
+  if (m) { app.t = m.t; app.playing = false; app.dirty = true; }
+}
 // clicks, keys and the timeline
 function act(el, e) {
   const k = el.dataset.act;
@@ -124,6 +176,9 @@ function act(el, e) {
   else if (k === 'tab') app.tab = el.dataset.v;
   else if (k === 'agent') { app.selected = 'agent:' + el.dataset.id; app.tab = 'ins'; }
   else if (k === 'file') { app.selected = 'file:' + el.dataset.id; app.tab = 'ins'; }
+  else if (k === 'director') app.director = !app.director;
+  else if (k === 'sound') sound.toggle();
+  else if (k === 'moment') jump(Number(el.dataset.v));
   app.dirty = true; // redrawn on the next frame, even under the pointer
 }
 document.addEventListener('click', (e) => {
@@ -143,6 +198,10 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'Space') { e.preventDefault(); app.playing = !app.playing; app.dirty = true; }
   if (e.key === 'Escape') { app.selected = null; app.dirty = true; }
   if (e.key === 'f') { app.follow = !app.follow; app.scene.setFollow(app.follow); app.dirty = true; }
+  if (e.key === 'd') { app.director = !app.director; app.dirty = true; }
+  if (e.key === 'm') { sound.toggle(); app.dirty = true; }
+  if (e.key === 'n') jump(1);
+  if (e.key === 'p') jump(-1);
 });
 // clicks in the 3D scene select the thing and open the inspector
 app.scene = createScene($('#stage'), {

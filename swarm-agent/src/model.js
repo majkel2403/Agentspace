@@ -24,6 +24,7 @@ function addAgent(st, o, now) {
     id: o.agent, label: o.label || o.agent, role: o.role || '', parent: o.parent || null,
     status: o.status || 'idle', task: '', tool: null, command: '', toolOk: null, note: '',
     at: null, from: null, atSince: now, touches: 0, spawnedAt: now, reads: 0, writes: 0,
+    path: [], // where it stood, over time: [{ t, key }] (the trail the scene draws)
   };
   st.agents.set(a.id, a);
   st.order.push(a.id);
@@ -34,6 +35,7 @@ function addAgent(st, o, now) {
 function setAt(a, key, now) {
   if (a.at === key) return;
   a.from = a.at; a.at = key; a.atSince = now;
+  a.path.push({ t: now, key });
 }
 
 function touchFile(st, path, now) {

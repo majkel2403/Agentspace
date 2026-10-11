@@ -64,7 +64,7 @@ export function createC2D(canvas) {
         }
       }
     }
-    for (const f of F.files) sprite('file', f.x - f.size / 2 + f.shadow, f.y - f.size / 2 + f.shadow, f.size, f.size, [0, 0, 0], f.a * 0.5);
+    for (const f of F.files) sprite('file', f.shx - f.size / 2, f.shy - f.size / 2, f.size, f.size, [0, 0, 0], f.a * 0.5);
     for (const b of F.beams) {
       const q = b.q;
       const g = ctx.createLinearGradient((q[0] + q[2]) / 2, (q[1] + q[3]) / 2, (q[4] + q[6]) / 2, (q[5] + q[7]) / 2);
@@ -75,7 +75,7 @@ export function createC2D(canvas) {
       ctx.beginPath(); ctx.moveTo(q[0], q[1]); ctx.lineTo(q[2], q[3]); ctx.lineTo(q[4], q[5]); ctx.lineTo(q[6], q[7]); ctx.closePath(); ctx.fill();
     }
     for (const f of F.files) sprite('file', f.x - f.size / 2, f.y - f.size / 2, f.size, f.size, f.col, f.a);
-    for (const u of F.users) sprite('user', u.x - u.w / 2 + u.shadow, u.y - u.h / 2 + u.shadow, u.w, u.h, [0, 0, 0], u.a * 0.5);
+    for (const u of F.users) sprite('user', u.shx - u.w / 2, u.shy - u.h / 2, u.w, u.h, [0, 0, 0], u.a * 0.5);
     for (const u of F.users) sprite('user', u.x - u.w / 2, u.y - u.h / 2, u.w, u.h, u.col, u.a);
     ctx.globalCompositeOperation = 'lighter';
     for (const b of F.blooms) {

@@ -179,6 +179,13 @@ Zapisuje pary obrazów (Gource po lewej, nasz renderer po prawej) i miarę SSIM 
   dotknęli ostatnio. Kamera: kółko i pinch przybliżają wokół kursora, przeciąganie przesuwa, podwójne kliknięcie
   przybliża; po ruchu widok przestaje podążać za pracą, aż do „Śledź pracę” albo „Dopasuj”. Dymki rozmów nad
   agentami są domyślnie wyłączone (przełącznik „Dymki”); rozmowy czyta się w zakładce Rozmowy.
+- **3D** (przełącznik „3D”, domyślnie włączony; w Gource i testach zgodności wyłączony): foldery wznoszą się o 70 jednostek
+  na poziom głębokości, pliki siedzą na tarczy swojego folderu, agenci lewitują nad drzewem i rzucają cień na podłogę.
+  Kamera patrzy pod kątem (0,95 rad) z perspektywą (pole widzenia 50°), a podłoga ma siatkę, dzięki której pochylenie
+  czytać jako głębię. Miasto: budynki są bryłami o wysokości z rozmiaru pliku, ściany widać po stronie kamery, cienie
+  leżą na ziemi. Obrót: prawy przycisk albo Shift + przeciąganie (poziomo obraca, pionowo pochyla); „Dopasuj” cofa obrót.
+  Przełączenie 3D jest płynne (k3, pochylenie i obrót są wygładzane). Zoom i pan trzymają punkt pod kursorem także
+  w perspektywie (`anchorCentre`, `projector` w `packages/core/gource/frame.js`; testy w `test/projection.test.mjs`).
 - `adapters/jarvis.mjs` + `tools/jarvis-relay.mjs` — zadania Hermesa z Jarvisa (Telegram, cron, konsola) jako przebiegi
   na żywo: przekaźnik czyta strumień mostu (`/bridge/events`, zdarzenia `agent`) i wysyła je do serwera. Uruchomienie:
   `JARVIS_BRIDGE_TOKEN=… AGENTSPACE_URL=http://127.0.0.1:4777 node tools/jarvis-relay.mjs`. Test: `test/jarvis.test.mjs`.

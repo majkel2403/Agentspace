@@ -6,6 +6,7 @@
 // scrubs exactly like the tree.
 //   const city = createCity(canvas); city.draw(T, idx, t, { colour(id), label(id) }); city.onPick = (path) => {}
 import { gFileColour } from '../gource/colour.js';
+import { projector, anchorCentre } from '../gource/frame.js';
 
 const WORLD_W = 1000; const WORLD_H = 640;
 // a building's share of the district: the square root of its lines, so a big file does not swallow the city
@@ -13,6 +14,11 @@ const cityWeight = (f) => (f.read ? 1 : 1 + Math.sqrt(f.w) * 2.5);
 const CITY_WRITE = /^file\.(created|modified|deleted)$|^resource\.written$/;
 const CITY_READ = /^file\.read$|^resource\.read$/;
 const RISE_MS = 700; const RECENT_MS = 1600;
+// 3D: buildings stand up to a height from their size; the ground tilts (same pitch and fit as the tree scene)
+const CITY_PITCH = 0.95; const CITY_FIT = 0.3;
+const cityHeight = (f) => (f.read ? 2 : Math.min(90, 6 + Math.sqrt(f.w) * 5));
+// is a point inside a polygon (even-odd rule)
+const cityIn = (q, x, y) => { let s = false; for (let i = 0, j = q.length - 1; i < q.length; j = i++) { const [xi, yi] = q[i]; const [xj, yj] = q[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) s = !s; } return s; };
 const cityClamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const cityEase = (x) => 1 - Math.pow(1 - cityClamp(x, 0, 1), 3);
 const cityRgb = (c, a) => 'rgba(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ',' + cityClamp(a, 0, 1).toFixed(3) + ')';
@@ -110,6 +116,9 @@ function cityLayout(root) {
 export function createCity(canvas) {
   const ctx = canvas.getContext('2d');
   const cam = { cx: WORLD_W / 2, cy: WORLD_H / 2, K: 1, free: false, tx: 0, ty: 0, tk: 0, blend: null };
+  // the 3D state, eased like the camera: k3 (amount of 3D), pitch (tilt), yaw (turn); the city starts in 3D
+  const t3 = { k3: 1, k3T: 1, pitch: CITY_PITCH, pitchT: CITY_PITCH, yaw: 0, yawT: 0 };
+  const fitNow = () => 1 - CITY_FIT * t3.k3;
   let lastNow = performance.now();
   const pointers = new Map();
   let drag = null; let pinch = null; let model = null; let lay = null; let layKey = ''; let W = 0; let H = 0; let dpr = 1;
@@ -117,53 +126,54 @@ export function createCity(canvas) {
   let ins = { l: 0, r: 0, t: 0, b: 0 };
   const area = () => ({ ox: ins.l + (W - ins.l - ins.r) / 2, oy: ins.t + (H - ins.t - ins.b) / 2, wf: Math.max(40, W - ins.l - ins.r), hf: Math.max(40, H - ins.t - ins.b) });
   let lastIdx = -2; let agentPos = new Map(); let lastDraw = 0;
+  let hits = []; // the drawn top faces, far to near, for picking
   const api = { onPick: null, hover: null, free: false };
 
   const autoK = () => { const a = area(); return Math.min(a.wf / (WORLD_W + 40), a.hf / (WORLD_H + 40)); };
   // the auto view is the whole city; after the reader zooms or pans, the view eases back into it (fit) instead of snapping
   const view = () => {
+    const fit = fitNow();
     if (!cam.free) {
-      const K = autoK(); const auto = { cx: WORLD_W / 2, cy: WORLD_H / 2, K };
+      let cx = WORLD_W / 2; let cy = WORLD_H / 2; let K = autoK();
       if (cam.blend) {
         const x = Math.min(1, (performance.now() - cam.blend.t0) / 700); const f = 1 - Math.pow(1 - x, 3);
         if (x >= 1) cam.blend = null;
-        return { cx: cam.blend ? cam.blend.cx + (auto.cx - cam.blend.cx) * f : auto.cx, cy: cam.blend ? cam.blend.cy + (auto.cy - cam.blend.cy) * f : auto.cy,
-          K: cam.blend ? Math.exp(Math.log(cam.blend.K) + (Math.log(auto.K) - Math.log(cam.blend.K)) * f) : auto.K };
+        else { cx = cam.blend.cx + (cx - cam.blend.cx) * f; cy = cam.blend.cy + (cy - cam.blend.cy) * f; K = Math.exp(Math.log(cam.blend.K) + (Math.log(K) - Math.log(cam.blend.K)) * f); }
       }
-      return auto;
+      return { cx, cy, K: K * fit };
     }
-    return cam;
+    return { cx: cam.cx, cy: cam.cy, K: cam.K * fit };
   };
-  const toWorld = (px, py) => { const v = view(); const a = area(); return { x: v.cx + (px - a.ox) / v.K, y: v.cy + (py - a.oy) / v.K }; };
-  const ensureFree = () => { if (!cam.free) { const v = view(); cam.cx = v.cx; cam.cy = v.cy; cam.K = v.K; cam.tx = v.cx; cam.ty = v.cy; cam.tk = v.K; cam.blend = null; cam.free = true; api.free = true; } };
+  // the projection of the current view: the same maths as the tree scene
+  const proj = () => { const v = view(); const A = area(); return projector(v.cx, v.cy, v.K, A.ox, A.oy, A.hf, t3.k3, t3.pitch, t3.yaw); };
+  const toWorld = (px, py) => proj().unproj(px, py);
+  // the free camera keeps the flat scale (K without the 3D fit), so turning 3D on or off never double-counts it
+  const ensureFree = () => { if (!cam.free) { const v = view(); cam.cx = v.cx; cam.cy = v.cy; cam.K = v.K / fitNow(); cam.tx = cam.cx; cam.ty = cam.cy; cam.tk = cam.K; cam.blend = null; cam.free = true; api.free = true; } };
   // zoom is eased: the target moves now and the view follows it in draw(), anchored on the same world point
   const zoomAt = (factor, px, py) => {
     ensureFree();
     const a = autoK();
-    const before = toWorld(px, py);
     const K = cityClamp(cam.tk * factor, a * 0.2, a * 80);
     const A = area();
-    cam.tk = K; cam.tx = before.x - (px - A.ox) / K; cam.ty = before.y - (py - A.oy) / K;
+    const c = anchorCentre(toWorld(px, py), px, py, K, A.ox, A.oy, A.hf, t3.k3, t3.pitch, t3.yaw, fitNow());
+    cam.tk = K; cam.tx = c.x; cam.ty = c.y;
   };
-  // back to the whole city: the current view becomes the start of an eased blend
+  // back to the whole city: the current view becomes the start of an eased blend, and the map turns back to north
   const fit = () => {
     if (cam.free) cam.blend = { cx: cam.cx, cy: cam.cy, K: cam.K, t0: performance.now() };
-    cam.free = false; api.free = false;
+    cam.free = false; api.free = false; t3.yawT = 0;
   };
 
+  // the building under the pointer: the nearest drawn top face that holds it
   const hitBlock = (px, py) => {
-    if (!lay) return null;
-    const w = toWorld(px, py);
-    for (let i = lay.blocks.length - 1; i >= 0; i--) {
-      const b = lay.blocks[i];
-      if (w.x >= b.x && w.x <= b.x + b.w && w.y >= b.y && w.y <= b.y + b.h) return b;
-    }
+    for (let i = hits.length - 1; i >= 0; i--) if (cityIn(hits[i].q, px, py)) return hits[i].b;
     return null;
   };
   const local = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    if (e.button !== 0 && e.button !== 2 && e.pointerType === 'mouse') return;
     try { canvas.setPointerCapture(e.pointerId); } catch (x) { /* optional */ }
     const p = local(e);
     pointers.set(e.pointerId, p);
@@ -172,7 +182,7 @@ export function createCity(canvas) {
       ensureFree();
       pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
       drag = null;
-    } else drag = { x: p.x, y: p.y, moved: 0, start: p };
+    } else drag = { x: p.x, y: p.y, moved: 0, start: p, orbit: e.button === 2 || e.shiftKey };
   });
   canvas.addEventListener('pointermove', (e) => {
     const p = local(e);
@@ -187,7 +197,17 @@ export function createCity(canvas) {
     if (drag && pointers.has(e.pointerId)) {
       const dx = p.x - drag.x; const dy = p.y - drag.y;
       drag.x = p.x; drag.y = p.y; drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (drag.moved > 4) { ensureFree(); cam.cx -= dx / cam.K; cam.cy -= dy / cam.K; cam.tx = cam.cx; cam.ty = cam.cy; cam.tk = cam.K; }
+      if (drag.orbit && drag.moved > 4) {
+        // orbit: horizontal turns the map, vertical tilts it (the 3D view comes on with the first turn)
+        t3.k3T = 1; t3.k3 = 1; t3.yawT = t3.yaw = t3.yaw + dx * 0.006;
+        t3.pitchT = t3.pitch = Math.max(0.1, Math.min(1.45, t3.pitch - dy * 0.005));
+      } else if (drag.moved > 4) {
+        // pan along the turned axes, foreshortened by the tilt, so the ground keeps up with the pointer
+        ensureFree();
+        const K = cam.K * fitNow(); const cP = Math.cos(t3.pitch * t3.k3); const cY = Math.cos(t3.yaw); const sY = Math.sin(t3.yaw);
+        cam.cx -= dx / K * cY + dy / (K * cP) * sY; cam.cy -= -dx / K * sY + dy / (K * cP) * cY;
+        cam.tx = cam.cx; cam.ty = cam.cy; cam.tk = cam.K;
+      }
     }
     const b = hitBlock(p.x, p.y);
     api.hover = b ? b.file.path : null;
@@ -212,8 +232,11 @@ export function createCity(canvas) {
   api.zoom = (k) => { const a = area(); zoomAt(k, a.ox, a.oy); };
   api.setInsets = (o) => { ins = { l: o.l || 0, r: o.r || 0, t: o.t || 0, b: o.b || 0 }; };
   api.fit = fit;
+  // the tilt on or off, eased like the camera (the same switch as the tree scene)
+  api.setTilt = (on) => { t3.k3T = on ? 1 : 0; t3.pitchT = on ? CITY_PITCH : 0; if (!on) t3.yawT = 0; };
+  api.tilt = () => t3.k3T > 0.5;
 
-  // one frame: layout (only when the set of files changed), buildings with their rise, agents, names
+  // one frame: layout (only when the set of files changed), the ground, buildings as boxes that rise, agents, names
   api.draw = (T, idx, t, who) => {
     if (!T || !canvas.clientWidth) return;
     const cw = canvas.clientWidth; const ch = canvas.clientHeight;
@@ -226,61 +249,94 @@ export function createCity(canvas) {
     if (!lay || key !== layKey) { lay = cityLayout(cityTree(model.files)); layKey = key; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#03060f'; ctx.fillRect(0, 0, W, H);
-    // ease a free camera toward its zoom target (frame-rate independent)
+    // ease a free camera toward its zoom target, and the 3D state toward its targets (frame-rate independent)
     const now = performance.now(); const dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
     if (cam.free && cam.tk) {
       const k = 1 - Math.exp(-dt * 12);
       cam.cx += (cam.tx - cam.cx) * k; cam.cy += (cam.ty - cam.cy) * k;
       cam.K = Math.exp(Math.log(cam.K) + (Math.log(cam.tk) - Math.log(cam.K)) * k);
     }
-    const v = view(); const K = v.K; const A = area();
-    const sx = (x) => A.ox + (x - v.cx) * K; const sy = (y) => A.oy + (y - v.cy) * K;
-    // a soft grid on the ground, so the city has a scale when zoomed in
-    ctx.strokeStyle = 'rgba(255,46,110,0.05)'; ctx.lineWidth = 1;
-    const step = 40 * K;
-    if (step > 6) {
-      const ox = (sx(0) % step + step) % step; const oy = (sy(0) % step + step) % step;
-      ctx.beginPath();
-      for (let x = ox; x < W; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
-      for (let y = oy; y < H; y += step) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
-      ctx.stroke();
-    }
-    // districts
-    ctx.font = '600 ' + cityClamp(11 * Math.sqrt(K), 9, 13) + 'px ' + CITY_MONO;
+    const a3 = 1 - Math.exp(-dt * 6);
+    t3.k3 += (t3.k3T - t3.k3) * a3; t3.pitch += (t3.pitchT - t3.pitch) * a3; t3.yaw += (t3.yawT - t3.yaw) * a3;
+    const v = view(); const A = area();
+    const P = projector(v.cx, v.cy, v.K, A.ox, A.oy, A.hf, t3.k3, t3.pitch, t3.yaw);
+    const pt = P.pt;
+    // the eye's direction in world terms (x, y, up): faces turned away from it are not drawn
+    const sP = Math.sin(t3.pitch * t3.k3); const cP = Math.cos(t3.pitch * t3.k3);
+    const eye = [sP * Math.sin(t3.yaw), sP * Math.cos(t3.yaw), cP];
+    const onScreen = (q) => { let x0 = Infinity; let x1 = -Infinity; let y0 = Infinity; let y1 = -Infinity; for (const p of q) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); } return x1 >= 0 && y1 >= 0 && x0 <= W && y0 <= H; };
+    const poly = (q, fill) => { ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (let i = 1; i < q.length; i++) ctx.lineTo(q[i][0], q[i][1]); ctx.closePath(); if (fill) ctx.fill(); };
+    // a soft grid on the ground, so the city has a scale when zoomed in (and the tilt reads as depth)
+    ctx.strokeStyle = 'rgba(255,46,110,0.06)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let x = -400; x <= WORLD_W + 400; x += 40) { const a = pt(x, -400, 0); const b = pt(x, WORLD_H + 400, 0); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+    for (let y = -400; y <= WORLD_H + 400; y += 40) { const a = pt(-400, y, 0); const b = pt(WORLD_W + 400, y, 0); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+    ctx.stroke();
+    // districts: flat areas on the ground, their name on the top-left corner
+    ctx.font = '600 ' + cityClamp(11 * Math.sqrt(v.K), 9, 13) + 'px ' + CITY_MONO;
     for (const d of lay.dirs) {
-      const x = sx(d.x); const y = sy(d.y); const w = d.w * K; const h = d.h * K;
-      if (w < 2 || h < 2 || x > W || y > H || x + w < 0 || y + h < 0) continue;
-      ctx.fillStyle = 'rgba(14,22,48,' + (0.35 + d.depth * 0.08).toFixed(2) + ')';
-      ctx.fillRect(x, y, w, h);
-      ctx.strokeStyle = 'rgba(132,152,255,' + (0.18 + d.depth * 0.04).toFixed(2) + ')'; ctx.lineWidth = 1;
-      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-      if (w > 70) { ctx.fillStyle = 'rgba(197,206,232,0.75)'; ctx.fillText(d.name + '/', x + 6, y + 15); }
+      const q = [pt(d.x, d.y, 0), pt(d.x + d.w, d.y, 0), pt(d.x + d.w, d.y + d.h, 0), pt(d.x, d.y + d.h, 0)];
+      if (!onScreen(q)) continue;
+      ctx.fillStyle = 'rgba(14,22,48,' + (0.35 + d.depth * 0.08).toFixed(2) + ')'; poly(q, true);
+      ctx.strokeStyle = 'rgba(132,152,255,' + (0.18 + d.depth * 0.04).toFixed(2) + ')'; ctx.lineWidth = 1; poly(q, false);
+      if (q[1][0] - q[0][0] > 70) { ctx.fillStyle = 'rgba(197,206,232,0.75)'; ctx.fillText(d.name + '/', q[0][0] + 6, q[0][1] + 15); }
     }
-    // buildings: footprint = file rectangle, height from its size; a finished one stands, a new one rises
-    ctx.font = '500 ' + cityClamp(10 * Math.sqrt(K), 8, 12) + 'px ' + CITY_MONO;
+    // buildings: a footprint, a height from its size; a finished one stands, a new one rises out of the ground
+    const items = [];
     for (const b of lay.blocks) {
       const f = b.file;
       if (f.born > t) continue;
       const grow = cityEase((t - f.born) / RISE_MS);
-      const hue = f.read ? [0.4, 0.45, 0.55] : gFileColour(f.path);
       const pad = 1.5; const bx = b.x + pad; const by = b.y + pad; const bw = b.w - 2 * pad; const bh = b.h - 2 * pad;
       const cxw = bx + bw / 2; const cyw = by + bh / 2;
       const gw = bw * (0.25 + 0.75 * grow); const gh = bh * (0.25 + 0.75 * grow);
-      const x = sx(cxw - gw / 2); const y = sy(cyw - gh / 2); const w = gw * K; const h = gh * K;
-      if (x > W || y > H || x + w < 0 || y + h < 0) continue;
-      const recent = t - f.last < RECENT_MS; const hover = api.hover === f.path;
-      if (!f.read) { const off = Math.min(9, 2 + Math.sqrt(f.w) * 0.9) * grow * Math.min(1, K * 2); ctx.fillStyle = 'rgba(0,0,0,0.42)'; ctx.fillRect(x + off, y + off, w, h); }
-      ctx.fillStyle = cityRgb(hue, f.read ? 0.22 : 0.55 * grow + 0.12);
-      ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = cityRgb(hue, f.read ? 0.4 : 0.85);
-      ctx.fillRect(x, y, w, Math.min(3, h));
-      ctx.strokeStyle = hover ? 'rgba(255,255,255,0.95)' : recent ? cityRgb(hue, 1) : 'rgba(10,14,30,0.9)';
-      ctx.lineWidth = hover || recent ? 1.5 : 1;
-      ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
-      if (recent) { ctx.strokeStyle = cityRgb(hue, 0.5 * (1 - (t - f.last) / RECENT_MS)); ctx.lineWidth = 3; ctx.strokeRect(x - 2, y - 2, w + 4, h + 4); }
-      if (w > 56 && h > 16) { ctx.fillStyle = 'rgba(234,246,255,0.85)'; ctx.fillText(f.path.split('/').pop(), x + 5, y + 14); }
+      const x0 = cxw - gw / 2; const y0 = cyw - gh / 2; const x1 = x0 + gw; const y1 = y0 + gh;
+      const hgt = cityHeight(f) * grow;
+      const base = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+      const bq = base.map(([x, y]) => pt(x, y, 0)); const tq = base.map(([x, y]) => pt(x, y, hgt));
+      if (!onScreen(tq.concat(bq))) continue;
+      items.push({ b, f, grow, hgt, base, bq, tq, zv: tq[0][3] + tq[2][3], hue: f.read ? [0.4, 0.45, 0.55] : gFileColour(f.path) });
     }
-    // agents: glide to the building they touched last, a ring while they work
+    // far to near, so the nearer buildings cover the farther ones
+    items.sort((p, q) => p.zv - q.zv);
+    // shadows first: each footprint thrown onto the ground away from the light
+    for (const it of items) {
+      if (it.hgt < 1 || it.f.read) continue;
+      const dx = it.hgt * 0.22; const dy = it.hgt * 0.3;
+      ctx.fillStyle = 'rgba(0,0,0,' + (0.42 * it.grow).toFixed(3) + ')';
+      poly(it.base.map(([x, y]) => pt(x + dx, y + dy, 0)), true);
+    }
+    hits = [];
+    const topOf = new Map();
+    ctx.font = '500 ' + cityClamp(10 * Math.sqrt(v.K), 8, 12) + 'px ' + CITY_MONO;
+    for (const it of items) {
+      const { b, f, hue, tq, bq, grow } = it;
+      const recent = t - f.last < RECENT_MS; const hover = api.hover === f.path;
+      // the sides turned to the eye, shaded by the light from the upper left; flat (no height) draws none
+      const sides = [[0, -1, 0.74], [1, 0, 0.52], [0, 1, 0.5], [-1, 0, 0.7]];
+      for (let i = 0; i < 4; i++) {
+        const [nx, ny, shade] = sides[i];
+        // a flat building has no sides; a side is seen when its normal points at the eye
+        if (it.hgt < 1 || nx * eye[0] + ny * eye[1] <= 1e-6) continue;
+        const j = (i + 1) % 4;
+        const q = [bq[i], bq[j], tq[j], tq[i]];
+        ctx.fillStyle = cityRgb([hue[0] * shade, hue[1] * shade, hue[2] * shade], f.read ? 0.2 : 0.5 * grow + 0.2);
+        poly(q, true);
+        ctx.strokeStyle = 'rgba(10,14,30,0.6)'; ctx.lineWidth = 1; poly(q, false);
+      }
+      // the top face: the building's colour, lit at its edge
+      ctx.fillStyle = cityRgb(hue, f.read ? 0.26 : 0.6 * grow + 0.16);
+      poly(tq, true);
+      ctx.fillStyle = cityRgb(hue, f.read ? 0.4 : 0.85);
+      poly([tq[0], tq[1], [(tq[1][0] + tq[2][0]) / 2, (tq[1][1] + tq[2][1]) / 2], [(tq[0][0] + tq[3][0]) / 2, (tq[0][1] + tq[3][1]) / 2]], true);
+      ctx.strokeStyle = hover ? 'rgba(255,255,255,0.95)' : recent ? cityRgb(hue, 1) : 'rgba(10,14,30,0.9)';
+      ctx.lineWidth = hover || recent ? 1.5 : 1; poly(tq, false);
+      if (recent) { ctx.strokeStyle = cityRgb(hue, 0.5 * (1 - (t - f.last) / RECENT_MS)); ctx.lineWidth = 3; poly(tq, false); }
+      const tx0 = tq[0][0]; const tx1 = tq[1][0]; const ty0 = tq[0][1];
+      if (tx1 - tx0 > 56 && (tq[2][1] - ty0) > 16) { ctx.fillStyle = 'rgba(234,246,255,0.85)'; ctx.fillText(f.path.split('/').pop(), tx0 + 5, ty0 + 14); }
+      hits.push({ q: tq, b });
+      topOf.set(f.path, { x: (tq[0][0] + tq[2][0]) / 2, y: (tq[0][1] + tq[2][1]) / 2, z: it.hgt, sc: tq[0][2] });
+    }
+    // agents: glide to the building they touched last and hover above it, a ring while they work
     const seen = new Set();
     for (const [id, a] of model.agents) {
       const f = model.files.get(a.file);
@@ -289,13 +345,18 @@ export function createCity(canvas) {
       if (!blk) continue;
       seen.add(id);
       const tx = blk.x + blk.w / 2; const ty = blk.y + blk.h / 2;
-      const p = agentPos.get(id) || { x: tx, y: ty };
-      p.x += (tx - p.x) * 0.18; p.y += (ty - p.y) * 0.18;
+      const top = topOf.get(a.file);
+      const tz = top ? top.z + 14 : 0;
+      const p = agentPos.get(id) || { x: tx, y: ty, z: tz };
+      p.x += (tx - p.x) * 0.18; p.y += (ty - p.y) * 0.18; p.z = (p.z == null ? tz : p.z) + (tz - (p.z == null ? tz : p.z)) * 0.18;
       agentPos.set(id, p);
       const col = who ? who.colour(id) : [0.9, 0.9, 1];
-      const px = sx(p.x); const py = sy(p.y); const working = t - a.t < RECENT_MS;
-      if (working) { ctx.strokeStyle = cityRgb(col, 0.8); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 9 + 5 * Math.sin(t / 180), 0, Math.PI * 2); ctx.stroke(); }
-      ctx.fillStyle = cityRgb(col, 1); ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill();
+      const q = pt(p.x, p.y, p.z); const sc = q[2];
+      const px = q[0]; const py = q[1]; const working = t - a.t < RECENT_MS;
+      const g = pt(p.x, p.y, 0);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(g[0], g[1], 6 * sc, 3 * sc, 0, 0, Math.PI * 2); ctx.fill();
+      if (working) { ctx.strokeStyle = cityRgb(col, 0.8); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, (9 + 5 * Math.sin(t / 180)) * sc, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.fillStyle = cityRgb(col, 1); ctx.beginPath(); ctx.arc(px, py, 6 * sc, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = 'rgba(3,6,15,0.9)'; ctx.lineWidth = 2; ctx.stroke();
       ctx.font = '600 12px ' + CITY_SANS; ctx.fillStyle = 'rgba(234,246,255,0.95)';
       ctx.fillText(who ? who.label(id) : id, px + 10, py + 4);

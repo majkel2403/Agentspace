@@ -151,7 +151,7 @@ export function createGL(canvas) {
       }
     }
     useTex('file');
-    for (const f of F.files) rect(f.x - f.size / 2 + f.shadow, f.y - f.size / 2 + f.shadow, f.size, f.size, 'file', 0, 0, 0, f.a * 0.5);
+    for (const f of F.files) rect(f.shx - f.size / 2, f.shy - f.size / 2, f.size, f.size, 'file', 0, 0, 0, f.a * 0.5);
     useTex('beam');
     for (const b of F.beams) {
       const [r, g, bb] = b.col; const a = b.a; const a2 = a * 0.1;
@@ -160,7 +160,7 @@ export function createGL(canvas) {
     useTex('file');
     for (const f of F.files) rect(f.x - f.size / 2, f.y - f.size / 2, f.size, f.size, 'file', f.col[0], f.col[1], f.col[2], f.a);
     useTex('user');
-    for (const u of F.users) rect(u.x - u.w / 2 + u.shadow, u.y - u.h / 2 + u.shadow, u.w, u.h, 'user', 0, 0, 0, u.a * 0.5);
+    for (const u of F.users) rect(u.shx - u.w / 2, u.shy - u.h / 2, u.w, u.h, 'user', 0, 0, 0, u.a * 0.5);
     for (const u of F.users) rect(u.x - u.w / 2, u.y - u.h / 2, u.w, u.h, 'user', u.col[0], u.col[1], u.col[2], u.a);
 
     gl.enable(gl.BLEND);

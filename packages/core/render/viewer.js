@@ -3,7 +3,7 @@
 //   const v = createViewer({ gl: canvas, overlay: canvas2 })
 //   v.setTimeline(T); v.setTime(ms); v.play(); v.setSpeed(4); v.setLive(true); v.onSelect = (id, info) => {}
 import { createPlayer } from '../gource/player.js';
-import { buildFrame, blendEase } from '../gource/frame.js';
+import { buildFrame, blendEase, anchorCentre } from '../gource/frame.js';
 import { createGL } from '../gource/gl.js';
 import { createC2D } from '../gource/c2d.js';
 import { drawText, formatDate } from '../gource/text.js';
@@ -12,6 +12,31 @@ import { storyAt } from '../gource/story.js';
 import { drawStory } from '../gource/cards.js';
 
 const BG0 = [0.1, 0.1, 0.1];
+// the floor under the tree in 3D: a faint grid projected with the scene's own camera, so the tilt reads as depth
+function drawFloor(ctx, F, W, H, dpr) {
+  const V = F.V;
+  if (V.k3 < 0.02) return;
+  const c = [V.unproj(0, 0), V.unproj(W, 0), V.unproj(0, H), V.unproj(W, H)];
+  const x0 = Math.min(...c.map((p) => p.x)); const x1 = Math.max(...c.map((p) => p.x));
+  const y0 = Math.min(...c.map((p) => p.y)); const y1 = Math.max(...c.map((p) => p.y));
+  // the spacing doubles until a few hundred lines at most cover the view, and is about 90 px on screen
+  let G = 40;
+  while (G * V.K < 90) G *= 2;
+  while ((x1 - x0) / G > 40 || (y1 - y0) / G > 40) G *= 2;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(200,170,255,' + (0.09 * V.k3).toFixed(3) + ')';
+  ctx.beginPath();
+  for (let x = Math.floor(x0 / G) * G; x <= x1 + G; x += G) {
+    const a = V.pt(x, y0 - G, 0); const b = V.pt(x, y1 + G, 0);
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+  }
+  for (let y = Math.floor(y0 / G) * G; y <= y1 + G; y += G) {
+    const a = V.pt(x0 - G, y, 0); const b = V.pt(x1 + G, y, 0);
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+  }
+  ctx.stroke();
+}
 export const TAIL_MS = 6000;
 // The canvas shows the world only: the tree, the agents, and what happens between them (creation threads, messages,
 // bubbles). Panels are the app's (HTML) — the canvas sits in its own layout cell and is never covered by them;
@@ -35,20 +60,33 @@ export function createViewer(opts) {
   };
   // the camera: follows the work until the reader moves or zooms (then `free` holds centre and scale, and only the
   // "follow" switch or "fit" gives the work back); fill and node scale make the structures read at a glance
-  const cam = { zoom: 1, panX: 0, panY: 0, free: null, fill: opts.fill != null ? opts.fill : 1.25, node: opts.nodeScale != null ? opts.nodeScale : 1.5 };
-  const freeze = () => { if (!cam.free && F) cam.free = { cx: F.V.cx, cy: F.V.cy, K: F.V.K, tx: F.V.cx, ty: F.V.cy, tk: F.V.K }; };
+  // 3D: k3 is the amount of 3D (eased 0..1), pitch the tilt and yaw the turn of the map; the T fields are the targets
+  // that render() eases toward. Flat (k3 0) is the Gource view; the default for the Hermes scene is full 3D.
+  const PITCH_3D = 0.95;
+  const on3 = opts.threeD ? 1 : 0;
+  const cam = { zoom: 1, panX: 0, panY: 0, free: null, fill: opts.fill != null ? opts.fill : 1.25, node: opts.nodeScale != null ? opts.nodeScale : 1.5,
+    k3: on3, k3T: on3, pitch: on3 * PITCH_3D, pitchT: on3 * PITCH_3D, yaw: 0, yawT: 0 };
+  // the free camera keeps the flat scale (K without the 3D fit), so turning 3D on or off never double-counts it
+  const rawK = () => F.V.K / F.V.fit;
+  const freeze = () => { if (!cam.free && F) cam.free = { cx: F.V.cx, cy: F.V.cy, K: rawK(), tx: F.V.cx, ty: F.V.cy, tk: rawK() }; };
   // hand the camera back to the work: the current view becomes the start of an eased blend
   const release = () => { if (F && cam.free) cam.blend = { cx: cam.free.cx, cy: cam.free.cy, K: cam.free.K, t0: performance.now() }; cam.free = null; };
   const zoomAt = (factor, px, py) => {
     if (!F) return;
     freeze();
     // zoom is eased: the target moves now, the view follows it in render(), anchored on the same point
-    const K0 = cam.free.tk; const K1 = Math.max(F.V.K * 0.05, Math.min(F.V.K * 400, K0 * factor));
-    // the world point under the pointer stays under the pointer
-    const ox = F.V.sx(F.V.cx); const oy = F.V.sy(F.V.cy);
-    const wx = cam.free.cx + (px - ox) / K0; const wy = cam.free.cy + (py - oy) / K0;
-    cam.free.tk = K1; cam.free.tx = wx - (px - ox) / K1; cam.free.ty = wy - (py - oy) / K1;
+    const K0 = cam.free.tk; const K1 = Math.max(rawK() * 0.05, Math.min(rawK() * 400, K0 * factor));
+    // the ground point under the pointer stays under the pointer (also when tilted)
+    const V = F.V;
+    const c = anchorCentre(V.unproj(px, py), px, py, K1, V.ox, V.oy, V.span, V.k3, V.pitch, V.yaw, V.fit);
+    cam.free.tk = K1; cam.free.tx = c.x; cam.free.ty = c.y;
   };
+  // the tilt on or off, eased; turning it off also turns the map back to north
+  v.setTilt = (on) => {
+    cam.k3T = on ? 1 : 0; cam.pitchT = on ? PITCH_3D : 0;
+    if (!on) cam.yawT = 0;
+  };
+  v.tilt = () => cam.k3T > 0.5;
   v.setBubbles = (on) => { opts.bubbles = !!on; };
   v.following = () => !cam.free;
   v.cam = cam;
@@ -99,14 +137,14 @@ export function createViewer(opts) {
   v.zoom = (k) => { if (F) zoomAt(k, F.V.sx(F.V.cx), F.V.sy(F.V.cy)); };
   v.zoomAt = zoomAt;
   v.freeze = freeze;
-  v.reset = () => { release(); cam.zoom = 1; cam.panX = 0; cam.panY = 0; v.select(null); };
+  v.reset = () => { release(); cam.zoom = 1; cam.panX = 0; cam.panY = 0; cam.yawT = 0; v.select(null); };
   v.suspended = false;
   v.suspend = (on) => { v.suspended = !!on; };
   v.select = (id) => { v.sel = id; if (v.onSelect) v.onSelect(id, id ? v.inspect(id) : null); };
   v.inspect = (id) => inspect(v.player, v.T, id, v.t / 1000);
   v.frame = () => F;
   // render one exact moment synchronously (used by the comparison harness)
-  v.renderAt = (ms) => { v.playing = false; v.t = ms; render(0, true); return F ? F.counts : null; };
+  v.renderAt = (ms) => { v.playing = false; v.t = ms; cam.k3 = cam.k3T; cam.pitch = cam.pitchT; cam.yaw = cam.yawT; render(0, true); return F ? F.counts : null; };
 
   function step(now) {
     raf = requestAnimationFrame(step);
@@ -135,6 +173,11 @@ export function createViewer(opts) {
       const a = 1 - Math.exp(-Math.min(0.1, dt) * 12);
       cam.free.cx += (cam.free.tx - cam.free.cx) * a; cam.free.cy += (cam.free.ty - cam.free.cy) * a;
       cam.free.K = Math.exp(Math.log(cam.free.K) + (Math.log(cam.free.tk) - Math.log(cam.free.K)) * a);
+    }
+    // the 3D amount, the tilt and the turn ease toward their targets (a presentation effect, like the camera blend)
+    if (!sync) {
+      const a3 = 1 - Math.exp(-Math.min(0.1, dt) * 6);
+      cam.k3 += (cam.k3T - cam.k3) * a3; cam.pitch += (cam.pitchT - cam.pitch) * a3; cam.yaw += (cam.yawT - cam.yaw) * a3;
     }
     if (cam.blend && blendEase(cam.blend) >= 1) cam.blend = null;
     const W = glc.clientWidth;
@@ -166,6 +209,7 @@ export function createViewer(opts) {
       dateY: opts.clockY, keyX: opts.legendX != null ? opts.legendX - 20 : 0, keyY: opts.legendY != null ? opts.legendY - 22 : 0,
       key: hud && opts.legend !== false, keyMax: studio ? 6 : 0, keyBottom: H - (opts.insetBottom || 0) - 8, caption, captionColor, captionBottom: opts.captionBottom || 34, fontScale: opts.fontScale, font: opts.font,
     });
+    drawFloor(octx, F, W, H, dpr);
     if (studio) {
       v.story = storyAt(v.T, storyInfo(), v.t);
       drawStory(octx, v.story, F, W, H, { inset: inset(), compact: W < 640, fontScale: opts.fontScale, bubbles: opts.bubbles === true });
@@ -186,13 +230,15 @@ export function createViewer(opts) {
   const rect = () => glc.getBoundingClientRect();
   // pointers in play: two of them are a pinch (zoom about their midpoint)
   const touches = new Map();
+  ovc.addEventListener('contextmenu', (e) => e.preventDefault());
   ovc.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    if (e.button !== 0 && e.button !== 2 && e.pointerType === 'mouse') return;
     try { ovc.setPointerCapture(e.pointerId); } catch (x) { /* optional */ }
     const r = rect();
     touches.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top });
     if (touches.size === 2) { const [a, b] = [...touches.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y) || 1; drag = null; return; }
-    drag = { x: e.clientX, y: e.clientY, moved: 0, px: e.clientX - r.left, py: e.clientY - r.top };
+    // right button or shift turns the map (orbit); a plain drag pans
+    drag = { x: e.clientX, y: e.clientY, moved: 0, px: e.clientX - r.left, py: e.clientY - r.top, orbit: e.button === 2 || e.shiftKey };
   });
   let pinch = 0;
   ovc.addEventListener('pointermove', (e) => {
@@ -207,7 +253,20 @@ export function createViewer(opts) {
     if (drag) {
       const dx = e.clientX - drag.x; const dy = e.clientY - drag.y;
       drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (drag.moved > 4 && F) { freeze(); cam.free.cx -= dx / cam.free.K; cam.free.cy -= dy / cam.free.K; cam.free.tx = cam.free.cx; cam.free.ty = cam.free.cy; cam.free.tk = cam.free.K; }
+      if (drag.orbit && drag.moved > 4) {
+        // orbit: horizontal turns the map, vertical tilts it (3D comes on with the first turn)
+        cam.k3T = 1; cam.pitchT = cam.pitchT || PITCH_3D;
+        cam.yawT = cam.yaw = cam.yaw + dx * 0.006;
+        cam.pitchT = cam.pitch = Math.max(0.1, Math.min(1.45, cam.pitch - dy * 0.005));
+        cam.k3 = cam.k3T;
+      } else if (drag.moved > 4 && F) {
+        // pan: the drag follows the screen, so it runs along the turned axes and foreshortened by the tilt
+        freeze();
+        const K = cam.free.K * F.V.fit; const cP = Math.cos(cam.pitch * cam.k3); const cY = Math.cos(cam.yaw); const sY = Math.sin(cam.yaw);
+        cam.free.cx -= dx / K * cY + dy / (K * cP) * sY;
+        cam.free.cy -= -dx / K * sY + dy / (K * cP) * cY;
+        cam.free.tx = cam.free.cx; cam.free.ty = cam.free.cy; cam.free.tk = cam.free.K;
+      }
     } else {
       const r = rect();
       const h = pick(e.clientX - r.left, e.clientY - r.top);

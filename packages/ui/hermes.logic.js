@@ -43,7 +43,7 @@ const hxReduce = () => { try { return !!(window.matchMedia && window.matchMedia(
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { run: null, tick: 0, idx: -1, playing: true, speed: 1, sel: null, hl: null, focus: 'auto', follow: true, task: '', note: '', bp: 'xl', sheet: false, intro: true, report: false, boot: hxBootWanted(), view: 'tree', bubbles: false };
+    this.state = { run: null, tick: 0, idx: -1, playing: true, speed: 1, sel: null, hl: null, focus: 'auto', follow: true, task: '', note: '', bp: 'xl', sheet: false, intro: true, report: false, boot: hxBootWanted(), view: 'tree', bubbles: false, tilt: true };
     this._v = null; this._T = null; this._F = null; this._lanes = []; this._sum = {}; this._stats = {}; this._doingKey = -2; this._doing = {}; this._custom = null; this._stopLive = null; this._lastPush = 0; this._auto = 'code';
   }
 
@@ -76,7 +76,8 @@ class Component extends DCLogic {
   }
 
   // the city view: the same workspace drawn as a city; a building picked there opens in the inspector
-  cityPick(path) { this.setState({ sel: 'city:' + path, focus: 'ins' }); if (this._v) this._v.select(null); }
+  // the tree's own selection is cleared first: its select() reports back and would drop the city pick
+  cityPick(path) { if (this._v) this._v.select(null); this.setState({ sel: 'city:' + path, focus: 'ins' }); }
   showView(view) {
     // the tree is not drawn while the city is on: its GPU work would be hidden behind the city anyway
     if (this._v) this._v.suspend(view === 'city');
@@ -84,6 +85,8 @@ class Component extends DCLogic {
     if (view === 'city' && this._city) this._city.fit();
   }
   toggleBubbles() { const on = !this.state.bubbles; if (this._v) this._v.setBubbles(on); this.setState({ bubbles: on }); }
+  // 3D: the scene stands up (folders rise, agents hover) and the camera tilts; off is the flat Gource view
+  toggleTilt() { const on = !this.state.tilt; if (this._v) this._v.setTilt(on); if (this._city && this._city.setTilt) this._city.setTilt(on); this.setState({ tilt: on }); }
 
   match(text) { return matchTask(text, HX_HOST.runs().map((r) => r.id)); }
 
@@ -139,7 +142,7 @@ class Component extends DCLogic {
     const gl = document.getElementById('hx-gl');
     const ov = document.getElementById('hx-ov');
     if (!gl || !ov) return;
-    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Space Grotesk', 'Inter', sans-serif", fontScale: 1.12, nodeScale: 1.6, fill: 1.3, bubbles: false, maxDpr: 1.5 });
+    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Space Grotesk', 'Inter', sans-serif", fontScale: 1.12, nodeScale: 1.6, fill: 1.3, bubbles: false, threeD: true, maxDpr: 1.5 });
     const cityCv = document.getElementById('hx-city');
     if (cityCv && NW.createCity) { this._city = NW.createCity(cityCv); this._city.onPick = (path) => this.cityPick(path); }
     if (typeof window !== 'undefined') { window.__NW = this._v; window.__HXAPP = this; if (window.__HM_TEST) window.__HM_TEST.logic = this; }
@@ -246,7 +249,7 @@ class Component extends DCLogic {
     let term = { who: '', state: '', stateColor: '#7F8BB3', command: '', typing: false, lines: [] };
     if (St.term) { const m = St.term; term = { who: m.who, state: m.running ? 'działa' : m.fail ? 'błąd' : 'koniec', stateColor: m.running ? '#FFC979' : m.fail ? '#FF8F9A' : '#8CFFB4', command: m.command, typing: m.typing, lines: m.lines.map((l) => ({ s: l.s, cls: l.bad ? 'bad' : '' })) }; }
     let ins = { kind: '', status: '', label: '', sub: '', hasSub: false, stats: [], events: [] };
-    const info = S.sel && S.sel.indexOf('city:') === 0 && T ? cityFileInfo(T, S.sel.slice(5), t) : S.sel && v ? v.inspect(S.sel) : null;
+    const info = S.sel && S.sel.indexOf('city:') === 0 && T ? NW.cityFileInfo(T, S.sel.slice(5), t) : S.sel && v ? v.inspect(S.sel) : null;
     if (info) ins = { kind: info.kind === 'file' ? 'plik' : info.sub, status: info.status, label: info.label, sub: info.kind === 'file' ? info.sub : '', hasSub: info.kind === 'file', stats: info.stats.map(([k, val]) => ({ k, v: val })), events: info.events.map((e) => ({ time: mmss(e.rel), type: e.type + (e.who ? ' · ' + e.who : ''), text: e.text, color: e.type.indexOf('fail') >= 0 || e.type === 'error' ? '#FF8F9A' : e.type.indexOf('passed') >= 0 || e.type.indexOf('completed') >= 0 ? '#8CFFB4' : '#7F8BB3' })) };
     const R = A.report;
     const phaseTotal = st ? st.phases.reduce((n, p) => n + p.ms, 0) || 1 : 1;
@@ -283,7 +286,7 @@ class Component extends DCLogic {
       chips, follow: v && v.following ? v.following() : S.follow,
       toggleFollow: () => { if (!v) return; if (v.following()) v.freeze(); else v.setFocus(true); this.setState({ follow: !v.following() }); },
       viewTree: S.view === 'tree', viewCity: S.view === 'city', showTree: () => this.showView('tree'), showCity: () => this.showView('city'),
-      glOff: S.view === 'city', cityOff: S.view !== 'city', bubblesOn: S.bubbles, toggleBubbles: () => this.toggleBubbles(),
+      glOff: S.view === 'city', cityOff: S.view !== 'city', bubblesOn: S.bubbles, toggleBubbles: () => this.toggleBubbles(), tiltOn: S.tilt, toggleTilt: () => this.toggleTilt(),
       zoomIn: () => { if (S.view === 'city' && this._city) this._city.zoom(1.25); else if (v) v.zoom(1.25); },
       zoomOut: () => { if (S.view === 'city' && this._city) this._city.zoom(1 / 1.25); else if (v) v.zoom(1 / 1.25); },
       resetCam: () => { if (this._city) this._city.fit(); if (v) v.reset(); },

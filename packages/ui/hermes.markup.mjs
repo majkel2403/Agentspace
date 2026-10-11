@@ -199,6 +199,7 @@ export function markup(rootStyle = '') {
       <div class="hx-cam hx-glass" role="group" aria-label="Kamera i widok">
         <div class="hx-seg" role="group" aria-label="Widok sceny"><button type="button" class="hx-btn" aria-pressed="{{viewTree}}" onClick="{{showTree}}">Drzewo</button><button type="button" class="hx-btn" aria-pressed="{{viewCity}}" onClick="{{showCity}}">Miasto</button></div>
         <button type="button" class="hx-btn" aria-pressed="{{bubblesOn}}" onClick="{{toggleBubbles}}" title="Dymki rozmów nad agentami (zasłaniają scenę)">Dymki</button>
+        <button type="button" class="hx-btn" aria-pressed="{{tiltOn}}" onClick="{{toggleTilt}}" title="Widok 3D: foldery wznoszą się, agenci lewitują; Prawy przycisk lub Shift + przeciągnięcie obraca scenę">3D</button>
         <button type="button" class="hx-btn" aria-pressed="{{follow}}" onClick="{{toggleFollow}}" title="Kamera podąża za pracą agentów">${ICON.follow}<span class="lbl">Śledź pracę</span></button>
         <button type="button" class="hx-btn hx-ico zoom" onClick="{{zoomOut}}" aria-label="Oddal">−</button>
         <button type="button" class="hx-btn hx-ico zoom" onClick="{{zoomIn}}" aria-label="Przybliż">+</button>

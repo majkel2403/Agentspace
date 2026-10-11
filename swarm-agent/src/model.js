@@ -10,12 +10,14 @@ export function newState(t0) {
     t0, now: 0, task: '', done: false, failed: false, thoughts: [],
     agents: new Map(), order: [],
     files: new Map(),
-    messages: [], actions: [], results: [],
+    messages: [], actions: [], results: [], commands: [],
     plan: { steps: [], cur: 0 },
     tests: new Map(),
     last: -1,
   };
   addAgent(st, { agent: QUEEN, label: 'Królowa', role: 'orkiestrator', parent: null, status: 'idle' }, 0);
+  // the person who conducts the swarm is not an agent: no body in the scene, a name in the deck
+
   return st;
 }
 
@@ -65,8 +67,14 @@ export function applyEvent(st, ev, k) {
     }
     case 'agent.finished': { const a = agent(ev.agent); a.status = 'done'; setAt(a, null, now); break; }
     case 'agent.failed': { const a = agent(ev.agent); a.status = 'failed'; a.note = ev.text || ''; break; }
+    case 'user.command': {
+      st.messages.push({ t: now, from: 'user', to: QUEEN, tone: 'assign', text: ev.text || '', task: '' });
+      st.commands.push({ t: now, text: ev.text || '' });
+      break;
+    }
     case 'message.sent': {
-      agent(ev.from); agent(ev.to);
+      if (ev.from !== 'user') agent(ev.from);
+      if (ev.to !== 'user') agent(ev.to);
       st.messages.push({ t: now, from: ev.from, to: ev.to, tone: ev.tone || 'result', text: ev.text || '', task: ev.task || '' });
       if (ev.tone === 'assign' && ev.task) agent(ev.to).task = ev.task;
       break;

@@ -28,6 +28,7 @@ export const TYPES = {
   'scan': { need: ['agent', 'paths'] },
   'test': { need: ['agent', 'name', 'status'] },
   'result': { need: ['agent'] },
+  'user.command': { need: ['text'] },
 };
 
 const isStr = (v) => typeof v === 'string';

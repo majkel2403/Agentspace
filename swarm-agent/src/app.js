@@ -141,7 +141,7 @@ function tick(now) {
     if (app.dirty || now - app.uiAt > 200) {
       app.uiAt = now; const forced = app.dirty; app.dirty = false; force = forced;
       const v = view(end);
-      v.director = app.director; v.sound = sound.on; v.caption = app.caption; v.mode = app.scene.mode;
+      v.live = app.live; v.director = app.director; v.sound = sound.on; v.caption = app.caption; v.mode = app.scene.mode;
       v.nextMoment = stepMoment(app.moments, app.t, 1); v.prevMoment = stepMoment(app.moments, app.t, -1);
       paint('#top', headerHTML(st, v));
       paint('#roster', rosterHTML(st, v));
@@ -159,6 +159,34 @@ function tick(now) {
 function view(end) {
   return { run: app.run, runs: app.runs, live: app.live, playing: app.playing, speed: app.speed, follow: app.follow, t: Math.min(app.t, end), duration: end, tab: app.tab, selected: app.selected };
 }
+
+// a new live swarm: the server starts it on the task, the deck follows it as it works
+async function newSwarm() {
+  const task = prompt('Zlecenie dla roju (co ma zrobić?)', 'Przejrzyj moduł połączeń i napraw timer reconnectu.');
+  if (!task || !task.trim()) return;
+  const r = await (await fetch('/api/sim', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task }) })).json();
+  await refreshRuns();
+  await openRun(r.run);
+}
+async function refreshRuns() {
+  app.runs = await (await fetch('/api/runs')).json();
+  app.dirty = true;
+}
+// the conductor speaks to the live swarm; a recorded run answers that it cannot be conducted
+async function conduct(text) {
+  const note = $('#conduct-note');
+  if (!app.run) return;
+  const r = await fetch('/api/runs/' + encodeURIComponent(app.run) + '/command', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
+  if (note) note.textContent = r.ok ? 'wysłano: ' + text : 'to nagranie — dyryguje się tylko rojem na żywo';
+  app.dirty = true;
+}
+document.addEventListener('submit', (e) => {
+  if (e.target.id !== 'conduct') return;
+  e.preventDefault();
+  const input = $('#conduct-text');
+  const text = input.value.trim();
+  if (text) { conduct(text); input.value = ''; }
+});
 
 // jumps to the next or previous key moment (the clock stops there so the reader can look)
 function toggleView() {
@@ -183,6 +211,8 @@ function act(el, e) {
   else if (k === 'file') { app.selected = 'file:' + el.dataset.id; app.tab = 'ins'; }
   else if (k === 'director') app.director = !app.director;
   else if (k === 'view') toggleView();
+  else if (k === 'new') newSwarm();
+  else if (k === 'focus') conduct('skup ' + el.dataset.id.split('/').pop());
   else if (k === 'sound') sound.toggle();
   else if (k === 'moment') jump(Number(el.dataset.v));
   app.dirty = true; // redrawn on the next frame, even under the pointer

@@ -1,5 +1,10 @@
 # Ul · plaster agentów
 
+Wersja 5: **dyrygujesz rojem na żywo**. „Nowy rój” uruchamia na serwerze prawdziwie pracujący rój na twoje zlecenie
+(symulacja zasad, nie nagranie). Zdarzenia płyną na żywo. Na pasku dyrygenta wydajesz polecenia: `skup <fragment>`
+(cały rój idzie do tego pliku), `testuj` (tester uruchamia testy od razu), `zatrzymaj` (rój kończy po bieżącym kroku).
+Każde polecenie i każda odpowiedź królowej są zapisane w dzienniku i widoczne tak samo jak reszta.
+
 Wersja 4 (Ul): plik to komórka **plastra miodu**. Im więcej rój dotknął pliku, tym wyższa i bardziej złota komórka;
 pszczoły-agenci (królowa i zespół) lecą nad plastrem i zostawiają ślady. Klawisz `V` przełącza na poprzedni widok,
 **Krajobraz uwagi**. Wersja 3 (krajobraz) jest opisana poniżej.
@@ -32,7 +37,7 @@ pojawienia się pliku. Te przejścia są funkcją czasu logu, więc też są pow
 npm install          # ws (serwer LIVE) i three (scena 3D)
 npm start            # http://127.0.0.1:4777   (PORT=… zmienia port)
 npm run demo:build   # odbudowa nagranych przebiegów z demo/make-swarm.mjs
-npm test             # 26 testów: zdarzenia, model, układ, serwer, narracja, teren, plaster
+npm test             # 30 testów: zdarzenia, model, układ, serwer, narracja, teren, plaster, rój na żywo
 npm run smoke       # przeglądarka: odtwarza przebieg, klika agenta i plik (wymaga Playwright; URL=… i PLAYWRIGHT_MODULE=…)
 ```
 
@@ -52,6 +57,7 @@ npm run smoke       # przeglądarka: odtwarza przebieg, klika agenta i plik (wym
 | Pulpit | `src/ui.js` | HTML z (stanu, widoku): pasek górny, zespół, zakładki, oś czasu |
 | Aplikacja | `src/app.js` | zegar logu, odtwarzanie, przewijanie, LIVE przez WebSocket, kliknięcia |
 | Serwer | `server/server.mjs`, `server/store.mjs` | przebiegi (REST), zapis zdarzeń z walidacją, WebSocket `/live`, pliki statyczne |
+| Rój na żywo | `server/sim.mjs` | symulacja roju z regułami i ziarnem; przyjmuje polecenia dyrygenta |
 | Demo | `demo/make-swarm.mjs`, `demo/runs/*.jsonl` | dwa nagrane przebiegi (prawdziwa lista plików socket.io, przykładowa rozmowa) |
 
 ### Zakładki pulpitu
@@ -114,3 +120,9 @@ zegar na koniec, jeśli „Śledź” jest włączone.
 - Obrót dotykiem w 3D nie jest zrobiony (mysz: prawy przycisk albo Shift + przeciąganie; kółko przybliża).
 - Przy bardzo dużych drzewach (tysiące plików) scena rysuje każdy plik jako osobną siatkę; wymagałoby to instancjonowania.
 - Sieć, której węzłami są agenci, jest tylko pomysłem (łuki wiadomości są już w scenie).
+
+## Rój na żywo i dyrygowanie
+
+- `POST /api/sim` z `{"task": "…"}` — uruchamia rój; odpowiedź zawiera id przebiegu (`roj-…`).
+- `POST /api/runs/:id/command` z `{"text": "…"}` — polecenie dla dyrygenta. Dla nagrania: 404.
+- Symulacja jest deterministyczna dla danego ziarna (testy). Nie jest modelem językowym: decyduje reguła i ziarno.

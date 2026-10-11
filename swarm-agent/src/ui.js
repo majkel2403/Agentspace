@@ -12,7 +12,7 @@ export const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => 
 export const clock = (sec) => { const s = Math.max(0, Math.floor(sec)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 const base = (p) => p.split('/').pop();
 
-function labelOf(st, id) { if (!id) return ''; if (id === 'user') return 'Zlecający'; const a = st.agents.get(id); return a ? a.label : id; }
+function labelOf(st, id) { if (!id) return ''; if (id === 'user') return 'Ty'; const a = st.agents.get(id); return a ? a.label : id; }
 
 export const clockHTML = (v) => `${clock(v.t)}<span> / ${clock(v.duration)}</span>`;
 
@@ -32,6 +32,7 @@ export function headerHTML(st, v) {
       <button data-act="director" class="btn ${v.director ? 'on' : ''}" title="Reżyser: kamera sama prowadzi do tego, kto teraz działa (D)">Reżyser</button>
       <button data-act="sound" class="btn ${v.sound ? 'on' : ''}" title="Dźwięk zdarzeń (M)">${v.sound ? 'Dźwięk: wł.' : 'Dźwięk: wył.'}</button>
       <button data-act="reset" class="btn" title="Cały rój w kadrze">Dopasuj</button>
+      <button data-act="new" class="btn on" title="Uruchom nowy rój na żywo: wpisz zlecenie">Nowy rój</button>
     </div>
     <label class="runpick"><span>przebieg</span><select data-act="run">${v.runs.map((r) => `<option value="${esc(r.id)}" ${r.id === v.run ? 'selected' : ''}>${esc(r.title)}${r.source === 'live' ? ' · na żywo' : ''}</option>`).join('')}</select></label>`;
 }
@@ -104,11 +105,12 @@ function inspectorHTML(st, v, events) {
   }
   const path = sel.slice(5);
   const f = st.files.get(path);
+  const live = v.live ? `<button class="btn on" data-act="focus" data-id="${esc(path)}">Skup rój tutaj</button>` : '';
   const hist = events.filter((e) => e.path === path && (e.ts - events[0].ts) / 1000 <= v.t + 1e-6).slice(-12).reverse();
   return `<div class="ins"><span class="eyebrow">plik</span><h3>${esc(base(path))}</h3><small class="path">${esc(path)}</small>
     <dl><dt>stan</dt><dd>${esc(f ? FILE_LABEL[f.state] : 'jeszcze nieznany')}</dd><dt>dotknięć</dt><dd>${f ? f.touches : 0}</dd>
     <dt>ostatnio</dt><dd>${f && f.lastBy ? esc(labelOf(st, f.lastBy)) + ' · ' + clock(f.lastT) : '—'}</dd></dl>
-    <h4>historia</h4>${hist.length ? `<ul class="hist">${hist.map((e) => `<li><time>${clock((e.ts - events[0].ts) / 1000)}</time> ${esc(e.type)} · ${esc(labelOf(st, e.agent))}${e.action ? ' · ' + esc(e.action) : ''}</li>`).join('')}</ul>` : '<p class="empty">brak zdarzeń</p>'}</div>`;
+    ${live}<h4>historia</h4>${hist.length ? `<ul class="hist">${hist.map((e) => `<li><time>${clock((e.ts - events[0].ts) / 1000)}</time> ${esc(e.type)} · ${esc(labelOf(st, e.agent))}${e.action ? ' · ' + esc(e.action) : ''}</li>`).join('')}</ul>` : '<p class="empty">brak zdarzeń</p>'}</div>`;
 }
 
 export function timelineHTML(v, events, moments = []) {

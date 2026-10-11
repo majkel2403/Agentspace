@@ -337,3 +337,12 @@ button.hx-row{cursor:pointer}button.hx-row:hover{background:rgba(232,236,248,.06
 .hx-agent .spark{display:none}
 .hx[data-bp="xl"] .hx-agent .spark,.hx[data-bp="m"] .hx-agent .spark{display:flex}
 .hx-card .hx-eyebrow{padding-right:44px}
+/* ---- v3: free camera hints, city view, hidden canvases */
+.hx [hidden]{display:none!important}
+.hx-cam{flex-wrap:wrap;justify-content:flex-end;max-width:min(640px,calc(100% - 16px))}
+.hx-cam .hx-seg .hx-btn{min-height:36px}
+.hx-cv.hx-ov{cursor:grab;touch-action:none}
+/* ---- v3: free camera hints, city view, hidden canvases */
+.hx [hidden]{display:none!important}
+.hx-cam{flex-wrap:wrap;justify-content:flex-end;max-width:min(640px,calc(100% - 16px))}
+.hx-cv.hx-ov{cursor:grab;touch-action:none}

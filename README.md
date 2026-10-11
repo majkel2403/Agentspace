@@ -174,6 +174,11 @@ Zapisuje pary obrazów (Gource po lewej, nasz renderer po prawej) i miarę SSIM 
   w wolnej komórce środkowej, więc nic go nie zasłania. Nowe zlecenie i raport to karty nad sceną.
 - `web/` — podłącza ten interfejs do serwera (`app.js`: lista przebiegów, odczyt, LIVE przez WebSocket) i renderuje
   szablon (`dc-lite.js`). Te same pliki z `packages/ui` osadza `artifact/build-app.mjs` w tablicach kanwy.
+- Widoki sceny: **Drzewo** (galaktyka plików jak w Gource) i **Miasto** (`packages/core/render/city.js`): foldery to
+  dzielnice, pliki to budynki o wysokości zależnej od rozmiaru (liczba linii treści), a agenci stoją na budynku, którego
+  dotknęli ostatnio. Kamera: kółko i pinch przybliżają wokół kursora, przeciąganie przesuwa, podwójne kliknięcie
+  przybliża; po ruchu widok przestaje podążać za pracą, aż do „Śledź pracę” albo „Dopasuj”. Dymki rozmów nad
+  agentami są domyślnie wyłączone (przełącznik „Dymki”); rozmowy czyta się w zakładce Rozmowy.
 - `adapters/jarvis.mjs` + `tools/jarvis-relay.mjs` — zadania Hermesa z Jarvisa (Telegram, cron, konsola) jako przebiegi
   na żywo: przekaźnik czyta strumień mostu (`/bridge/events`, zdarzenia `agent`) i wysyła je do serwera. Uruchomienie:
   `JARVIS_BRIDGE_TOKEN=… AGENTSPACE_URL=http://127.0.0.1:4777 node tools/jarvis-relay.mjs`. Test: `test/jarvis.test.mjs`.

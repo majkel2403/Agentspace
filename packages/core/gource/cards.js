@@ -118,7 +118,8 @@ export function drawStory(ctx, S, F, W, H, o) {
   }
 
   // ---- bubbles last, above everything in the scene
-  bubbles(ctx, S, users, ins, W, H, fs, compact);
+  // speech and thought bubbles cover the scene; they are off unless the reader asks for them (the feed has the words)
+  if (o.bubbles) bubbles(ctx, S, users, ins, W, H, fs, compact);
   ctx.restore();
 }
 

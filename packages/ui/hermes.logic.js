@@ -43,7 +43,7 @@ const hxReduce = () => { try { return !!(window.matchMedia && window.matchMedia(
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { run: null, tick: 0, idx: -1, playing: true, speed: 1, sel: null, hl: null, focus: 'auto', follow: true, task: '', note: '', bp: 'xl', sheet: false, intro: true, report: false, boot: hxBootWanted() };
+    this.state = { run: null, tick: 0, idx: -1, playing: true, speed: 1, sel: null, hl: null, focus: 'auto', follow: true, task: '', note: '', bp: 'xl', sheet: false, intro: true, report: false, boot: hxBootWanted(), view: 'tree', bubbles: false };
     this._v = null; this._T = null; this._F = null; this._lanes = []; this._sum = {}; this._stats = {}; this._doingKey = -2; this._doing = {}; this._custom = null; this._stopLive = null; this._lastPush = 0; this._auto = 'code';
   }
 
@@ -74,6 +74,11 @@ class Component extends DCLogic {
       this.setState({ run, idx: -1, sel: null, report: false, focus: 'auto', playing: !opts.idle, intro: !!opts.keepIntro, task: task != null ? task : this._F.title, note: run === 'custom' ? this.state.note : '' });
     });
   }
+
+  // the city view: the same workspace drawn as a city; a building picked there opens in the inspector
+  cityPick(path) { this.setState({ sel: 'city:' + path, focus: 'ins' }); if (this._v) this._v.select(null); }
+  showView(view) { this.setState({ view, sel: null }); if (view === 'city' && this._city) this._city.fit(); }
+  toggleBubbles() { const on = !this.state.bubbles; if (this._v) this._v.setBubbles(on); this.setState({ bubbles: on }); }
 
   match(text) { return matchTask(text, HX_HOST.runs().map((r) => r.id)); }
 
@@ -116,6 +121,7 @@ class Component extends DCLogic {
     if (bp !== this.state.bp) this.setState({ bp, sheet: bp === 's' ? false : this.state.sheet });
     // the camera frames the tree in the free middle cell: nothing floats over the work
     const free = document.getElementById('hx-free');
+    if (free && root && this._city) { const r0 = root.getBoundingClientRect(); const f0 = free.getBoundingClientRect(); this._city.setInsets({ l: f0.left - r0.left, r: r0.right - f0.right, t: f0.top - r0.top, b: r0.bottom - f0.bottom }); }
     if (free && this._v) {
       const r = root.getBoundingClientRect(); const f = free.getBoundingClientRect();
       if (f.width > 40 && f.height > 40) this._v.setInsets({ insetLeft: Math.max(0, f.left - r.left), insetRight: Math.max(0, r.right - f.right), insetTop: Math.max(0, f.top - r.top), insetBottom: Math.max(0, r.bottom - f.bottom) });
@@ -128,7 +134,9 @@ class Component extends DCLogic {
     const gl = document.getElementById('hx-gl');
     const ov = document.getElementById('hx-ov');
     if (!gl || !ov) return;
-    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Rajdhani', 'Inter', sans-serif", fontScale: 1.12 });
+    this._v = NW.createViewer({ gl, overlay: ov, autoRotate: false, hud: false, focus: true, bg: [0.008, 0.014, 0.045], font: "'Rajdhani', 'Inter', sans-serif", fontScale: 1.12, nodeScale: 1.6, fill: 1.3, bubbles: false });
+    const cityCv = document.getElementById('hx-city');
+    if (cityCv && NW.createCity) { this._city = NW.createCity(cityCv); this._city.onPick = (path) => this.cityPick(path); }
     if (typeof window !== 'undefined') { window.__NW = this._v; window.__HXAPP = this; if (window.__HM_TEST) window.__HM_TEST.logic = this; }
     this._v.onSelect = (id) => { this.setState({ sel: id || null, focus: id ? 'ins' : this.state.focus === 'ins' ? 'auto' : this.state.focus, sheet: id && this.state.bp === 's' ? true : this.state.sheet }); };
     this._v.onHover = (id) => { this.setState({ hl: id }); };
@@ -136,6 +144,7 @@ class Component extends DCLogic {
       const T = this._T;
       if (!T) return;
       const idx = T.indexAt(v.t);
+      if (this.state.view === 'city' && this._city) this._city.draw(T, idx, v.t, { colour: (id) => v.player.colour(id), label: (id) => v.player.label(id) });
       const now = Date.now();
       const st = v.story;
       const typing = !!(st && ((st.lastCode && st.lastCode.typing) || (st.lastTerm && st.lastTerm.typing)));
@@ -232,7 +241,7 @@ class Component extends DCLogic {
     let term = { who: '', state: '', stateColor: '#7F8BB3', command: '', typing: false, lines: [] };
     if (St.term) { const m = St.term; term = { who: m.who, state: m.running ? 'działa' : m.fail ? 'błąd' : 'koniec', stateColor: m.running ? '#FFC979' : m.fail ? '#FF8F9A' : '#8CFFB4', command: m.command, typing: m.typing, lines: m.lines.map((l) => ({ s: l.s, cls: l.bad ? 'bad' : '' })) }; }
     let ins = { kind: '', status: '', label: '', sub: '', hasSub: false, stats: [], events: [] };
-    const info = S.sel && v ? v.inspect(S.sel) : null;
+    const info = S.sel && S.sel.indexOf('city:') === 0 && T ? cityFileInfo(T, S.sel.slice(5), t) : S.sel && v ? v.inspect(S.sel) : null;
     if (info) ins = { kind: info.kind === 'file' ? 'plik' : info.sub, status: info.status, label: info.label, sub: info.kind === 'file' ? info.sub : '', hasSub: info.kind === 'file', stats: info.stats.map(([k, val]) => ({ k, v: val })), events: info.events.map((e) => ({ time: mmss(e.rel), type: e.type + (e.who ? ' · ' + e.who : ''), text: e.text, color: e.type.indexOf('fail') >= 0 || e.type === 'error' ? '#FF8F9A' : e.type.indexOf('passed') >= 0 || e.type.indexOf('completed') >= 0 ? '#8CFFB4' : '#7F8BB3' })) };
     const R = A.report;
     const phaseTotal = st ? st.phases.reduce((n, p) => n + p.ms, 0) || 1 : 1;
@@ -266,15 +275,19 @@ class Component extends DCLogic {
       reportReady: done, reportPending: !done,
       hasBrief: !!St.brief, briefText: St.brief ? St.brief.text : '', briefBy: St.brief ? St.brief.by : '',
       team, teamMeta: team.length + (team.length === 1 ? ' agent' : ' agentów'), hasPlan: plan.length > 0, plan, planMeta: St.plan ? St.plan.done + ' / ' + St.plan.total : '',
-      chips, follow: S.follow,
-      toggleFollow: () => { if (!v) return; const on = !S.follow; v.setFocus(on); this.setState({ follow: on }); },
-      zoomIn: () => v && v.zoom(1.2), zoomOut: () => v && v.zoom(1 / 1.2), resetCam: () => { if (v) v.reset(); },
+      chips, follow: v && v.following ? v.following() : S.follow,
+      toggleFollow: () => { if (!v) return; if (v.following()) v.freeze(); else v.setFocus(true); this.setState({ follow: !v.following() }); },
+      viewTree: S.view === 'tree', viewCity: S.view === 'city', showTree: () => this.showView('tree'), showCity: () => this.showView('city'),
+      glOff: S.view === 'city', cityOff: S.view !== 'city', bubblesOn: S.bubbles, toggleBubbles: () => this.toggleBubbles(),
+      zoomIn: () => { if (S.view === 'city' && this._city) this._city.zoom(1.25); else if (v) v.zoom(1.25); },
+      zoomOut: () => { if (S.view === 'city' && this._city) this._city.zoom(1 / 1.25); else if (v) v.zoom(1 / 1.25); },
+      resetCam: () => { if (this._city) this._city.fit(); if (v) v.reset(); },
       tabHidden, tabOn, tabPick, tabCount, tabName, auto, toggleAuto: () => this.setState({ focus: auto ? active : 'auto' }),
       paneCode: active === 'code', paneTalk: active === 'talk', paneFiles: active === 'files', paneLog: active === 'log', paneIns: active === 'ins',
       hasCode: !!St.code, code, hasTerm: !!St.term, term, noCode: !St.code && !St.term, codeMeta: St.code ? St.code.who : '',
       talk, talkMeta: talk.length + ' wiad.', noTalk: !talk.length, files, filesMeta: files.length + ' plików', noFiles: !files.length,
       log, logMeta: (A.idx + 1) + ' / ' + (T ? T.events.length : 0), logEmpty: !log.length,
-      hasSel: !!info, noSel: !info, ins, closeSel: () => { if (v) v.select(null); },
+      hasSel: !!info, noSel: !info, ins, closeSel: () => { if (v) v.select(null); this.setState({ sel: null }); },
       nar, toggleSheet: () => this.setState({ sheet: !S.sheet }),
       isPlaying: playing, notPlaying: !playing, playAria: playing ? 'Wstrzymaj' : 'Odtwórz',
       togglePlay: () => { if (!v) return; if (v.playing) v.pause(); else v.play(); this.setState({ playing: v.playing }); },

@@ -13,11 +13,18 @@ export function view(s, k, W, H, user, inset) {
   const L = inset ? inset.l || 0 : 0; const R = inset ? inset.r || 0 : 0; const Tp = inset ? inset.t || 0 : 0; const B = inset ? inset.b || 0 : 0;
   // distance from the tracked half extents and this screen's free area, so any window size frames the tree
   const aspect = Math.max(0.2, Math.max(40, W - L - R) / Math.max(40, H - Tp - B));
-  const z = camDistance(lerp(c.pex, c.ex, k), lerp(c.pey, c.ey, k), aspect) * (user ? user.zoom : 1);
-  const cx = lerp(c.px, c.x, k) + (user ? user.panX : 0);
-  const cy = lerp(c.py, c.y, k) + (user ? user.panY : 0);
   const ox = L + (W - L - R) / 2; const oy = Tp + (H - Tp - B) / 2;
-  const K = (Math.max(40, H - Tp - B) / 2) / Math.max(1, z);
+  let cx; let cy; let K;
+  if (user && user.free) {
+    // a free camera (the reader moved or zoomed): it no longer follows the work until "follow" is switched on again
+    cx = user.free.cx; cy = user.free.cy; K = user.free.K;
+  } else {
+    const z = camDistance(lerp(c.pex, c.ex, k), lerp(c.pey, c.ey, k), aspect) * (user ? user.zoom : 1);
+    cx = lerp(c.px, c.x, k) + (user ? user.panX : 0);
+    cy = lerp(c.py, c.y, k) + (user ? user.panY : 0);
+    // "fill" frames the tree larger than the simulation's own margin, so the structures read at a glance
+    K = (Math.max(40, H - Tp - B) / 2) / Math.max(1, z) * ((user && user.fill) || 1);
+  }
   return { cx, cy, K, W, H, sx: (x) => ox + (x - cx) * K, sy: (y) => oy + (y - cy) * K };
 }
 
@@ -25,6 +32,8 @@ export function buildFrame(s, k, W, H, o) {
   o = o || {};
   const V = view(s, k, W, H, o.camera, o.inset);
   const K = V.K;
+  // nodeScale: files and avatars are drawn larger than their true size, so the structure stays readable zoomed out
+  const NODE = (o.camera && o.camera.node) || 1;
   const F = { V, edges: [], files: [], users: [], beams: [], blooms: [], labels: [], picks: [], key: [], counts: { files: 0, dirs: 0, users: 0 } };
   if (s.root < 0) return F;
   const dirs = s.dirs;
@@ -67,9 +76,9 @@ export function buildFrame(s, k, W, H, o) {
       const hl = sel || o.highlight === 'file:' + f.path;
       const col = sel ? [1, 1, 1] : fileColour(f);
       const x = V.sx(wx); const y = V.sy(wy);
-      F.files.push({ x, y, size: Math.max(2, fs * K), col, a, shadow: 2 * K, path: f.path });
+      F.files.push({ x, y, size: Math.max(2.5, fs * K * NODE), col, a, shadow: 2 * K, path: f.path });
       F.counts.files++;
-      F.picks.push({ id: 'file:' + f.path, x, y, r: Math.max(5, fs * K * 0.6) });
+      F.picks.push({ id: 'file:' + f.path, x, y, r: Math.max(6, fs * K * NODE * 0.6) });
       const na = hl ? 1 : f.nameInt > 0 && fs * K >= 4 ? nameAlpha(f.nameInt, SIM.FILENAME_TIME) : 0;
       if (na > 0.01 && !o.hideFileNames) F.labels.push({ kind: hl ? 'file-sel' : 'file', text: f.name, x: V.sx(wx + 5.5), y: V.sy(wy - (hl ? 2 : 1)), a: na });
     }
@@ -93,9 +102,9 @@ export function buildFrame(s, k, W, H, o) {
     const hl = sel || o.highlight === 'user:' + u.id;
     const x = V.sx(ux); const y = V.sy(uy);
     const minW = o.agentNames ? 22 : 14;
-    F.users.push({ x, y, w: Math.max(minW, uw * K), h: Math.max(minW, uw * K) * SIM.USER_RATIO, col: sel ? [1, 1, 1] : u.col, a, shadow: 2 * K, id: u.id, label: u.label, ucol: u.col });
+    F.users.push({ x, y, w: Math.max(minW, uw * K * NODE), h: Math.max(minW, uw * K * NODE) * SIM.USER_RATIO, col: sel ? [1, 1, 1] : u.col, a, shadow: 2 * K, id: u.id, label: u.label, ucol: u.col });
     F.counts.users++;
-    F.picks.push({ id: 'user:' + u.id, x, y, r: Math.max(8, uw * K * 0.6) });
+    F.picks.push({ id: 'user:' + u.id, x, y, r: Math.max(9, uw * K * NODE * 0.6) });
     // with the studio on, agents are always named (they are the story); otherwise names fade as in Gource
     const na = hl ? 1 : o.agentNames ? a : u.nameInt > 0 ? nameAlpha(u.nameInt, SIM.NAME_TIME) : 0;
     if (na > 0.01) F.labels.push({ kind: hl ? 'user-sel' : 'user', text: u.label, x, y: y - Math.max(minW, uw * K) * SIM.USER_RATIO * 0.5, a: na });

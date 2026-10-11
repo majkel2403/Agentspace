@@ -3,7 +3,7 @@
 // recorded events, LIVE following over WebSocket, and a few page options.
 //   ?run=<id>   open a run     ?compat=1  draw only what real Gource can show (comparison harness)
 //   ?chrome=0   scene only (no panels)
-import { parseJsonl, validateEvent, createTimeline, runFacts, appState, matchTask, mmss, studioState, legendOf, cssRgb, narrate, lanesOf, runSummary } from '/packages/core/index.js';
+import { parseJsonl, validateEvent, createTimeline, runFacts, appState, matchTask, mmss, studioState, legendOf, cssRgb, narrate, lanesOf, runSummary, createCity, cityFileInfo } from '/packages/core/index.js';
 import { createViewer } from '/packages/core/render/viewer.js';
 import { markup } from '/packages/ui/hermes.markup.mjs';
 import { mount } from '/web/dc-lite.js';
@@ -67,7 +67,7 @@ if (params.get('compat') === '1' || params.get('chrome') === '0') {
   const T = createTimeline(await HX_HOST.load(id));
   v.setTimeline(T); v.setTime(0); v.play();
 } else {
-  window.NW = { parseJsonl, createTimeline, createViewer, app: { runFacts, appState, matchTask, mmss, studioState, legendOf, cssRgb, narrate, lanesOf, runSummary } };
+  window.NW = { parseJsonl, createTimeline, createViewer, createCity, cityFileInfo, app: { runFacts, appState, matchTask, mmss, studioState, legendOf, cssRgb, narrate, lanesOf, runSummary } };
   const src = await (await fetch('/packages/ui/hermes.logic.js')).text();
   const Logic = new Function('NW', 'HX_HOST', 'DCLogic', src + '\nreturn Component;');
   document.getElementById('splash')?.remove();

@@ -26,7 +26,8 @@ for (const [w, h] of SIZES) {
   await page.evaluate(() => { window.__HXAPP.setState({ boot: false, intro: false }); window.__NW.pause(); window.__NW.setTime(100000); });
   { const x = await page.$('.hx-card [aria-label="Zamknij"]'); if (x) await x.click(); }
   await page.waitForTimeout(500);
-  const states = [['code', null], ['talk', null], ['files', null], ['log', null], ['report', 'end']];
+  // the log tab exists only in the narrow layouts (on wide screens the log is the left column)
+  const states = [['code', null], ['talk', null], ['files', null], ...(w < 1180 ? [['log', null]] : []), ['report', 'end']];
   console.log(`${w}x${h}`);
   for (const [tab, mode] of states) {
     if (mode === 'end') { await page.evaluate(() => window.__NW.setTime(window.__NW.T.duration)); await page.waitForTimeout(400); }

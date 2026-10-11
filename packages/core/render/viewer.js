@@ -33,7 +33,21 @@ export function createViewer(opts) {
     // with the studio on, the camera follows the agents' work; focus: false keeps the whole tree in view
     player: createPlayer({ aspect: aspectNow(), autoRotate: opts.autoRotate, focus: opts.focus != null ? !!opts.focus : studioOn() }),
   };
-  const cam = { zoom: 1, panX: 0, panY: 0 };
+  // the camera: follows the work until the reader moves or zooms (then `free` holds centre and scale, and only the
+  // "follow" switch or "fit" gives the work back); fill and node scale make the structures read at a glance
+  const cam = { zoom: 1, panX: 0, panY: 0, free: null, fill: opts.fill != null ? opts.fill : 1.25, node: opts.nodeScale != null ? opts.nodeScale : 1.5 };
+  const freeze = () => { if (!cam.free && F) cam.free = { cx: F.V.cx, cy: F.V.cy, K: F.V.K }; };
+  const zoomAt = (factor, px, py) => {
+    if (!F) return;
+    freeze();
+    const K0 = cam.free.K; const K1 = Math.max(F.V.K * 0.05, Math.min(F.V.K * 400, K0 * factor));
+    // the world point under the pointer stays under the pointer
+    const ox = F.V.sx(F.V.cx); const oy = F.V.sy(F.V.cy);
+    const wx = cam.free.cx + (px - ox) / K0; const wy = cam.free.cy + (py - oy) / K0;
+    cam.free.K = K1; cam.free.cx = wx - (px - ox) / K1; cam.free.cy = wy - (py - oy) / K1;
+  };
+  v.setBubbles = (on) => { opts.bubbles = !!on; };
+  v.following = () => !cam.free;
   v.cam = cam;
   let last = null;
   let dtS = 0;
@@ -72,14 +86,17 @@ export function createViewer(opts) {
   // follow the work on / off: the camera is part of the simulation, so the history is re-run with the new mode
   v.setFocus = (on) => {
     opts.focus = !!on;
+    cam.free = null;
     v.player = createPlayer({ aspect: aspectNow(), autoRotate: opts.autoRotate, focus: !!on });
     if (v.T) v.player.load(v.T.events);
   };
   v.focus = () => (opts.focus != null ? !!opts.focus : studioOn());
   // highlight an agent or file from outside (hovering it in a panel): named and marked like a selection
   v.highlight = (id) => { v.hl = id || null; };
-  v.zoom = (k) => { cam.zoom = Math.max(0.15, Math.min(8, cam.zoom / k)); };
-  v.reset = () => { cam.zoom = 1; cam.panX = 0; cam.panY = 0; v.select(null); };
+  v.zoom = (k) => { if (F) zoomAt(k, F.V.sx(F.V.cx), F.V.sy(F.V.cy)); };
+  v.zoomAt = zoomAt;
+  v.freeze = freeze;
+  v.reset = () => { cam.free = null; cam.zoom = 1; cam.panX = 0; cam.panY = 0; v.select(null); };
   v.select = (id) => { v.sel = id; if (v.onSelect) v.onSelect(id, id ? v.inspect(id) : null); };
   v.inspect = (id) => inspect(v.player, v.T, id, v.t / 1000);
   v.frame = () => F;
@@ -138,7 +155,7 @@ export function createViewer(opts) {
     });
     if (studio) {
       v.story = storyAt(v.T, storyInfo(), v.t);
-      drawStory(octx, v.story, F, W, H, { inset: inset(), compact: W < 640, fontScale: opts.fontScale });
+      drawStory(octx, v.story, F, W, H, { inset: inset(), compact: W < 640, fontScale: opts.fontScale, bubbles: opts.bubbles === true });
     }
     // spend spare time computing checkpoints ahead, so scrubbing stays instant
     if (!sync) v.player.bakeAhead(v.T.duration / 1000 + TAIL_MS / 1000, v.ft < 10 ? 3 : 1);
@@ -154,17 +171,30 @@ export function createViewer(opts) {
     return best;
   };
   const rect = () => glc.getBoundingClientRect();
+  // pointers in play: two of them are a pinch (zoom about their midpoint)
+  const touches = new Map();
   ovc.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
     try { ovc.setPointerCapture(e.pointerId); } catch (x) { /* optional */ }
     const r = rect();
+    touches.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top });
+    if (touches.size === 2) { const [a, b] = [...touches.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y) || 1; drag = null; return; }
     drag = { x: e.clientX, y: e.clientY, moved: 0, px: e.clientX - r.left, py: e.clientY - r.top };
   });
+  let pinch = 0;
   ovc.addEventListener('pointermove', (e) => {
+    const r0 = rect();
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX - r0.left, y: e.clientY - r0.top });
+    if (touches.size >= 2 && pinch) {
+      const [a, b] = [...touches.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      zoomAt(pinch / d, (a.x + b.x) / 2, (a.y + b.y) / 2);
+      pinch = d; return;
+    }
     if (drag) {
       const dx = e.clientX - drag.x; const dy = e.clientY - drag.y;
       drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (drag.moved > 4 && F) { cam.panX -= dx / F.V.K; cam.panY -= dy / F.V.K; }
+      if (drag.moved > 4 && F) { freeze(); cam.free.cx -= dx / cam.free.K; cam.free.cy -= dy / cam.free.K; }
     } else {
       const r = rect();
       const h = pick(e.clientX - r.left, e.clientY - r.top);
@@ -173,6 +203,8 @@ export function createViewer(opts) {
     }
   });
   const up = (e) => {
+    touches.delete(e.pointerId);
+    if (touches.size < 2) pinch = 0;
     const d = drag;
     drag = null;
     if (d && d.moved < 6 && e.type === 'pointerup') v.select(pick(d.px, d.py));
@@ -180,7 +212,12 @@ export function createViewer(opts) {
   ovc.addEventListener('pointerup', up);
   ovc.addEventListener('pointerleave', () => { if (v.hover) { v.hover = null; if (v.onHover) v.onHover(null); } });
   ovc.addEventListener('pointercancel', up);
-  ovc.addEventListener('wheel', (e) => { e.preventDefault(); v.zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12); }, { passive: false });
+  ovc.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const r = rect();
+    zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  ovc.addEventListener('dblclick', (e) => { const r = rect(); zoomAt(2.2, e.clientX - r.left, e.clientY - r.top); });
 
   raf = requestAnimationFrame(step);
   v.destroy = () => cancelAnimationFrame(raf);

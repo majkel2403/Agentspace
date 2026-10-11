@@ -6,3 +6,4 @@ export * from './gource/player.js';
 export * from './gource/inspect.js';
 export * from './adapters/gource.js';
 export * from './app.js';
+export * from './render/city.js';

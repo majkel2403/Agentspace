@@ -155,8 +155,9 @@ export function markup(rootStyle = '') {
   return `
 <div class="hx" id="hx-root" data-bp="{{bp}}" data-sheet="{{sheet}}" data-state="{{reactorState}}" style="${rootStyle}">
   <div class="hx-stage">
-    <canvas id="hx-gl" class="hx-cv" aria-hidden="true"></canvas>
-    <canvas id="hx-ov" class="hx-cv hx-ov" role="img" aria-label="{{sceneAria}}"></canvas>
+    <canvas id="hx-gl" class="hx-cv" aria-hidden="true" hidden="{{glOff}}"></canvas>
+    <canvas id="hx-ov" class="hx-cv hx-ov" role="img" aria-label="{{sceneAria}}" hidden="{{glOff}}"></canvas>
+    <canvas id="hx-city" class="hx-cv hx-ov" role="img" aria-label="Miasto: foldery to dzielnice, pliki to budynki, agenci stoją na plikach, których dotknęli" hidden="{{cityOff}}"></canvas>
   </div>
   <div class="hx-vig"></div>
   <div class="hx-fx" aria-hidden="true"><div class="glow"></div><div class="grid"></div><div class="noise"></div><div class="scan"></div></div>
@@ -195,7 +196,9 @@ export function markup(rootStyle = '') {
 
     <div class="hx-free" id="hx-free">
       <div class="hx-legend"><sc-for list="{{chips}}" as="c" hint-placeholder-count="4"><span class="hx-chip" style="--c:{{c.colour}}"><i></i><span>{{c.text}}</span><b>{{c.n}}</b></span></sc-for></div>
-      <div class="hx-cam hx-glass" role="group" aria-label="Kamera">
+      <div class="hx-cam hx-glass" role="group" aria-label="Kamera i widok">
+        <div class="hx-seg" role="group" aria-label="Widok sceny"><button type="button" class="hx-btn" aria-pressed="{{viewTree}}" onClick="{{showTree}}">Drzewo</button><button type="button" class="hx-btn" aria-pressed="{{viewCity}}" onClick="{{showCity}}">Miasto</button></div>
+        <button type="button" class="hx-btn" aria-pressed="{{bubblesOn}}" onClick="{{toggleBubbles}}" title="Dymki rozmów nad agentami (zasłaniają scenę)">Dymki</button>
         <button type="button" class="hx-btn" aria-pressed="{{follow}}" onClick="{{toggleFollow}}" title="Kamera podąża za pracą agentów">${ICON.follow}<span class="lbl">Śledź pracę</span></button>
         <button type="button" class="hx-btn hx-ico zoom" onClick="{{zoomOut}}" aria-label="Oddal">−</button>
         <button type="button" class="hx-btn hx-ico zoom" onClick="{{zoomIn}}" aria-label="Przybliż">+</button>

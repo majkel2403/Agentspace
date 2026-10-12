@@ -5,8 +5,9 @@ Wysyłasz robotnice, żeby je naprawiały, zanim skończy się czas albo pyłek.
 błąd to test, który pada, naprawa to test, który przechodzi, lot robotnicy to zmiana pliku. Dlatego każda rozgrywka
 zapisuje się jako przebieg i można ją obejrzeć w obserwatorze roju (`/public/obserwuj.html?run=…`).
 
-- Strona główna (`/`) — gra: trzy poziomy, licznik czasu, pyłek, serie napraw, dźwięk, koniec z wynikiem.
-- `/public/obserwuj.html` — obserwator: scena roju, pulpit, dziennik, powtórki i rój na żywo (wersje 3–5 poniżej).
+- Strona główna (`/`) — obserwator roju: scena, pulpit, dziennik, powtórki i rój na żywo z dyrygowaniem (wersje 3–5 poniżej).
+- `/public/gra.html` — gra „Ul pod ostrzałem”: trzy poziomy, licznik czasu, pyłek, serie napraw, dźwięk, koniec z wynikiem. Link w prawym dolnym rogu obserwatora.
+- `/public/obserwuj.html` — kopia obserwatora (ta sama strona co `/`).
 - Silnik gry: `src/game.js` (czyste reguły, ziarno, testy w `test/game.test.mjs`). Widok: `src/game-view.js` (canvas).
 - Balans: `node tools/balance.mjs 300` — bot, który zawsze wysyła najbliższą wolną robotnicę, gra każdy poziom
   300 razy. Wynik przy obecnych ustawieniach: łagodny 100% (4,9 s), presja 100% (35 s), burza 100% (89 s).

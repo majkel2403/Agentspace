@@ -146,5 +146,3 @@ code, pre, small.path, .log code, .hist { font-family: var(--mono); }
 .conduct input:focus { outline: none; border-color: var(--accent); }
 .conduct small { color: var(--dim); font-size: 12px; max-width: 40%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.game-link { position: fixed; right: 14px; bottom: 14px; z-index: 6; background: rgba(255, 176, 32, .18); border: 1px solid var(--accent); color: var(--text); border-radius: 10px; padding: 7px 12px; font: 600 13px var(--sans); text-decoration: none; }
-.game-link:hover { background: rgba(255, 176, 32, .3); }

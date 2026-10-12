@@ -3,7 +3,6 @@
 //   GET  /api/runs                 list of runs (recorded and live)
 //   GET  /api/runs/:id             the run's JSONL text
 //   POST /api/runs/:id/events      one event or an array; stored in data/runs and sent to LIVE viewers
-//   GET  /api/workspace            the file list the game and the swarm work on
 //   POST /api/sim                  start a live swarm on a task; returns its run id
 //   POST /api/runs/:id/command     the conductor speaks to a live swarm: {text}
 //   WS   /live?run=:id             new events of a run, as they arrive
@@ -54,7 +53,6 @@ export function createServer({ port = 4777, host = '127.0.0.1', dataDir = path.j
     const url = new URL(req.url, 'http://x');
     try {
       if (req.method === 'GET' && url.pathname === '/api/runs') return send(res, 200, store.list());
-      if (req.method === 'GET' && url.pathname === '/api/workspace') return send(res, 200, { files: workspace });
       if (req.method === 'POST' && url.pathname === '/api/sim') {
         let body = {}; try { const raw = await readBody(req); body = raw ? JSON.parse(raw) : {}; } catch (e) { return send(res, 400, { error: 'json' }); }
         const id = 'roj-' + Date.now().toString(36);

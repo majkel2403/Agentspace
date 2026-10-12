@@ -1,20 +1,13 @@
-# Ul pod ostrzałem
+# Swarm mode · obserwator przepływu pracy roju AI
 
-Ta wersja to **gra**, nie obserwator. Plaster miodu to ul, a błędy (czerwone komórki) rozrastają się po nim.
-Wysyłasz robotnice, żeby je naprawiały, zanim skończy się czas albo pyłek. Każdy ruch to zdarzenie w dzienniku roju:
-błąd to test, który pada, naprawa to test, który przechodzi, lot robotnicy to zmiana pliku. Dlatego każda rozgrywka
-zapisuje się jako przebieg i można ją obejrzeć w obserwatorze roju (`/public/obserwuj.html?run=…`).
+Aplikacja do **oglądania, jak pracuje rój agentów AI**. Królowa rozbija zlecenie na zwiadowców, programistów,
+recenzenta i testera. Zdarzenia płyną z dziennika na żywo albo z zapisanego przebiegu, a scena (plaster miodu, krajobraz
+uwagi) i pulpit (rozmowy, plan, pliki, testy, dziennik, inspektor) pokazują, kto co robi i w jakiej kolejności.
+Przebieg można odtwarzać i przewijać, a rój na żywo można obserwować i wysyłać mu polecenia.
 
-- Strona główna (`/`) — obserwator roju: scena, pulpit, dziennik, powtórki i rój na żywo z dyrygowaniem (wersje 3–5 poniżej).
-- `/public/gra.html` — gra „Ul pod ostrzałem”: trzy poziomy, licznik czasu, pyłek, serie napraw, dźwięk, koniec z wynikiem. Link w prawym dolnym rogu obserwatora.
-- `/public/obserwuj.html` — kopia obserwatora (ta sama strona co `/`).
-- Silnik gry: `src/game.js` (czyste reguły, ziarno, testy w `test/game.test.mjs`). Widok: `src/game-view.js` (canvas).
-- Balans: `node tools/balance.mjs 300` — bot, który zawsze wysyła najbliższą wolną robotnicę, gra każdy poziom
-  300 razy. Wynik przy obecnych ustawieniach: łagodny 100% (4,9 s), presja 100% (35 s), burza 100% (89 s).
-  Bot jest idealny (natychmiast wysyła robotnice), więc to górna granica: człowiek przegra częściej.
-  Próg trudności jest ostry: przy tempie rozrastania 5,0 s bot przegrywa burzę zawsze, przy 5,2 s wygrywa zawsze.
+- `/` — obserwator: scena, pulpit, dziennik, powtórki i rój na żywo.
 
-## Obserwator roju (wersje 3–5)
+## Co pokazuje obserwator (wersje 3–5)
 
 Wersja 5: **dyrygujesz rojem na żywo**. „Nowy rój” uruchamia na serwerze prawdziwie pracujący rój na twoje zlecenie
 (symulacja zasad, nie nagranie). Zdarzenia płyną na żywo. Na pasku dyrygenta wydajesz polecenia: `skup <fragment>`
@@ -53,7 +46,7 @@ pojawienia się pliku. Te przejścia są funkcją czasu logu, więc też są pow
 npm install          # ws (serwer LIVE) i three (scena 3D)
 npm start            # http://127.0.0.1:4777   (PORT=… zmienia port)
 npm run demo:build   # odbudowa nagranych przebiegów z demo/make-swarm.mjs
-npm test             # 38 testów (w tym gra): zdarzenia, model, układ, serwer, narracja, teren, plaster, rój na żywo
+npm test             # testy zdarzeń, modelu, układu, serwera, narracji, plastra i roju: zdarzenia, model, układ, serwer, narracja, teren, plaster, rój na żywo
 npm run smoke       # przeglądarka: odtwarza przebieg, klika agenta i plik (wymaga Playwright; URL=… i PLAYWRIGHT_MODULE=…)
 ```
 

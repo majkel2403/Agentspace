@@ -3,29 +3,54 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ul · centrum roju</title>
+<title>Ul pod ostrzałem · gra</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
-<link rel="stylesheet" href="/public/styles.css">
-<script type="importmap">{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }</script>
+<link rel="stylesheet" href="/public/game.css">
 </head>
 <body>
-<div id="app">
-  <header id="top" class="panel top"></header>
-  <aside id="roster" class="panel roster" aria-label="Zespół"></aside>
-  <main id="stage" class="stage" aria-label="Scena roju">
-    <div id="curtain" class="curtain" aria-hidden="true"><span class="eyebrow">zlecenie</span><b id="curtain-task"></b><small id="curtain-who"></small></div>
-    <form id="conduct" class="conduct" autocomplete="off">
-      <span class="eyebrow">dyrygent</span>
-      <input id="conduct-text" name="text" placeholder="skup szkielet, testuj, zatrzymaj…" aria-label="Polecenie dla roju" maxlength="200">
-      <button class="btn" type="submit">Wyślij</button>
-      <small id="conduct-note"></small>
-    </form>
-    <div class="legend"><span><i class="k-q"></i>królowa</span><span><i class="k-r"></i>czyta</span><span><i class="k-c"></i>nowy</span><span><i class="k-m"></i>zmiana</span><span><i class="k-x"></i>usunięty</span><span><i class="k-msg"></i>wiadomość</span></div>
-  </main>
-  <section id="deck" class="panel deck" aria-label="Pulpit"></section>
-  <footer id="scrub" class="panel scrub-bar"></footer>
-</div>
-<script type="module" src="/src/app.js"></script>
+<canvas id="board" aria-label="Plaster: kliknij czerwoną komórkę, żeby wysłać robotnicę"></canvas>
+
+<header class="hud">
+  <div class="brand"><span class="mark"></span><div><b>UL</b><small>pod ostrzałem</small></div></div>
+  <div class="stats">
+    <div class="stat"><span>czas</span><b id="s-time">—</b></div>
+    <div class="stat"><span>pyłek</span><b id="s-pollen">—</b></div>
+    <div class="stat"><span>błędy</span><b id="s-bugs">—</b></div>
+    <div class="stat"><span>wynik</span><b id="s-score">0</b></div>
+    <div class="stat"><span>seria</span><b id="s-combo">x1</b></div>
+  </div>
+  <div class="hud-btns">
+    <button id="b-sound" class="btn">Dźwięk: wył.</button>
+    <button id="b-new" class="btn">Menu</button>
+  </div>
+</header>
+
+<section id="menu" class="overlay on" aria-label="Menu">
+  <div class="card">
+    <span class="eyebrow">gra o rój</span>
+    <h1>Ul pod ostrzałem</h1>
+    <p>Błędy — czerwone komórki — rozrastają się po plastrze. Wysyłaj robotnice, żeby je naprawiały, zanim
+    skończy się czas albo pyłek. Każda naprawa to zielony test w dzienniku roju, a każdy błąd to test, który pada.</p>
+    <div id="levels" class="levels"></div>
+    <p class="note" id="menu-note">Wczytywanie listy plików…</p>
+    <p class="note">Klik: wyślij robotnicę na czerwone pole · Esc: menu</p>
+  </div>
+</section>
+
+<section id="end" class="overlay" aria-label="Koniec gry">
+  <div class="card">
+    <span class="eyebrow">koniec</span>
+    <h2 id="end-title">—</h2>
+    <p id="end-score"></p>
+    <div class="row">
+      <button id="end-again" class="btn on">Zagraj ponownie</button>
+      <a id="end-replay" class="btn" href="#">Powtórka w dzienniku</a>
+    </div>
+    <p class="note">Przebieg rozgrywki został zapisany jako zwykły przebieg roju.</p>
+  </div>
+</section>
+
+<script type="module" src="/src/game-view.js"></script>
 </body>
 </html>

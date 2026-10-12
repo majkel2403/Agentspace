@@ -1,4 +1,15 @@
-# Ul · plaster agentów
+# Ul pod ostrzałem
+
+Ta wersja to **gra**, nie obserwator. Plaster miodu to ul, a błędy (czerwone komórki) rozrastają się po nim.
+Wysyłasz robotnice, żeby je naprawiały, zanim skończy się czas albo pyłek. Każdy ruch to zdarzenie w dzienniku roju:
+błąd to test, który pada, naprawa to test, który przechodzi, lot robotnicy to zmiana pliku. Dlatego każda rozgrywka
+zapisuje się jako przebieg i można ją obejrzeć w obserwatorze roju (`/public/obserwuj.html?run=…`).
+
+- Strona główna (`/`) — gra: trzy poziomy, licznik czasu, pyłek, serie napraw, dźwięk, koniec z wynikiem.
+- `/public/obserwuj.html` — obserwator: scena roju, pulpit, dziennik, powtórki i rój na żywo (wersje 3–5 poniżej).
+- Silnik gry: `src/game.js` (czyste reguły, ziarno, testy w `test/game.test.mjs`). Widok: `src/game-view.js` (canvas).
+
+## Obserwator roju (wersje 3–5)
 
 Wersja 5: **dyrygujesz rojem na żywo**. „Nowy rój” uruchamia na serwerze prawdziwie pracujący rój na twoje zlecenie
 (symulacja zasad, nie nagranie). Zdarzenia płyną na żywo. Na pasku dyrygenta wydajesz polecenia: `skup <fragment>`
@@ -37,7 +48,7 @@ pojawienia się pliku. Te przejścia są funkcją czasu logu, więc też są pow
 npm install          # ws (serwer LIVE) i three (scena 3D)
 npm start            # http://127.0.0.1:4777   (PORT=… zmienia port)
 npm run demo:build   # odbudowa nagranych przebiegów z demo/make-swarm.mjs
-npm test             # 30 testów: zdarzenia, model, układ, serwer, narracja, teren, plaster, rój na żywo
+npm test             # 38 testów (w tym gra): zdarzenia, model, układ, serwer, narracja, teren, plaster, rój na żywo
 npm run smoke       # przeglądarka: odtwarza przebieg, klika agenta i plik (wymaga Playwright; URL=… i PLAYWRIGHT_MODULE=…)
 ```
 

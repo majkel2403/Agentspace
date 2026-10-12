@@ -8,6 +8,10 @@ zapisuje się jako przebieg i można ją obejrzeć w obserwatorze roju (`/public
 - Strona główna (`/`) — gra: trzy poziomy, licznik czasu, pyłek, serie napraw, dźwięk, koniec z wynikiem.
 - `/public/obserwuj.html` — obserwator: scena roju, pulpit, dziennik, powtórki i rój na żywo (wersje 3–5 poniżej).
 - Silnik gry: `src/game.js` (czyste reguły, ziarno, testy w `test/game.test.mjs`). Widok: `src/game-view.js` (canvas).
+- Balans: `node tools/balance.mjs 300` — bot, który zawsze wysyła najbliższą wolną robotnicę, gra każdy poziom
+  300 razy. Wynik przy obecnych ustawieniach: łagodny 100% (4,9 s), presja 100% (35 s), burza 100% (89 s).
+  Bot jest idealny (natychmiast wysyła robotnice), więc to górna granica: człowiek przegra częściej.
+  Próg trudności jest ostry: przy tempie rozrastania 5,0 s bot przegrywa burzę zawsze, przy 5,2 s wygrywa zawsze.
 
 ## Obserwator roju (wersje 3–5)
 

@@ -58,10 +58,10 @@ test('clearing every bug wins; running out of time loses', () => {
 });
 
 test('bugs spread when nothing is done, and the same seed plays the same game', () => {
-  const a = createGame({ seed: 4, level: LEVELS[1], files: FILES });
+  const a = createGame({ seed: 4, level: LEVELS[1], files: FILES, t0: 0 });
   const n0 = a.bugs.size; a.advance(LEVELS[1].spread * 2 + 0.5);
   assert.ok(a.bugs.size > n0, 'the bugs grew');
-  const b = createGame({ seed: 4, level: LEVELS[1], files: FILES });
+  const b = createGame({ seed: 4, level: LEVELS[1], files: FILES, t0: 0 });
   b.advance(LEVELS[1].spread * 2 + 0.5);
   assert.deepEqual(a.events, b.events);
 });

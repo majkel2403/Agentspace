@@ -4,9 +4,9 @@
 // Pure logic with a seeded random generator: the same seed and the same moves give the same game.
 
 export const LEVELS = [
-  { id: 'lagodny', name: 'Łagodny ul', bugs: 4, time: 110, pollen: 14, spread: 14, robots: 3, flight: 1.2 },
-  { id: 'presja', name: 'Ul pod presją', bugs: 7, time: 95, pollen: 11, spread: 9, robots: 3, flight: 1.0 },
-  { id: 'burza', name: 'Burza błędów', bugs: 10, time: 85, pollen: 9, spread: 6, robots: 4, flight: 0.9 },
+  { id: 'lagodny', name: 'Łagodny ul', bugs: 5, time: 100, pollen: 10, spread: 8, robots: 2, flight: 1.6 },
+  { id: 'presja', name: 'Ul pod presją', bugs: 7, time: 95, pollen: 9, spread: 5, robots: 3, flight: 1.3 },
+  { id: 'burza', name: 'Burza błędów', bugs: 10, time: 90, pollen: 8, spread: 5.2, robots: 3, flight: 1.2 },
 ];
 export const COST = 2;        // pollen for one robot trip
 export const PAYOUT = 100;    // score for a fix (multiplied by the combo)
